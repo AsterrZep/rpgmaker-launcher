@@ -1,0 +1,17 @@
+# Juegos descargados (privados y con derechos de autor de terceros).
+# NUNCA subir al repositorio público.
+games/
+*.zip
+*.rar
+*.7z
+*.tgz
+
+# Binarios / artefactos de build
+runtimes/mkxp-z
+__pycache__/
+*.pyc
+
+# Logs y temporales
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RPG Maker Launcher · Juega tus RPG Maker en Chrome OS</title>
+<meta name="description" content="Lanzador universal de juegos de RPG Maker y Ren'Py para Chrome OS y Linux. Detecta el motor, descomprime y ejecuta MZ, MV, XP, VX, VX Ace, 2000 y 2003.">
+<style>
+  :root {
+    --bg: #0f1220;
+    --bg-soft: #161a2e;
+    --card: #1c2140;
+    --border: #2a3157;
+    --text: #e8eaf6;
+    --muted: #9aa3c7;
+    --accent: #7c5cff;
+    --accent-2: #ff6b9d;
+    --ok: #3ddc84;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    background: linear-gradient(160deg, var(--bg) 0%, #171038 60%, var(--bg) 100%);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+
+  header { padding: 72px 0 40px; text-align: center; }
+  .logo {
+    width: 96px; height: 96px; border-radius: 22px;
+    box-shadow: 0 12px 40px rgba(124, 92, 255, .45);
+    margin-bottom: 24px;
+  }
+  header h1 {
+    font-size: 2.6rem; letter-spacing: -.5px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  header p.tagline { color: var(--muted); font-size: 1.15rem; margin-top: 8px; }
+  .badges { margin-top: 20px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .badge {
+    display: inline-block; padding: 6px 14px; border-radius: 999px;
+    background: var(--card); border: 1px solid var(--border);
+    font-size: .85rem; color: var(--muted);
+  }
+  .badge b { color: var(--text); }
+
+  .btn-row { margin-top: 28px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-block; padding: 12px 26px; border-radius: 12px;
+    font-weight: 600; text-decoration: none; transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn-primary {
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    color: #fff; box-shadow: 0 8px 24px rgba(124, 92, 255, .4);
+  }
+  .btn-ghost { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+
+  section { padding: 44px 0; }
+  h2 {
+    font-size: 1.6rem; margin-bottom: 24px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  h2 .num {
+    font-size: .9rem; padding: 4px 10px; border-radius: 8px;
+    background: var(--card); border: 1px solid var(--border); color: var(--accent);
+    font-weight: 700;
+  }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px;
+  }
+  .card h3 { font-size: 1.05rem; margin-bottom: 6px; }
+  .card p { color: var(--muted); font-size: .92rem; }
+
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+    border-radius: 16px; overflow: hidden; border: 1px solid var(--border); }
+  th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  th { background: var(--bg-soft); font-size: .85rem; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+  td { font-size: .95rem; }
+  tr:last-child td { border-bottom: none; }
+  .engine { color: var(--accent-2); font-weight: 600; white-space: nowrap; }
+
+  pre {
+    background: var(--bg-soft); border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px; overflow-x: auto; font-size: .9rem;
+  }
+  code { font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace; }
+  .comment { color: var(--muted); }
+
+  .tree {
+    font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+    font-size: .9rem; background: var(--bg-soft); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px; overflow-x: auto; line-height: 1.8;
+  }
+  .tree .dim { color: var(--muted); }
+
+  ul.checks { list-style: none; }
+  ul.checks li { padding: 8px 0 8px 30px; position: relative; color: var(--muted); }
+  ul.checks li::before {
+    content: "✓"; position: absolute; left: 0; top: 8px;
+    color: var(--ok); font-weight: 700;
+  }
+
+  .license { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+  .license p { color: var(--muted); margin-bottom: 12px; }
+  .license .tag {
+    display: inline-block; margin-top: 6px; padding: 4px 12px;
+    border-radius: 8px; background: rgba(61, 220, 132, .12);
+    color: var(--ok); font-weight: 600; font-size: .85rem;
+  }
+
+  footer { text-align: center; padding: 48px 0 56px; color: var(--muted); font-size: .88rem; }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+
+  @media (max-width: 560px) {
+    header h1 { font-size: 1.9rem; }
+    header { padding: 48px 0 28px; }
+    table { font-size: .82rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <img class="logo" src="https://raw.githubusercontent.com/AsterrZep/rpgmaker-launcher/main/runtimes/icon.png" alt="Icono del lanzador">
+    <h1>RPG Maker Launcher</h1>
+    <p class="tagline">Juega tus juegos de RPG Maker en Chrome OS, sin complicaciones.</p>
+    <div class="badges">
+      <span class="badge">MZ · <b>MV</b></span>
+      <span class="badge">XP · <b>VX</b> · <b>VX Ace</b></span>
+      <span class="badge"><b>2000</b> · <b>2003</b></span>
+      <span class="badge"><b>Ren'Py</b></span>
+      <span class="badge">CC BY-NC <b>4.0</b></span>
+    </div>
+    <div class="btn-row">
+      <a class="btn btn-primary" href="https://github.com/AsterrZep/rpgmaker-launcher">Ver en GitHub</a>
+      <a class="btn btn-ghost" href="#como-funciona">Cómo funciona</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section id="que-es">
+    <h2><span class="num">01</span> ¿Qué es?</h2>
+    <p style="color:var(--muted); margin-bottom:24px;">
+      Un lanzador universal para Chromebooks. Detecta automáticamente el motor de cada juego de RPG Maker o
+      Ren'Py que tengas, descomprime el <code>.zip</code> si hace falta y lo abre con el runtime correcto.
+      Sin emuladores, sin tocar nada del juego, sin entornos raros.
+    </p>
+    <div class="grid">
+      <div class="card"><h3>🛰️ Detección automática</h3><p>Mira los ficheros del juego y elige el motor exacto sin que tengas que configurar nada.</p></div>
+      <div class="card"><h3>📦 Descomprime solo</h3><p>Extrae el <code>.zip</code> al vuelo, una sola vez, con marcador de integridad.</p></div>
+      <div class="card"><h3>🖥️ Interfaz gráfica</h3><p>App nativa de Chrome OS con botón para detener servidores y borrar comprimidos.</p></div>
+      <div class="card"><h3>🛡️ Sin solapamientos</h3><p>Un servidor web a la vez: al abrir otro juego, el anterior se cierra solo.</p></div>
+    </div>
+  </section>
+
+  <section id="motores">
+    <h2><span class="num">02</span> Motores soportados</h2>
+    <table>
+      <thead>
+        <tr><th>Motor</th><th>Runtime</th><th>Cómo se abre</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="engine">RPG Maker MZ</td><td>Servidor HTTP local</td><td>Navegador</td></tr>
+        <tr><td class="engine">RPG Maker MV</td><td>Servidor HTTP local</td><td>Navegador</td></tr>
+        <tr><td class="engine">XP / VX / VX Ace</td><td>mkxp-z (compilado)</td><td>Ventana nativa</td></tr>
+        <tr><td class="engine">2000 / 2003</td><td>EasyRPG Player</td><td>Ventana nativa</td></tr>
+        <tr><td class="engine">Ren'Py</td><td>Motor incluido del juego</td><td>Ventana nativa</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="instalacion">
+    <h2><span class="num">03</span> Instalación</h2>
+    <p style="color:var(--muted); margin-bottom:16px;">Desde el terminal de Linux de tu Chrome OS (Crostini):</p>
+    <pre><code>git clone https://github.com/AsterrZep/rpgmaker-launcher.git
+cd rpgmaker-launcher
+chmod +x install.sh
+./install.sh</code></pre>
+    <p style="color:var(--muted); margin-top:16px;">
+      El instalador configura las dependencias, instala EasyRPG, compila mkxp-z y crea el acceso directo.
+      Busca <b>RPG Maker Launcher</b> en las apps de Linux (en Chrome OS puede hacer falta cerrar sesión o
+      reiniciar el contenedor para que aparezca).
+    </p>
+  </section>
+
+  <section id="como-funciona">
+    <h2><span class="num">04</span> Cómo funciona</h2>
+    <p style="color:var(--muted); margin-bottom:16px;">
+      Basta con dejar tus juegos (en <code>.zip</code> o ya descomprimidos) dentro de la carpeta del lanzador:
+    </p>
+    <div class="tree"><span class="dim">~/Games/</span>
+├── rpgmaker-launcher.sh        <span class="dim"># versión de terminal</span>
+├── rpgmaker-launcher-gui.py    <span class="dim"># interfaz gráfica</span>
+├── <span style="color:var(--ok)">games/</span>                      <span class="dim"># juegos descomprimidos (auto)</span>
+│   └── Mi_Juego/
+└── Mi_Juego.zip                <span class="dim"># se extrae solo al lanzarlo</span></div>
+    <ul class="checks" style="margin-top:20px;">
+      <li>El lanzador detecta el motor y lo abre con el runtime adecuado.</li>
+      <li>Los juegos web (MZ/MV) se sirven en <code>localhost</code> y se abren en el navegador.</li>
+      <li><b>Detener servidor</b> apaga el servidor web en cualquier momento.</li>
+      <li>Advierte si una descarga o descompresión quedó incompleta.</li>
+    </ul>
+  </section>
+
+  <section id="licencia">
+    <h2><span class="num">05</span> Licencia</h2>
+    <div class="license">
+      <p>
+        Este proyecto es un <b>lanzador</b>: no incluye ningún juego. Solo uso, modificación y
+        compartición <b>no comerciales</b>, citando al autor.
+      </p>
+      <p>
+        Distribuido bajo <b>Creative Commons Atribución-NoComercial 4.0 Internacional</b>.
+        Prohibido el uso comercial, incluida la venta del código o de servicios basados en él.
+      </p>
+      <span class="tag">CC BY-NC 4.0 · No comercial · Atribución requerida</span>
+    </div>
+  </section>
+
+  <section id="creditos">
+    <h2><span class="num">06</span> Créditos</h2>
+    <ul class="checks">
+      <li><b>mkxp-z</b> — runtime de RPG Maker XP/VX/VX Ace (GPL).</li>
+      <li><b>EasyRPG Player</b> — runtime de RPG Maker 2000/2003 (GPL).</li>
+      <li><b>Ren'Py</b> — motor de novelas visuales (MIT).</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>RPG Maker Launcher · <a href="https://github.com/AsterrZep/rpgmaker-launcher">repositorio en GitHub</a> · <a href="https://github.com/AsterrZep/rpgmaker-launcher/blob/main/README.md">README</a> · <a href="https://github.com/AsterrZep/rpgmaker-launcher/blob/main/LICENSE">LICENSE</a></p>
+    <p style="margin-top:8px;">Hecho con ❤️ para jugar en Chromebooks.</p>
+  </div>
+</footer>
+
+</body>
+</html>
