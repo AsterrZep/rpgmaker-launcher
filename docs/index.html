@@ -162,8 +162,9 @@
       <div class="card"><h3>📦 Descomprime solo</h3><p>Extrae el <code>.zip</code> al vuelo, una sola vez, con marcador de integridad.</p></div>
       <div class="card"><h3>🖥️ Interfaz gráfica</h3><p>App nativa de Chrome OS con botón para detener servidores y borrar comprimidos.</p></div>
       <div class="card"><h3>⚡ Visor WebKit ligero</h3><p>Para juegos web pesados: se abren en un visor WebKit propio, con menos memoria que el navegador completo.</p></div>
+      <div class="card"><h3>🚀 Servidor rápido</h3><p>Multihilo, con caché y MIME correcto para <code>.wasm</code>: evita tirones al cargar muchos assets de golpe.</p></div>
       <div class="card"><h3>🛡️ Sin solapamientos</h3><p>Un servidor web a la vez: al abrir otro juego, el anterior se cierra solo.</p></div>
-      <div class="card"><h3>🔍 Diagnóstico</h3><p>El visor guarda los errores de consola JS en <code>&lt;juego&gt;.webkit.log</code> para encontrar plugins rotos.</p></div>
+      <div class="card"><h3>🔍 Diagnóstico</h3><p>Modo <code>--test</code>: comprueba si el juego llega a la escena de título, cuánto tarda y qué errores JS aparecen.</p></div>
     </div>
   </section>
 
@@ -213,7 +214,7 @@ chmod +x install.sh
       <li>Los juegos web (MZ/MV) se sirven en <code>localhost</code>. Se abren en el navegador o en el <b>visor WebKit ligero</b> (marca la casilla "Visor WebKit (más ligero)"), que consume menos memoria en juegos pesados.</li>
       <li><b>Detener servidor</b> apaga el servidor web en cualquier momento.</li>
       <li>Advierte si una descarga o descompresión quedó incompleta.</li>
-      <li>Si un juego no arranca, el visor guarda los errores de consola JS en <code>&lt;juego&gt;.webkit.log</code> y puede diagnosticar el problema con <code>--test</code>.</li>
+      <li>Si un juego no arranca, ejecuta el diagnóstico del visor con <code>--test</code> para ver el error exacto y el tiempo de carga.</li>
     </ul>
   </section>
 

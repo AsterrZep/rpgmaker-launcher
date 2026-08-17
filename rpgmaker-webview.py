@@ -16,7 +16,6 @@
 # ============================================================
 import argparse
 import json
-import sys
 
 import gi
 
@@ -25,18 +24,29 @@ gi.require_version("WebKit2", "4.1")
 from gi.repository import Gtk, Gdk, WebKit2, GLib
 
 
-def make_settings():
+def make_settings(console_to_stdout=False):
     settings = WebKit2.Settings()
     settings.set_enable_developer_extras(False)
     settings.set_media_playback_requires_user_gesture(False)
     settings.set_enable_webgl(True)
     settings.set_allow_file_access_from_file_urls(False)
-    # Los errores de consola JS salen por stdout -> el lanzador los guarda
-    settings.set_enable_write_console_messages_to_stdout(True)
+    # Rendimiento: canvas acelerado y caché agresiva para no re-bajar assets
+    settings.set_enable_accelerated_2d_canvas(True)
+    settings.set_enable_smooth_scrolling(True)
+    # Los mensajes de consola JS solo se escriben si se piden explícitamente
+    # (con --log-console): si un juego loguea mucho, escribirlos a fichero
+    # en cada frame provoca tirones.
+    settings.set_enable_write_console_messages_to_stdout(console_to_stdout)
+    try:
+        ctx = WebKit2.WebContext.get_default()
+        ctx.set_cache_model(WebKit2.CacheModel.DOCUMENT_VIEWER)
+    except Exception:
+        pass
     return settings
 
 
 CAPTURE_JS = (
+    "window.__rpgl_orig_title__=document.title;"
     "window.__rpgl_errors__=[];"
     "window.addEventListener('error',function(e){"
     "  try{window.__rpgl_errors__.push({"
@@ -55,8 +65,8 @@ CAPTURE_JS = (
 )
 
 
-def make_webview(url, capture=True):
-    view = WebKit2.WebView.new_with_settings(make_settings())
+def make_webview(url, capture=False, console_to_stdout=False):
+    view = WebKit2.WebView.new_with_settings(make_settings(console_to_stdout))
     if capture:
         manager = WebKit2.UserContentManager()
         script = WebKit2.UserScript.new(
@@ -64,7 +74,7 @@ def make_webview(url, capture=True):
             WebKit2.UserScriptInjectionTime.START, [], [])
         manager.add_script(script)
         view = WebKit2.WebView.new_with_user_content_manager(manager)
-        view.set_settings(make_settings())
+        view.set_settings(make_settings(console_to_stdout))
     view.load_uri(url)
     return view
 
@@ -72,7 +82,7 @@ def make_webview(url, capture=True):
 def run_viewer(args):
     win = Gtk.Window(title=args.title or "RPG Maker (WebKit)")
     win.set_default_size(960, 600)
-    view = make_webview(args.url)
+    view = make_webview(args.url, capture=False, console_to_stdout=args.log_console)
     win.add(view)
 
     win.connect("destroy", Gtk.main_quit)
@@ -129,7 +139,7 @@ def test_js():
         "  try{scene=SceneManager._scene.constructor.name}catch(e){scene='unknown'}"
         "}"
         "document.title='__RPGML__'+JSON.stringify({"
-        "  title:document.title.replace('__RPGML__',''),"
+        "  title:window.__rpgl_orig_title__||'',"
         "  engine:(typeof SceneManager!=='undefined'?'MZ':'other'),"
         "  scene:scene,"
         "  errorPrinter:!!err,"
@@ -143,40 +153,46 @@ def test_js():
 
 
 def run_test(args):
+    import time as _time
+    started = _time.time()
     win = Gtk.Window(title="diagnóstico")
-    view = make_webview(args.url)
+    view = make_webview(args.url, capture=True, console_to_stdout=True)
     win.add(view)
     win.show_all()
     win.connect("destroy", Gtk.main_quit)
 
-    def read_title():
+    def check():
         t = view.get_title() or ""
         if t.startswith("__RPGML__"):
             payload = t[len("__RPGML__"):]
             try:
-                print(json.dumps(json.loads(payload), ensure_ascii=False))
+                data = json.loads(payload)
             except ValueError:
                 print("RESULTADO_NO_PARSED: " + payload)
-            Gtk.main_quit()
-            return False
-        return True  # reintentar
+                Gtk.main_quit()
+                return False
+            if data["scene"] != "none" or data["errorText"] or data["errors"]:
+                data["t_escena_s"] = round(_time.time() - started, 1)
+                print(json.dumps(data, ensure_ascii=False))
+                Gtk.main_quit()
+        return False
 
-    def do_check():
+    def poll():
         try:
             view.run_javascript(test_js(), None, None, None, None)
         except Exception as e:
             print(json.dumps({"error": "run_javascript: %s" % e}))
             Gtk.main_quit()
             return False
-        GLib.timeout_add(400, read_title)
-        return False
+        GLib.timeout_add(400, check)
+        return True  # volver a muestrear dentro de 1 s
 
     def force_quit():
         print(json.dumps({"error": "timeout sin resultado"}))
         Gtk.main_quit()
         return False
 
-    GLib.timeout_add_seconds(args.wait, do_check)
+    GLib.timeout_add_seconds(1, poll)
     GLib.timeout_add_seconds(args.wait + 5, force_quit)
     Gtk.main()
 
@@ -189,6 +205,8 @@ def main():
     ap.add_argument("--test", action="store_true",
                     help="modo diagnóstico: carga la página, evalúa el estado y sale")
     ap.add_argument("--wait", type=int, default=12)
+    ap.add_argument("--log-console", action="store_true",
+                    help="escribir los mensajes de consola JS por stdout (puede ralentizar juegos que loguean mucho)")
     args = ap.parse_args()
 
     if args.test:

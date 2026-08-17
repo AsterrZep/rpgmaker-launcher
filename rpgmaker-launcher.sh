@@ -17,6 +17,7 @@ MAX_DEPTH=5
 MKXPZ="$RUN_DIR/mkxp-z"
 EASYRPG="easyrpg-player"
 WEBVIEW="$BASE_DIR/rpgmaker-webview.py"
+WEBSRV="$BASE_DIR/rpgmaker-server.py"
 
 mkdir -p "$GAMES_DIR"
 
@@ -125,13 +126,13 @@ launch_web() {
     port="$(free_port)"
     echo ""
     echo ">> Servidor en: http://localhost:$port  (directorio: $dir)"
-    python3 -m http.server "$port" --bind 127.0.0.1 --directory "$dir" >/dev/null 2>&1 &
+    python3 "$WEBSRV" "$port" --dir "$dir" >/dev/null 2>&1 &
     local pid=$!
     sleep 1
     if [ "$viewer" = "webkit" ]; then
         echo ">> Abriendo el visor WebKit ligero..."
         python3 -u "$WEBVIEW" --url "http://localhost:$port/index.html" \
-            --title "$(basename "$dir")" >> "$GAMES_DIR/$(basename "$dir").webkit.log" 2>/dev/null &
+            --title "$(basename "$dir")" >/dev/null 2>&1 &
         local vpid=$!
         trap 'kill "$pid" "$vpid" 2>/dev/null; exit 0' INT
         wait "$pid"

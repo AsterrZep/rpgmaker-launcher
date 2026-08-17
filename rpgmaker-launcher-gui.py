@@ -191,18 +191,18 @@ class Launcher:
     def launch_web(self, root, name, webkit=False):
         self.stop_server()
         port = free_port()
+        server = os.path.join(BASE_DIR, "rpgmaker-server.py")
         self.server_proc = subprocess.Popen(
-            [sys.executable, "-m", "http.server", str(port), "--bind", "127.0.0.1", "--directory", root],
+            [sys.executable, server, str(port), "--dir", root],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.server_info = (name, port)
         time.sleep(1)
         url = "http://localhost:%d/index.html" % port
         if webkit:
             viewer = os.path.join(BASE_DIR, "rpgmaker-webview.py")
-            logf = open(os.path.join(GAMES_DIR, name + ".webkit.log"), "a")
             self.viewer_proc = subprocess.Popen(
                 [sys.executable, "-u", viewer, "--url", url, "--title", name],
-                stdout=logf, stderr=subprocess.DEVNULL)
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
             self.viewer_proc = None
             subprocess.Popen(["xdg-open", url],

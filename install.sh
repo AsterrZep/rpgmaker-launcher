@@ -152,7 +152,7 @@ fi
 
 # ------------------------------------------------------ acceso directo de la app
 c_log "Generando acceso directo..."
-chmod +x "$BASEDIR/rpgmaker-launcher.sh" "$BASEDIR/rpgmaker-launcher-gui.py" "$BASEDIR/rpgmaker-webview.py"
+chmod +x "$BASEDIR/rpgmaker-launcher.sh" "$BASEDIR/rpgmaker-launcher-gui.py" "$BASEDIR/rpgmaker-webview.py" "$BASEDIR/rpgmaker-server.py"
 mkdir -p "$HOME/.local/share/applications"
 sed "s|__BASEDIR__|$BASEDIR|g" "$RUNTIMES/rpgmaker-launcher.desktop" \
   > "$HOME/.local/share/applications/rpgmaker-launcher.desktop"
