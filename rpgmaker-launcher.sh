@@ -16,6 +16,7 @@ MAX_DEPTH=5
 
 MKXPZ="$RUN_DIR/mkxp-z"
 EASYRPG="easyrpg-player"
+WEBVIEW="$BASE_DIR/rpgmaker-webview.py"
 
 mkdir -p "$GAMES_DIR"
 
@@ -119,6 +120,7 @@ detect_engine() {
 # ---------- lanzamiento ----------
 launch_web() {
     local dir="$1"
+    local viewer="$2"
     local port
     port="$(free_port)"
     echo ""
@@ -126,11 +128,20 @@ launch_web() {
     python3 -m http.server "$port" --bind 127.0.0.1 --directory "$dir" >/dev/null 2>&1 &
     local pid=$!
     sleep 1
-    echo ">> Abriendo el navegador..."
-    xdg-open "http://localhost:$port/index.html" >/dev/null 2>&1 || true
-    echo ">> Juego abierto. Pulsa Ctrl+C para cerrar el servidor."
-    trap 'kill "$pid" 2>/dev/null; exit 0' INT
-    wait "$pid"
+    if [ "$viewer" = "webkit" ]; then
+        echo ">> Abriendo el visor WebKit ligero..."
+        python3 -u "$WEBVIEW" --url "http://localhost:$port/index.html" \
+            --title "$(basename "$dir")" >> "$GAMES_DIR/$(basename "$dir").webkit.log" 2>/dev/null &
+        local vpid=$!
+        trap 'kill "$pid" "$vpid" 2>/dev/null; exit 0' INT
+        wait "$pid"
+    else
+        echo ">> Abriendo el navegador..."
+        xdg-open "http://localhost:$port/index.html" >/dev/null 2>&1 || true
+        echo ">> Juego abierto. Pulsa Ctrl+C para cerrar el servidor."
+        trap 'kill "$pid" 2>/dev/null; exit 0' INT
+        wait "$pid"
+    fi
 }
 
 launch_native() {
@@ -214,7 +225,22 @@ select name in "${NAMES[@]}" "Salir"; do
             root="${GAMES[$idx]%%|*}"
             engine="${GAMES[$idx]#*|}"
             case "$engine" in
-                MZ|MV|web) launch_web "$root" ;;
+                MZ|MV|web)
+                    if [ -f "$WEBVIEW" ]; then
+                        echo ""
+                        echo "¿Cómo abrir '$(basename "$root")'?"
+                        select v in "Navegador (Chrome)" "Visor WebKit ligero" "Cancelar"; do
+                            case "$v" in
+                                "Visor WebKit ligero") launch_web "$root" webkit; break ;;
+                                "Cancelar") echo "Cancelado."; break ;;
+                                "Navegador (Chrome)") launch_web "$root" browser; break ;;
+                                *) echo "Opción inválida." ;;
+                            esac
+                        done
+                    else
+                        launch_web "$root" browser
+                    fi
+                    ;;
                 *)         launch_native "$root" "$engine" ;;
             esac
             break

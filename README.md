@@ -11,16 +11,18 @@ Lanzador universal de juegos de RPG Maker y Ren'Py para **Chrome OS** (Linux / C
 - **Detección automática de motor** — MZ, MV, XP, VX, VX Ace, 2000 y 2003, y Ren'Py.
 - **Descompresión automática** — si el juego viene en `.zip`, se extrae al vuelo (una sola vez) con marcador de integridad.
 - **Interfaz gráfica** — ventana sencilla tipo app de Chrome OS, con botón **Detener servidor**, **Borrar .zip** y opción de eliminar el comprimido tras extraer.
+- **Visor WebKit ligero** — los juegos web (MZ/MV) pueden abrirse en un visor WebKit propio en vez del navegador completo: menos memoria y arranque más rápido para juegos pesados.
 - **Versión de terminal** — menú clásico para quien prefiera la consola.
 - **Sin solapamientos** — si lanzas un juego web y luego otro, el servidor anterior se cierra solo.
 - **Advertencia de descarga incompleta** — detecta juegos a medio descomprimir o descargas cortadas.
+- **Diagnóstico de errores** — el visor WebKit guarda los mensajes de consola JS en `<juego>.webkit.log`, lo que ayuda a detectar plugins rotos (p. ej. `require is not defined`).
 
 ## 🎛️ Motores soportados
 
 | Motor | Generación | Runtime | Forma de ejecución |
 |-------|-----------|---------|--------------------|
-| RPG Maker MZ | Web | Servidor HTTP + navegador | `python3 -m http.server` |
-| RPG Maker MV | Web | Servidor HTTP + navegador | `python3 -m http.server` |
+| RPG Maker MZ | Web | Servidor HTTP local | Navegador o **visor WebKit ligero** |
+| RPG Maker MV | Web | Servidor HTTP local | Navegador o **visor WebKit ligero** |
 | RPG Maker XP / VX / VX Ace | Escritorio | [mkxp-z](https://github.com/mkxp-z/mkxp-z) | binario nativo |
 | RPG Maker 2000 / 2003 | Escritorio | [EasyRPG Player](https://easyrpg.org/) | binario nativo |
 | Ren'Py | Escritorio | Motor Ren'Py incluido | `.sh` de Linux |
@@ -58,8 +60,26 @@ Cuando termine, busca **RPG Maker Launcher** en la lista de aplicaciones de Linu
 
 1. Abre la app **RPG Maker Launcher**.
 2. Si hay un `.zip` en `~/Games`, se extrae automáticamente al lanzar el juego.
-3. Pulsa el nombre del juego. Los juegos web (MZ/MV) se abren en el navegador; los demás se abren en una ventana.
+3. Pulsa el nombre del juego. Los juegos web (MZ/MV) se abren en el navegador (o en el **visor WebKit ligero** si marcas la casilla "Visor WebKit (más ligero)"); los demás se abren en una ventana.
 4. Usa **Detener servidor** para apagar el servidor web en cualquier momento (también se apaga solo al cerrar la app).
+
+### Visor WebKit ligero
+
+Para juegos web pesados, marca la casilla **"Visor WebKit (más ligero)"** antes de pulsar **Jugar**: en vez de abrir el navegador completo (que consume mucha memoria), el juego se abre en una ventana de WebKitGTK con solo la página del juego.
+
+- Atajos: `Ctrl + / Ctrl -` zoom, `Ctrl 0` tamaño normal, `F11` pantalla completa, `Esc` salir de pantalla completa, `F5` recargar.
+- Los mensajes de consola JS se guardan en `<juego>.webkit.log` (junto a la carpeta de juegos) para diagnóstico.
+- Desde terminal, el lanzador te pregunta con qué abrir cada juego web.
+
+### Diagnóstico de un juego que no arranca
+
+El visor incluye un modo de diagnóstico que carga el juego, espera unos segundos y comprueba si llegó a la escena de título, si hay errores de JavaScript y si quedó atascado en el cargador:
+
+```bash
+python3 rpgmaker-webview.py --url "http://localhost:PUERTO/index.html" --test
+```
+
+Salida de ejemplo: `{"scene": "Scene_Title", "errors": []}` (juego OK) o `{"scene": "none", "errors": [{"message": "...", "file": "...", "line": ...}]}` con el error exacto.
 
 ### Terminal
 
@@ -96,6 +116,7 @@ El lanzador detecta el motor mirando estos ficheros:
 ## 🛠️ Solución de problemas
 
 - **"Juego incompleto"**: significa que la descarga o la descompresión se cortó. Borra la carpeta del juego y vuelve a lanzarlo (el `.zip` se re-extrae solo).
+- **`require is not defined`** (u otro error de consola): algún plugin o parte del juego está pensado solo para la versión de escritorio (nw.js) y usa módulos de Node. Abre el juego con el **visor WebKit** y mira `<juego>.webkit.log`: ahí aparece el fichero y la línea exactos del error. En algunos juegos (p. ej. el plugin `Text2Frame` de *Hotel Pretender*) basta con proteger la llamada a `require()` para que no rompa el juego en el navegador.
 - **Un juego MV/MZ no carga** con `nw is not defined`: algunos plugins (p. ej. `SRD_HUDMakerUltra`) están pensados para la versión de escritorio y fallan en navegador. El lanzador lo maneja si el juego trae los plugins correctos; consulta el `README` del juego.
 - **Juegos para Windows con mayúsculas raras**: en Linux los nombres de fichero distinguen mayúsculas. Si un juego falla al abrir, revisa que las rutas de sus scripts coincidan exactamente (p. ej. `Input.js` vs `Input.JS`).
 

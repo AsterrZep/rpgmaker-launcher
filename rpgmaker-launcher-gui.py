@@ -165,6 +165,7 @@ class Launcher:
     def __init__(self):
         self.server_proc = None
         self.server_info = None  # (nombre, puerto)
+        self.viewer_proc = None  # visor WebKit (si se usa)
 
     @property
     def server_running(self):
@@ -177,10 +178,17 @@ class Launcher:
                 self.server_proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 self.server_proc.kill()
+        if self.viewer_proc and self.viewer_proc.poll() is None:
+            self.viewer_proc.terminate()
+            try:
+                self.viewer_proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.viewer_proc.kill()
         self.server_proc = None
+        self.viewer_proc = None
         self.server_info = None
 
-    def launch_web(self, root, name):
+    def launch_web(self, root, name, webkit=False):
         self.stop_server()
         port = free_port()
         self.server_proc = subprocess.Popen(
@@ -188,8 +196,17 @@ class Launcher:
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.server_info = (name, port)
         time.sleep(1)
-        subprocess.Popen(["xdg-open", "http://localhost:%d/index.html" % port],
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        url = "http://localhost:%d/index.html" % port
+        if webkit:
+            viewer = os.path.join(BASE_DIR, "rpgmaker-webview.py")
+            logf = open(os.path.join(GAMES_DIR, name + ".webkit.log"), "a")
+            self.viewer_proc = subprocess.Popen(
+                [sys.executable, "-u", viewer, "--url", url, "--title", name],
+                stdout=logf, stderr=subprocess.DEVNULL)
+        else:
+            self.viewer_proc = None
+            subprocess.Popen(["xdg-open", url],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return port
 
     def launch_native(self, root, engine):
@@ -228,6 +245,9 @@ class App:
         self.auto_delete = tk.BooleanVar(value=False)
         ttk.Checkbutton(top, text="Eliminar .zip tras extraer",
                         variable=self.auto_delete).pack(side="right")
+        self.use_webkit = tk.BooleanVar(value=False)
+        ttk.Checkbutton(top, text="Visor WebKit (más ligero)",
+                        variable=self.use_webkit).pack(side="right", padx=8)
 
         mid = ttk.Frame(self.root, padding=(12, 0))
         mid.pack(fill="both", expand=True)
@@ -330,7 +350,8 @@ class App:
             return
         name, root, engine = game
         if engine in ("MZ", "MV", "web"):
-            self._update_status("Iniciando servidor para %s..." % name)
+            modo = "WebKit" if self.use_webkit.get() else "navegador"
+            self._update_status("Iniciando servidor para %s (%s)..." % (name, modo))
             self.root.update_idletasks()
             threading.Thread(target=self._play_web, args=(root, name), daemon=True).start()
         else:
@@ -340,7 +361,7 @@ class App:
             self._update_status("%s lanzado. Cierra la ventana del juego cuando termines." % name)
 
     def _play_web(self, root, name):
-        port = self.launcher.launch_web(root, name)
+        port = self.launcher.launch_web(root, name, webkit=self.use_webkit.get())
         self._set_status("")
 
     def stop_server_action(self):

@@ -161,7 +161,9 @@
       <div class="card"><h3>🛰️ Detección automática</h3><p>Mira los ficheros del juego y elige el motor exacto sin que tengas que configurar nada.</p></div>
       <div class="card"><h3>📦 Descomprime solo</h3><p>Extrae el <code>.zip</code> al vuelo, una sola vez, con marcador de integridad.</p></div>
       <div class="card"><h3>🖥️ Interfaz gráfica</h3><p>App nativa de Chrome OS con botón para detener servidores y borrar comprimidos.</p></div>
+      <div class="card"><h3>⚡ Visor WebKit ligero</h3><p>Para juegos web pesados: se abren en un visor WebKit propio, con menos memoria que el navegador completo.</p></div>
       <div class="card"><h3>🛡️ Sin solapamientos</h3><p>Un servidor web a la vez: al abrir otro juego, el anterior se cierra solo.</p></div>
+      <div class="card"><h3>🔍 Diagnóstico</h3><p>El visor guarda los errores de consola JS en <code>&lt;juego&gt;.webkit.log</code> para encontrar plugins rotos.</p></div>
     </div>
   </section>
 
@@ -172,8 +174,8 @@
         <tr><th>Motor</th><th>Runtime</th><th>Cómo se abre</th></tr>
       </thead>
       <tbody>
-        <tr><td class="engine">RPG Maker MZ</td><td>Servidor HTTP local</td><td>Navegador</td></tr>
-        <tr><td class="engine">RPG Maker MV</td><td>Servidor HTTP local</td><td>Navegador</td></tr>
+        <tr><td class="engine">RPG Maker MZ</td><td>Servidor HTTP local</td><td>Navegador o <b>visor WebKit</b></td></tr>
+        <tr><td class="engine">RPG Maker MV</td><td>Servidor HTTP local</td><td>Navegador o <b>visor WebKit</b></td></tr>
         <tr><td class="engine">XP / VX / VX Ace</td><td>mkxp-z (compilado)</td><td>Ventana nativa</td></tr>
         <tr><td class="engine">2000 / 2003</td><td>EasyRPG Player</td><td>Ventana nativa</td></tr>
         <tr><td class="engine">Ren'Py</td><td>Motor incluido del juego</td><td>Ventana nativa</td></tr>
@@ -208,9 +210,10 @@ chmod +x install.sh
 └── Mi_Juego.zip                <span class="dim"># se extrae solo al lanzarlo</span></div>
     <ul class="checks" style="margin-top:20px;">
       <li>El lanzador detecta el motor y lo abre con el runtime adecuado.</li>
-      <li>Los juegos web (MZ/MV) se sirven en <code>localhost</code> y se abren en el navegador.</li>
+      <li>Los juegos web (MZ/MV) se sirven en <code>localhost</code>. Se abren en el navegador o en el <b>visor WebKit ligero</b> (marca la casilla "Visor WebKit (más ligero)"), que consume menos memoria en juegos pesados.</li>
       <li><b>Detener servidor</b> apaga el servidor web en cualquier momento.</li>
       <li>Advierte si una descarga o descompresión quedó incompleta.</li>
+      <li>Si un juego no arranca, el visor guarda los errores de consola JS en <code>&lt;juego&gt;.webkit.log</code> y puede diagnosticar el problema con <code>--test</code>.</li>
     </ul>
   </section>
 

@@ -48,6 +48,7 @@ c_log "Instalando dependencias del sistema (apt)..."
 $SUDO apt-get update -qq
 $SUDO apt-get install -y --no-install-recommends \
   python3-tk unzip ca-certificates wget curl git \
+  python3-gi gir1.2-webkit2-4.1 \
   build-essential cmake pkg-config ninja-build meson \
   ruby-dev \
   libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev \
@@ -151,7 +152,7 @@ fi
 
 # ------------------------------------------------------ acceso directo de la app
 c_log "Generando acceso directo..."
-chmod +x "$BASEDIR/rpgmaker-launcher.sh" "$BASEDIR/rpgmaker-launcher-gui.py"
+chmod +x "$BASEDIR/rpgmaker-launcher.sh" "$BASEDIR/rpgmaker-launcher-gui.py" "$BASEDIR/rpgmaker-webview.py"
 mkdir -p "$HOME/.local/share/applications"
 sed "s|__BASEDIR__|$BASEDIR|g" "$RUNTIMES/rpgmaker-launcher.desktop" \
   > "$HOME/.local/share/applications/rpgmaker-launcher.desktop"
@@ -173,6 +174,9 @@ cat <<EOF
     contenedor Linux para que aparezca).
   - Desde terminal:
         $BASEDIR/rpgmaker-launcher.sh
+  - Los juegos web (MZ/MV) pueden abrirse con el navegador o con
+    el visor WebKit ligero (rpgmaker-webview.py), que consume
+    menos memoria. En la GUI, marca "Visor WebKit (más ligero)".
   - En Chrome OS, las aplicaciones .desktop aparecen en:
         chrome://apps
 
