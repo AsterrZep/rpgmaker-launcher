@@ -16,6 +16,7 @@
 # ============================================================
 import argparse
 import json
+import time as _time
 
 import gi
 
@@ -30,8 +31,7 @@ def make_settings(console_to_stdout=False):
     settings.set_media_playback_requires_user_gesture(False)
     settings.set_enable_webgl(True)
     settings.set_allow_file_access_from_file_urls(False)
-    # Rendimiento: canvas acelerado y caché agresiva para no re-bajar assets
-    settings.set_enable_accelerated_2d_canvas(True)
+    # Rendimiento: aceleración WebGL y caché agresiva para no re-bajar assets
     settings.set_enable_smooth_scrolling(True)
     # Los mensajes de consola JS solo se escriben si se piden explícitamente
     # (con --log-console): si un juego loguea mucho, escribirlos a fichero
@@ -48,6 +48,17 @@ def make_settings(console_to_stdout=False):
 CAPTURE_JS = (
     "window.__rpgl_orig_title__=document.title;"
     "window.__rpgl_errors__=[];"
+    "window.__rpgl_fps__={samples:[],last:0,ok:false};"
+    "if(!window.__rpgl_fps_installed__){window.__rpgl_fps_installed__=true;"
+    "  window.__rpgl_fps_tick__=function(){"
+    "    var n=(typeof performance!=='undefined')?performance.now():Date.now();"
+    "    if(window.__rpgl_fps__.last){"
+    "      var d=n-window.__rpgl_fps__.last;"
+    "      if(d>4&&d<500){window.__rpgl_fps__.samples.push(d);"
+    "        if(window.__rpgl_fps__.samples.length>300)window.__rpgl_fps__.samples.shift();}"
+    "    }"
+    "    window.__rpgl_fps__.last=n;requestAnimationFrame(window.__rpgl_fps_tick__);"
+    "  };requestAnimationFrame(window.__rpgl_fps_tick__);}"
     "window.addEventListener('error',function(e){"
     "  try{window.__rpgl_errors__.push({"
     "    message:e.message||String(e.error||''),"
@@ -135,9 +146,48 @@ def test_js():
         "var err=document.getElementById('errorPrinter');"
         "var spin=document.getElementById('loadingSpinner');"
         "var scene='none';"
-        "if(typeof SceneManager!=='undefined'&&SceneManager._scene){"
+        "if(typeof SceneManager!=='undefined'&&SceneManager&&SceneManager._scene){"
         "  try{scene=SceneManager._scene.constructor.name}catch(e){scene='unknown'}"
         "}"
+        # métricas de rendimiento (recursos + carga del documento)
+        "var perf={resources:0,bytes:0,fetchMs:0,maxFetchMs:0,slowest:'',domContentLoadedMs:0,loadMs:0,state:document.readyState};"
+        "try{"
+        "  var t=performance.timing;"
+        "  if(t){perf.domContentLoadedMs=t.domContentLoadedEventEnd-t.navigationStart;"
+        "        perf.loadMs=t.loadEventEnd-t.navigationStart;}"
+        "  var pe=performance.getEntriesByType('resource');"
+        "  perf.resources=pe.length;"
+        "  for(var i=0;i<pe.length;i++){var r=pe[i];"
+        "    var d=r.responseEnd-r.fetchStart;"
+        "    perf.fetchMs+=d;"
+        "    if(d>perf.maxFetchMs){perf.maxFetchMs=d;perf.slowest=(r.name||'').split('/').slice(-2).join('/');}"
+        "    perf.bytes+=(r.transferSize||0);}"
+        "}catch(e){}"
+        "var fps={samples:0,avgMs:0,p50Ms:0,minMs:0};"
+        "try{"
+        "  var s=window.__rpgl_fps__&&window.__rpgl_fps__.samples||[];"
+        "  fps.samples=s.length;"
+        "  if(s.length){var sum=0,ss=s.slice().sort(function(a,b){return a-b});"
+        "    for(var j=0;j<s.length;j++)sum+=s[j];"
+        "    fps.avgMs=Math.round(sum/s.length*10)/10;"
+        "    fps.p50Ms=ss[Math.floor(ss.length/2)];"
+        "    fps.minMs=ss[0];}"
+        "}catch(e){}"
+        # coste por frame del bucle del juego (SceneManager.update)
+        "var upd={samples:0,avgMs:0,maxMs:0};"
+        "try{"
+        "  if(typeof SceneManager!=='undefined'&&SceneManager.update&&!SceneManager.__rpgl_patched__){"
+        "    var __o=SceneManager.update,__st={sum:0,n:0,mx:0};"
+        "    SceneManager.update=function(){"
+        "      var __s=performance.now();"
+        "      try{__o.apply(this,arguments);}catch(e){throw e}"
+        "      finally{var __d=performance.now()-__s;__st.sum+=__d;__st.n++;if(__d>__st.mx)__st.mx=__d;}"
+        "    };"
+        "    SceneManager.__rpgl_patched__=true;window.__rpgl_upd__=__st;"
+        "  }"
+        "  var u=window.__rpgl_upd__;"
+        "  if(u&&u.n){upd.samples=u.n;upd.avgMs=Math.round(u.sum/u.n*100)/100;upd.maxMs=Math.round(u.mx*100)/100;}"
+        "}catch(e){}"
         "document.title='__RPGML__'+JSON.stringify({"
         "  title:window.__rpgl_orig_title__||'',"
         "  engine:(typeof SceneManager!=='undefined'?'MZ':'other'),"
@@ -146,21 +196,16 @@ def test_js():
         "  errorText:err?err.textContent:null,"
         "  errorHtml:err?err.innerHTML:null,"
         "  spinnerVisible:!!spin,"
-        "  errors:(window.__rpgl_errors__||[])"
+        "  errors:(window.__rpgl_errors__||[]),"
+        "  perf:perf,fps:fps,upd:upd,"
+        "  fpsDebug:(typeof window.__rpgl_fps__!=='undefined')"
+        "    ? (window.__rpgl_fps__.samples.length+'/'+window.__rpgl_fps__.last+'/inst:'+(window.__rpgl_fps_installed__?1:0)+'/raf:'+typeof window.requestAnimationFrame) : 'undefined'"
         "});"
         "})();"
     )
 
 
-def run_test(args):
-    import time as _time
-    started = _time.time()
-    win = Gtk.Window(title="diagnóstico")
-    view = make_webview(args.url, capture=True, console_to_stdout=True)
-    win.add(view)
-    win.show_all()
-    win.connect("destroy", Gtk.main_quit)
-
+def _sample_loop(view, wait, done, started):
     def check():
         t = view.get_title() or ""
         if t.startswith("__RPGML__"):
@@ -171,7 +216,7 @@ def run_test(args):
                 print("RESULTADO_NO_PARSED: " + payload)
                 Gtk.main_quit()
                 return False
-            if data["scene"] != "none" or data["errorText"] or data["errors"]:
+            if done(data):
                 data["t_escena_s"] = round(_time.time() - started, 1)
                 print(json.dumps(data, ensure_ascii=False))
                 Gtk.main_quit()
@@ -193,8 +238,39 @@ def run_test(args):
         return False
 
     GLib.timeout_add_seconds(1, poll)
-    GLib.timeout_add_seconds(args.wait + 5, force_quit)
+    GLib.timeout_add_seconds(wait + 5, force_quit)
     Gtk.main()
+
+
+def run_test(args):
+    started = _time.time()
+    win = Gtk.Window(title="diagnóstico")
+    view = make_webview(args.url, capture=True, console_to_stdout=True)
+    win.add(view)
+    win.show_all()
+    win.connect("destroy", Gtk.main_quit)
+
+    def done(data):
+        # informar al llegar a una escena, o si hay un error real
+        return data["scene"] != "none" or data["errorText"] or data["errors"]
+
+    _sample_loop(view, args.wait, done, started)
+
+
+def run_bench(args):
+    started = _time.time()
+    win = Gtk.Window(title="bench")
+    view = make_webview(args.url, capture=True, console_to_stdout=True)
+    win.add(view)
+    win.show_all()
+    win.connect("destroy", Gtk.main_quit)
+
+    def done(data):
+        # esperar hasta la pantalla de título (u otra escena distinta del arranque)
+        s = data["scene"]
+        return s == "Scene_Title" or (s != "none" and s != "Scene_Boot") or data["errorText"] or data["errors"]
+
+    _sample_loop(view, args.wait, done, started)
 
 
 def main():
@@ -204,12 +280,17 @@ def main():
     ap.add_argument("--fullscreen", action="store_true")
     ap.add_argument("--test", action="store_true",
                     help="modo diagnóstico: carga la página, evalúa el estado y sale")
+    ap.add_argument("--bench", action="store_true",
+                    help="modo benchmark: como --test pero espera a la escena de título y "
+                         "reporta métricas de rendimiento (recursos, fetch, FPS)")
     ap.add_argument("--wait", type=int, default=12)
     ap.add_argument("--log-console", action="store_true",
                     help="escribir los mensajes de consola JS por stdout (puede ralentizar juegos que loguean mucho)")
     args = ap.parse_args()
 
-    if args.test:
+    if args.bench:
+        run_bench(args)
+    elif args.test:
         run_test(args)
     else:
         run_viewer(args)

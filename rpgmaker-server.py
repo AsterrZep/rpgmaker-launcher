@@ -20,13 +20,24 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 
 class GameHandler(SimpleHTTPRequestHandler):
-    # No hacer log de cada petición en el terminal
+    stats = {"requests": 0, "bytes": 0}
+
     def log_message(self, *args):
-        pass
+        if getattr(self.server, "verbose", False):
+            super().log_message(*args)
 
     def end_headers(self):
         self.send_header("Cache-Control", "public, max-age=300")
         super().end_headers()
+
+    def log_request(self, code="-", size="-"):
+        GameHandler.stats["requests"] += 1
+        try:
+            GameHandler.stats["bytes"] += int(size)
+        except (TypeError, ValueError):
+            pass
+        if getattr(self.server, "verbose", False):
+            super().log_request(code, size)
 
     def guess_type(self, path):
         mime = super().guess_type(path)
@@ -34,15 +45,29 @@ class GameHandler(SimpleHTTPRequestHandler):
             return "application/wasm"
         return mime
 
+    # Al cerrar el servidor, volcar estadísticas a stderr
+    def handle_close(self):
+        super().handle_close()
+        server = self.server
+        if server is not None and getattr(server, "_stat_dumped", False):
+            return
+        server._stat_dumped = True
+        print("rpgmaker-server: %d peticiones, %d bytes servidos"
+              % (GameHandler.stats["requests"], GameHandler.stats["bytes"]),
+              file=sys.stderr)
+
 
 def main():
     ap = argparse.ArgumentParser(description="Servidor HTTP rápido para juegos RPG Maker (MZ/MV)")
     ap.add_argument("port", type=int, help="puerto (0 = elegir uno libre)")
     ap.add_argument("--dir", default=".", help="carpeta del juego a servir")
+    ap.add_argument("--verbose", action="store_true",
+                    help="mostrar cada petición y las estadísticas al cerrar")
     args = ap.parse_args()
 
     handler = functools.partial(GameHandler, directory=args.dir)
     httpd = ThreadingHTTPServer(("127.0.0.1", args.port), handler)
+    httpd.verbose = args.verbose
     print("rpgmaker-server: sirviendo %s en http://127.0.0.1:%d"
           % (args.dir, httpd.server_address[1]), file=sys.stderr)
     try:

@@ -13,6 +13,7 @@ Lanzador universal de juegos de RPG Maker y Ren'Py para **Chrome OS** (Linux / C
 - **Interfaz gráfica** — ventana sencilla tipo app de Chrome OS, con botón **Detener servidor**, **Borrar .zip** y opción de eliminar el comprimido tras extraer.
 - **Visor WebKit ligero** — los juegos web (MZ/MV) pueden abrirse en un visor WebKit propio en vez del navegador completo: menos memoria y arranque más rápido para juegos pesados.
 - **Servidor HTTP rápido** — los juegos web se sirven con un servidor multihilo que envía cabeceras de caché y el MIME correcto para `.wasm`. Evita los tirones al cargar muchos assets de golpe (el `python3 -m http.server` normal es de un solo hilo).
+- **Gestor de plugins (MZ/MV)** — herramienta `rpgmaker-plugins.py` para listar, analizar la compatibilidad con WebKit (APIs nw.js) y activar/desactivar plugins. Desactivar plugins pesados reduce el tiempo del bucle del juego hasta un 31%.
 - **Versión de terminal** — menú clásico para quien prefiera la consola.
 - **Sin solapamientos** — si lanzas un juego web y luego otro, el servidor anterior se cierra solo.
 - **Advertencia de descarga incompleta** — detecta juegos a medio descomprimir o descargas cortadas.
@@ -81,6 +82,25 @@ python3 rpgmaker-webview.py --url "http://localhost:PUERTO/index.html" --test
 ```
 
 Salida de ejemplo: `{"scene": "Scene_Title", "t_escena_s": 6.8, "errors": []}` (juego OK) o `{"scene": "none", "errors": [{"message": "...", "file": "...", "line": ...}]}` con el error exacto.
+
+### Gestor de plugins (`rpgmaker-plugins.py`)
+
+Muchos juegos web llevan decenas de plugins (Yanfly, VisuMZ, etc.) que añaden carga en cada fotograma. Además, algunos usan APIs exclusivas de la versión de escritorio (`require()`, `process.`, `fs.`).
+
+`rpgmaker-plugins.py` te permite analizar y gestionar los plugins de cualquier juego MZ/MV:
+
+```bash
+# Listar plugins y ver su compatibilidad con WebKit
+python3 rpgmaker-plugins.py list "games/Mi_Juego"
+
+# Desactivar plugins problemáticos o pesados
+python3 rpgmaker-plugins.py disable "games/Mi_Juego" PluginIncompatible
+
+# Restaurar el js/plugins.js original
+python3 rpgmaker-plugins.py restore "games/Mi_Juego"
+```
+
+La primera modificación crea automáticamente una copia de seguridad en `js/plugins.js.bak`.
 
 ### Terminal
 
