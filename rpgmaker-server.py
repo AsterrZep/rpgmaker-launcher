@@ -133,6 +133,12 @@ class GameHandler(SimpleHTTPRequestHandler):
         if path == "/__save/__all":
             self._handle_save_list()
             return
+        if path == "/__cheats.js":
+            self._serve_static_js("rpgmaker-cheats.js")
+            return
+        if path == "/__gamepad.js":
+            self._serve_static_js("rpgmaker-gamepad.js")
+            return
         if path.startswith("/__save/"):
             name = urllib.parse.unquote(path[len("/__save/"):])
             self._handle_save("GET", name)
@@ -141,6 +147,20 @@ class GameHandler(SimpleHTTPRequestHandler):
             self._serve_index_injected(path)
             return
         super().do_GET()
+
+    def _serve_static_js(self, filename):
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
+        try:
+            with open(path, "rb") as fh:
+                data = fh.read()
+        except OSError:
+            self.send_error(404, "Not Found")
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "application/javascript")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
 
     def do_POST(self):
         path = self.path.split("?")[0]
@@ -159,7 +179,7 @@ class GameHandler(SimpleHTTPRequestHandler):
         self.send_error(405, "Method Not Allowed")
 
     def _serve_index_injected(self, path):
-        """Sirve index.html inyectando el save bridge (una sola vez)."""
+        """Sirve index.html inyectando save bridge, trucos y gamepad (una sola vez)."""
         full = self.translate_path(path)
         try:
             with open(full, "rb") as fh:
@@ -167,14 +187,17 @@ class GameHandler(SimpleHTTPRequestHandler):
         except OSError:
             self.send_error(404, "Not Found")
             return
-        tag = '<script src="/__savebridge.js"></script>'
-        if tag not in content:
-            if "</head>" in content:
-                content = content.replace("</head>", tag + "</head>", 1)
-            elif "</body>" in content:
-                content = content.replace("</body>", tag + "</body>", 1)
-            else:
-                content += tag
+        tags = ['<script src="/__savebridge.js"></script>',
+                '<script src="/__cheats.js"></script>',
+                '<script src="/__gamepad.js"></script>']
+        for tag in tags:
+            if tag not in content:
+                if "</head>" in content:
+                    content = content.replace("</head>", tag + "</head>", 1)
+                elif "</body>" in content:
+                    content = content.replace("</body>", tag + "</body>", 1)
+                else:
+                    content += tag
         data = content.encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", self.guess_type(path))
