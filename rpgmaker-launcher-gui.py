@@ -9,6 +9,7 @@ import os
 import sys
 import time
 import glob
+import hashlib
 import shutil
 import threading
 import subprocess
@@ -127,6 +128,26 @@ def free_port():
     return port
 
 
+def stable_port(game_name):
+    """Puerto determinista por juego.
+
+    Los juegos web (MV/MZ) guardan las partidas en LocalStorage/IndexedDB
+    del navegador bajo el origen (host + puerto). Si cada lanzamiento usa
+    un puerto aleatorio, las partidas quedan "perdidas" porque se guardan
+    en otro origen. Con un puerto fijo por juego, las partidas se conservan.
+    """
+    h = int(hashlib.md5(game_name.encode("utf-8")).hexdigest(), 16)
+    port = 18000 + (h % 10000)
+    try:
+        import socket
+        s = socket.socket()
+        s.bind(("127.0.0.1", port))
+        s.close()
+        return port
+    except OSError:
+        return free_port()
+
+
 def zip_for_game(name):
     """Devuelve la ruta del .zip correspondiente al nombre de la carpeta del juego."""
     return os.path.join(BASE_DIR, name + ".zip")
@@ -190,7 +211,7 @@ class Launcher:
 
     def launch_web(self, root, name, webkit=False):
         self.stop_server()
-        port = free_port()
+        port = stable_port(name)
         server = os.path.join(BASE_DIR, "rpgmaker-server.py")
         self.server_proc = subprocess.Popen(
             [sys.executable, server, str(port), "--dir", root],

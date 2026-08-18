@@ -14,6 +14,7 @@ Lanzador universal de juegos de RPG Maker y Ren'Py para **Chrome OS** (Linux / C
 - **Visor WebKit ligero** — los juegos web (MZ/MV) pueden abrirse en un visor WebKit propio en vez del navegador completo: menos memoria y arranque más rápido para juegos pesados.
 - **Servidor HTTP rápido** — los juegos web se sirven con un servidor multihilo que envía cabeceras de caché y el MIME correcto para `.wasm`. Evita los tirones al cargar muchos assets de golpe (el `python3 -m http.server` normal es de un solo hilo).
 - **Gestor de plugins (MZ/MV)** — herramienta `rpgmaker-plugins.py` para listar, analizar la compatibilidad con WebKit (APIs nw.js) y activar/desactivar plugins. Desactivar plugins pesados reduce el tiempo del bucle del juego hasta un 31%.
+- **Partidas seguras en disco** — las partidas de los juegos web se guardan como archivos reales en la carpeta `save/` de cada juego (con un puerto fijo por juego), para poder copiarlas, exportarlas o editarlas.
 - **Versión de terminal** — menú clásico para quien prefiera la consola.
 - **Sin solapamientos** — si lanzas un juego web y luego otro, el servidor anterior se cierra solo.
 - **Advertencia de descarga incompleta** — detecta juegos a medio descomprimir o descargas cortadas.
@@ -101,6 +102,24 @@ python3 rpgmaker-plugins.py restore "games/Mi_Juego"
 ```
 
 La primera modificación crea automáticamente una copia de seguridad en `js/plugins.js.bak`.
+
+### Guardado de partidas (juegos web MZ/MV)
+
+Los juegos web (MZ/MV) guardan normalmente en el almacenamiento del navegador (`LocalStorage`/`IndexedDB`), que **se aísla por origen** (host + puerto). Este lanzador resuelve ese problema de dos formas:
+
+1. **Puerto fijo por juego** — cada juego recibe siempre el mismo puerto (calculado por su nombre), así el navegador siempre usa el mismo "origen" y las partidas no se pierden entre sesiones.
+2. **Guardado en disco real** — el servidor inyecta un pequeño puente (`rpgmaker-savebridge.js`) que redirige los guardados a archivos reales en la carpeta `save/` de cada juego:
+
+```
+games/Mi_Juego/www/save/
+├── file1.rpgsave      ← partida 1 (MV)
+├── global.rpgsave     ← información global de partidas (MV)
+├── config.rpgsave     ← configuración del juego (MV)
+├── file1.rmmzsave     ← partida 1 (MZ)
+└── global.rmmzsave    ← (MZ)
+```
+
+Esa carpeta está a la vista en tu disco: puedes **copiar, exportar, hacer copias de seguridad o editarlas** con herramientas externas (editores de partidas de RPG Maker) mientras el juego esté cerrado. Los formatos son los nativos de cada motor (`.rpgsave` para MV, `.rmmzsave` para MZ).
 
 ### Terminal
 

@@ -26,6 +26,29 @@ free_port() {
     python3 -c 'import socket; s=socket.socket(); s.bind(("",0)); print(s.getsockname()[1]); s.close()'
 }
 
+stable_port() {
+    # Puerto determinista por juego: los juegos web (MV/MZ) guardan las
+    # partidas en LocalStorage/IndexedDB bajo el origen (host+puerto).
+    # Un puerto fijo por juego conserva las partidas entre lanzamientos.
+    local name="$1"
+    python3 - "$name" <<'EOF'
+import hashlib, socket, sys
+name = sys.argv[1]
+h = int(hashlib.md5(name.encode('utf-8')).hexdigest(), 16)
+port = 18000 + (h % 10000)
+try:
+    s = socket.socket()
+    s.bind(("127.0.0.1", port))
+    s.close()
+    print(port)
+except OSError:
+    s = socket.socket()
+    s.bind(("", 0))
+    print(s.getsockname()[1])
+    s.close()
+EOF
+}
+
 first_find() {
     # primer archivo que coincida con el patrón, hasta MAX_DEPTH
     find "$1" -maxdepth "$MAX_DEPTH" -type f \( -name "$2" \) 2>/dev/null | head -n1
@@ -122,8 +145,9 @@ detect_engine() {
 launch_web() {
     local dir="$1"
     local viewer="$2"
+    local name="$3"
     local port
-    port="$(free_port)"
+    port="$(stable_port "$name")"
     echo ""
     echo ">> Servidor en: http://localhost:$port  (directorio: $dir)"
     python3 "$WEBSRV" "$port" --dir "$dir" >/dev/null 2>&1 &
@@ -232,14 +256,14 @@ select name in "${NAMES[@]}" "Salir"; do
                         echo "¿Cómo abrir '$(basename "$root")'?"
                         select v in "Navegador (Chrome)" "Visor WebKit ligero" "Cancelar"; do
                             case "$v" in
-                                "Visor WebKit ligero") launch_web "$root" webkit; break ;;
+                                "Visor WebKit ligero") launch_web "$root" webkit "$(basename "$top")"; break ;;
                                 "Cancelar") echo "Cancelado."; break ;;
-                                "Navegador (Chrome)") launch_web "$root" browser; break ;;
+                                "Navegador (Chrome)") launch_web "$root" browser "$(basename "$top")"; break ;;
                                 *) echo "Opción inválida." ;;
                             esac
                         done
                     else
-                        launch_web "$root" browser
+                        launch_web "$root" browser "$(basename "$top")"
                     fi
                     ;;
                 *)         launch_native "$root" "$engine" ;;

@@ -15,8 +15,12 @@
 # ============================================================
 import argparse
 import functools
+import os
 import sys
+import urllib.parse
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+
+BRIDGE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rpgmaker-savebridge.js")
 
 
 class GameHandler(SimpleHTTPRequestHandler):
@@ -28,9 +32,12 @@ class GameHandler(SimpleHTTPRequestHandler):
 
     def end_headers(self):
         # Evitar cachear configuración crítica que el usuario o el lanzador modifican,
-        # como plugins.js, index.html o package.json.
+        # como plugins.js, index.html, package.json o las rutas de guardado.
         path = self.path.split("?")[0].lower()
-        if path.endswith("plugins.js") or path.endswith("index.html") or path.endswith("package.json"):
+        if (path.endswith("plugins.js") or path.endswith("index.html")
+                or path.endswith("package.json")
+                or path == "/__savebridge.js"
+                or path.startswith("/__save/")):
             self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         else:
             self.send_header("Cache-Control", "public, max-age=300")
@@ -50,6 +57,108 @@ class GameHandler(SimpleHTTPRequestHandler):
         if path.endswith(".wasm") and mime == "application/octet-stream":
             return "application/wasm"
         return mime
+
+    # ---------- guardado en disco (save bridge) ----------
+    def _save_path(self, name):
+        """Devuelve la ruta segura al archivo de partida en save/."""
+        if not name or "/" in name or "\\" in name or ".." in name:
+            return None
+        save_dir = os.path.join(self.directory, "save")
+        return os.path.join(save_dir, name)
+
+    def _handle_save(self, method, name):
+        path = self._save_path(name)
+        if path is None:
+            self.send_error(400, "Bad Request")
+            return
+        if method == "GET":
+            if os.path.isfile(path):
+                with open(path, "rb") as fh:
+                    data = fh.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/octet-stream")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+            else:
+                self.send_error(404, "Not Found")
+            return
+        if method == "POST":
+            length = int(self.headers.get("Content-Length", 0))
+            data = self.rfile.read(length)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "wb") as fh:
+                fh.write(data)
+            self.send_response(204, "No Content")
+            self.end_headers()
+            return
+        if method == "DELETE":
+            if os.path.isfile(path):
+                os.remove(path)
+            self.send_response(204, "No Content")
+            self.end_headers()
+            return
+        self.send_error(405, "Method Not Allowed")
+
+    def do_GET(self):
+        path = self.path.split("?")[0]
+        if path == "/__savebridge.js":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/javascript")
+            with open(BRIDGE_PATH, "rb") as fh:
+                data = fh.read()
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
+        if path.startswith("/__save/"):
+            name = urllib.parse.unquote(path[len("/__save/"):])
+            self._handle_save("GET", name)
+            return
+        if path.endswith("/index.html"):
+            self._serve_index_injected(path)
+            return
+        super().do_GET()
+
+    def do_POST(self):
+        path = self.path.split("?")[0]
+        if path.startswith("/__save/"):
+            name = urllib.parse.unquote(path[len("/__save/"):])
+            self._handle_save("POST", name)
+            return
+        self.send_error(405, "Method Not Allowed")
+
+    def do_DELETE(self):
+        path = self.path.split("?")[0]
+        if path.startswith("/__save/"):
+            name = urllib.parse.unquote(path[len("/__save/"):])
+            self._handle_save("DELETE", name)
+            return
+        self.send_error(405, "Method Not Allowed")
+
+    def _serve_index_injected(self, path):
+        """Sirve index.html inyectando el save bridge (una sola vez)."""
+        full = self.translate_path(path)
+        try:
+            with open(full, "rb") as fh:
+                content = fh.read().decode("utf-8", "replace")
+        except OSError:
+            self.send_error(404, "Not Found")
+            return
+        tag = '<script src="/__savebridge.js"></script>'
+        if tag not in content:
+            if "</head>" in content:
+                content = content.replace("</head>", tag + "</head>", 1)
+            elif "</body>" in content:
+                content = content.replace("</body>", tag + "</body>", 1)
+            else:
+                content += tag
+        data = content.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", self.guess_type(path))
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
 
     # Al cerrar el servidor, volcar estadísticas a stderr
     def handle_close(self):
