@@ -8,6 +8,8 @@ games/
 
 # Binarios / artefactos de build
 runtimes/mkxp-z
+runtimes/RPGMakerDecrypter-cli
+runtimes/RPGMakerDecrypter-cli.exe
 __pycache__/
 *.pyc
 
