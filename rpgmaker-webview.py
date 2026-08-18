@@ -15,7 +15,9 @@
 #                           juego, imprime el resultado y sale)
 # ============================================================
 import argparse
+import datetime
 import json
+import os
 import time as _time
 
 import gi
@@ -44,6 +46,32 @@ def make_settings(console_to_stdout=False):
         pass
     return settings
 
+
+FPS_OVERLAY_JS = (
+    "(function(){"
+    "if(window.__rpg_fps_overlay_installed__)return;"
+    "window.__rpg_fps_overlay_installed__=true;"
+    "var d=document.createElement('div');"
+    "d.id='rpg-fps-overlay';"
+    "d.style.cssText='position:fixed;z-index:99999;top:6px;left:8px;font:12px monospace;" +
+    "color:#fff;background:rgba(0,0,0,0.55);padding:3px 8px;border-radius:6px;" +
+    "display:none;pointer-events:none;';"
+    "document.documentElement.appendChild(d);"
+    "var frames=0,last=performance.now?performance.now():Date.now();"
+    "window.__rpg_toggle_fps__=function(){"
+    "  d.style.display=(d.style.display==='none')?'block':'none';"
+    "};"
+    "function loop(t){"
+    "  frames++;"
+    "  if(t-last>=500){"
+    "    var fps=Math.round(frames*1000/(t-last));"
+    "    d.textContent=fps+' FPS';frames=0;last=t;"
+    "  }"
+    "  requestAnimationFrame(loop);"
+    "}"
+    "requestAnimationFrame(loop);"
+    "})();"
+)
 
 CAPTURE_JS = (
     "window.__rpgl_orig_title__=document.title;"
@@ -77,15 +105,16 @@ CAPTURE_JS = (
 
 
 def make_webview(url, capture=False, console_to_stdout=False):
-    view = WebKit2.WebView.new_with_settings(make_settings(console_to_stdout))
+    manager = WebKit2.UserContentManager()
+    manager.add_script(WebKit2.UserScript.new(
+        FPS_OVERLAY_JS, WebKit2.UserContentInjectedFrames.TOP_FRAME,
+        WebKit2.UserScriptInjectionTime.START, [], []))
     if capture:
-        manager = WebKit2.UserContentManager()
-        script = WebKit2.UserScript.new(
+        manager.add_script(WebKit2.UserScript.new(
             CAPTURE_JS, WebKit2.UserContentInjectedFrames.TOP_FRAME,
-            WebKit2.UserScriptInjectionTime.START, [], [])
-        manager.add_script(script)
-        view = WebKit2.WebView.new_with_user_content_manager(manager)
-        view.set_settings(make_settings(console_to_stdout))
+            WebKit2.UserScriptInjectionTime.START, [], []))
+    view = WebKit2.WebView.new_with_user_content_manager(manager)
+    view.set_settings(make_settings(console_to_stdout))
     view.load_uri(url)
     return view
 
@@ -130,7 +159,39 @@ def run_viewer(args):
         if event.keyval == Gdk.KEY_F5:
             view.reload()
             return True
+        if event.keyval == Gdk.KEY_F9:
+            try:
+                view.run_javascript("window.__rpg_toggle_fps__&&window.__rpg_toggle_fps__()")
+            except Exception:
+                pass
+            return True
+        if event.keyval == Gdk.KEY_F12:
+            take_screenshot()
+            return True
         return False
+
+    def take_screenshot():
+        shots = os.path.join(os.path.dirname(os.path.abspath(__file__)), "screenshots")
+        os.makedirs(shots, exist_ok=True)
+        stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        base = (args.title or "juego").replace("/", "_").replace(" ", "_")[:40]
+        path = os.path.join(shots, "%s-%s.png" % (base, stamp))
+
+        def done(view_, res, p):
+            try:
+                pixbuf = view_.get_snapshot_finish(res)
+                if pixbuf:
+                    pixbuf.savev(p, "png", [], [])
+                    print("Captura guardada: %s" % p)
+                else:
+                    print("Captura vacía (¿pantalla oculta?)")
+            except Exception as e:
+                print("Error al capturar: %s" % e)
+
+        try:
+            view.get_snapshot(WebKit2.SnapshotRegion.VISIBLE, None, done, path)
+        except Exception as e:
+            print("No se pudo capturar: %s" % e)
 
     win.connect("key-press-event", on_key)
     if args.fullscreen:

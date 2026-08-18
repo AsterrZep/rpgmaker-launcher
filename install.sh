@@ -47,7 +47,7 @@ need_sudo
 c_log "Instalando dependencias del sistema (apt)..."
 $SUDO apt-get update -qq
 $SUDO apt-get install -y --no-install-recommends \
-  python3-tk unzip ca-certificates wget curl git \
+  python3-tk python3-pil unzip ca-certificates wget curl git \
   python3-gi gir1.2-webkit2-4.1 \
   build-essential cmake pkg-config ninja-build meson \
   ruby-dev \
