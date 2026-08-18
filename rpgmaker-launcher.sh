@@ -10,7 +10,9 @@
 set -u
 
 BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-GAMES_DIR="$BASE_DIR/games"
+# Datos de usuario (juegos, .zip): RPGMAKER_DATA_DIR si existe, si no junto a la app
+DATA_DIR="${RPGMAKER_DATA_DIR:-$BASE_DIR}"
+GAMES_DIR="$DATA_DIR/games"
 RUN_DIR="$BASE_DIR/runtimes"
 MAX_DEPTH=5
 
@@ -58,7 +60,7 @@ extract_zips() {
     local zip
     local name
     local marker
-    for zip in "$BASE_DIR"/*.zip; do
+    for zip in "$DATA_DIR"/*.zip; do
         [ -f "$zip" ] || continue
         name="$(basename "$zip" .zip)"
         marker="$GAMES_DIR/$name/.extracted"

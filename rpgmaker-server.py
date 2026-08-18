@@ -25,6 +25,17 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 BRIDGE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rpgmaker-savebridge.js")
 
 
+def _config():
+    """Carga la configuración del usuario (atajos, preferencias)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "rpgmaker_config", os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                        "rpgmaker-config.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.load_config()
+
+
 class GameHandler(SimpleHTTPRequestHandler):
     stats = {"requests": 0, "bytes": 0}
 
@@ -39,6 +50,7 @@ class GameHandler(SimpleHTTPRequestHandler):
         if (path.endswith("plugins.js") or path.endswith("index.html")
                 or path.endswith("package.json")
                 or path == "/__savebridge.js"
+                or path == "/__config.js"
                 or path.startswith("/__save/")):
             self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         else:
@@ -133,11 +145,17 @@ class GameHandler(SimpleHTTPRequestHandler):
         if path == "/__save/__all":
             self._handle_save_list()
             return
+        if path == "/__config.js":
+            self._serve_config_js()
+            return
         if path == "/__cheats.js":
             self._serve_static_js("rpgmaker-cheats.js")
             return
         if path == "/__gamepad.js":
             self._serve_static_js("rpgmaker-gamepad.js")
+            return
+        if path == "/__browserkeys.js":
+            self._serve_static_js("rpgmaker-browser-keys.js")
             return
         if path.startswith("/__save/"):
             name = urllib.parse.unquote(path[len("/__save/"):])
@@ -156,6 +174,16 @@ class GameHandler(SimpleHTTPRequestHandler):
         except OSError:
             self.send_error(404, "Not Found")
             return
+        self.send_response(200)
+        self.send_header("Content-Type", "application/javascript")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _serve_config_js(self):
+        """Sirve la configuración del usuario como JS (atajos, preferencias)."""
+        cfg = _config()
+        data = ("window.__RPG_CONFIG__ = %s;" % json.dumps(cfg, ensure_ascii=False)).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/javascript")
         self.send_header("Content-Length", str(len(data)))
@@ -187,9 +215,11 @@ class GameHandler(SimpleHTTPRequestHandler):
         except OSError:
             self.send_error(404, "Not Found")
             return
-        tags = ['<script src="/__savebridge.js"></script>',
+        tags = ['<script src="/__config.js"></script>',
+                '<script src="/__savebridge.js"></script>',
                 '<script src="/__cheats.js"></script>',
-                '<script src="/__gamepad.js"></script>']
+                '<script src="/__gamepad.js"></script>',
+                '<script src="/__browserkeys.js"></script>']
         for tag in tags:
             if tag not in content:
                 if "</head>" in content:

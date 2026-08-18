@@ -107,6 +107,10 @@ CAPTURE_JS = (
 def make_webview(url, capture=False, console_to_stdout=False):
     manager = WebKit2.UserContentManager()
     manager.add_script(WebKit2.UserScript.new(
+        "window.__rpg_webkit__ = true;",
+        WebKit2.UserContentInjectedFrames.TOP_FRAME,
+        WebKit2.UserScriptInjectionTime.START, [], []))
+    manager.add_script(WebKit2.UserScript.new(
         FPS_OVERLAY_JS, WebKit2.UserContentInjectedFrames.TOP_FRAME,
         WebKit2.UserScriptInjectionTime.START, [], []))
     if capture:
@@ -120,6 +124,13 @@ def make_webview(url, capture=False, console_to_stdout=False):
 
 
 def run_viewer(args):
+    cfgmod = _config_module()
+    cfg = cfgmod.load_config()
+    teclas = cfg.get("teclas", {})
+    keymap = {}
+    for action, _ in cfgmod.KEY_ACTIONS:
+        keymap[action] = cfgmod.parse_key(teclas.get(action, ""))
+
     win = Gtk.Window(title=args.title or "RPG Maker (WebKit)")
     win.set_default_size(960, 600)
     view = make_webview(args.url, capture=False, console_to_stdout=args.log_console)
@@ -133,45 +144,50 @@ def run_viewer(args):
         except Exception:
             pass
 
+    def toggle_fullscreen():
+        state = win.get_window().get_state() if win.get_window() else 0
+        if state & Gdk.WindowState.FULLSCREEN:
+            win.unfullscreen()
+        else:
+            win.fullscreen()
+
+    def toggle_fps():
+        try:
+            view.run_javascript("window.__rpg_toggle_fps__&&window.__rpg_toggle_fps__()")
+        except Exception:
+            pass
+
+    handlers = {
+        "zoom_in": lambda: zoom(0.15),
+        "zoom_out": lambda: zoom(-0.15),
+        "zoom_0": lambda: view.set_zoom_level(1.0),
+        "pantalla_completa": toggle_fullscreen,
+        "salir_pantalla_completa": lambda: win.unfullscreen(),
+        "recargar": lambda: view.reload(),
+        "fps": toggle_fps,
+        "captura": lambda: take_screenshot(),
+    }
+
     def on_key(_, event):
         if event.type != Gdk.EventType.KEY_PRESS:
             return False
-        ctrl = event.state & Gdk.ModifierType.CONTROL_MASK
-        if ctrl and event.keyval in (Gdk.KEY_plus, Gdk.KEY_equal):
-            zoom(0.15)
-            return True
-        if ctrl and event.keyval in (Gdk.KEY_minus, Gdk.KEY_underscore):
-            zoom(-0.15)
-            return True
-        if ctrl and event.keyval == Gdk.KEY_0:
-            view.set_zoom_level(1.0)
-            return True
-        if event.keyval == Gdk.KEY_F11:
-            state = win.get_window().get_state() if win.get_window() else 0
-            if state & Gdk.WindowState.FULLSCREEN:
-                win.unfullscreen()
-            else:
-                win.fullscreen()
-            return True
-        if event.keyval == Gdk.KEY_Escape:
-            win.unfullscreen()
-            return True
-        if event.keyval == Gdk.KEY_F5:
-            view.reload()
-            return True
-        if event.keyval == Gdk.KEY_F9:
-            try:
-                view.run_javascript("window.__rpg_toggle_fps__&&window.__rpg_toggle_fps__()")
-            except Exception:
-                pass
-            return True
-        if event.keyval == Gdk.KEY_F12:
-            take_screenshot()
-            return True
+        state = event.state & (Gdk.ModifierType.CONTROL_MASK
+                               | Gdk.ModifierType.SHIFT_MASK
+                               | Gdk.ModifierType.MOD1_MASK)
+        for action, handler in handlers.items():
+            kv, mods = keymap.get(action, (0, 0))
+            if kv and event.keyval == kv and state == mods:
+                try:
+                    handler()
+                except Exception:
+                    pass
+                return True
         return False
 
     def take_screenshot():
-        shots = os.path.join(os.path.dirname(os.path.abspath(__file__)), "screenshots")
+        data_dir = os.path.expanduser(os.environ.get("RPGMAKER_DATA_DIR", ""))
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        shots = os.path.join(data_dir if data_dir else base_dir, "screenshots")
         os.makedirs(shots, exist_ok=True)
         stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         base = (args.title or "juego").replace("/", "_").replace(" ", "_")[:40]
@@ -198,6 +214,17 @@ def run_viewer(args):
         win.fullscreen()
     win.show_all()
     Gtk.main()
+
+
+# ---------- configuración ----------
+def _config_module():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "rpgmaker_config", os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                        "rpgmaker-config.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
 # ---------- modo diagnóstico ----------

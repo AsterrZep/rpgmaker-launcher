@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.rpgmaker.Launcher</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <name>RPG Maker Launcher</name>
+  <summary>Lanza juegos de RPG Maker (MV, MZ, XP, VX, VX Ace, 2000/2003, Ren'Py)</summary>
+  <description>
+    <p>Detecta el motor de cada juego de RPG Maker y lo lanza con el runtime adecuado:
+      servidor HTTP local + navegador o visor WebKit ligero para MV/MZ,
+      EasyRPG Player para RPG Maker 2000/2003 y mkxp-z para XP/VX/VX Ace.</p>
+    <p>Incluye menú de trucos estilo JoyPlay, guardado automático de partidas
+      del navegador, atajos de teclado configurables y descifrado de archivos.</p>
+  </description>
+  <launchable type="desktop-id">org.rpgmaker.Launcher.desktop</launchable>
+  <url type="homepage">https://github.com/AsterrZep/rpgmaker-launcher</url>
+  <provides>
+    <binary>rpgmaker-launcher</binary>
+  </provides>
+</component>

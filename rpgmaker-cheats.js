@@ -174,7 +174,7 @@
         shadow.appendChild(style);
 
         var btn = el("button", "rpgc-toggle", "T");
-        btn.title = "Abrir/cerrar trucos (F8)";
+        btn.title = "Abrir/cerrar trucos (" + configKey("trucos", "F8") + ")";
         shadow.appendChild(btn);
 
         panel = el("div", "rpgc-panel");
@@ -357,24 +357,59 @@
         if (panel) { panel.style.display = visible ? "" : "none"; }
     }
 
-    // F8 para abrir/cerrar (ignora si escribes en un campo)
+    // Tecla configurable (viene de /__config.js -> window.__RPG_CONFIG__)
+    function configKey(action, fallback) {
+        var t = (window.__RPG_CONFIG__ && window.__RPG_CONFIG__.teclas) || {};
+        return t[action] || fallback;
+    }
+
+    function matchKey(ev, combo) {
+        if (!combo) { return false; }
+        var parts = String(combo).split("+");
+        var key = parts.pop().toLowerCase();
+        var wantCtrl = parts.some(function (m) { return /^(ctrl|control)$/i.test(m); });
+        var wantShift = parts.some(function (m) { return /^shift$/i.test(m); });
+        var wantAlt = parts.some(function (m) { return /^alt$/i.test(m); });
+        var k = (ev.key || "").toLowerCase();
+        var alias = { "equal": "=", "plus": "+", "minus": "-" };
+        var k2 = alias[k] || k;
+        var keyMatch = k2 === key ||
+            (key === "equal" && k2 === "=") ||
+            (key === "minus" && k2 === "-") ||
+            (key === "plus" && k2 === "+");
+        return keyMatch &&
+            !!ev.ctrlKey === wantCtrl &&
+            !!ev.shiftKey === wantShift &&
+            !!ev.altKey === wantAlt;
+    }
+
+    // Abrir/cerrar con la tecla configurada (ignora si escribes en un campo)
     document.addEventListener("keydown", function (ev) {
-        if (ev.key === "F8" && !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) {
+        var tag = document.activeElement && document.activeElement.tagName;
+        if (/^(INPUT|TEXTAREA)$/.test(tag || "")) { return; }
+        if (matchKey(ev, configKey("trucos", "F8"))) {
             ev.preventDefault();
             toggle();
         }
     });
 
-    // Botón flotante y estado "conectado" una vez el juego carga
-    document.body.appendChild(HOST);
-    var timer = window.setInterval(function () {
-        var was = ready;
-        refreshReady();
-        if (was !== ready && !panel) {
-            // buildPanel() ya se llama desde refreshReady
+    // Expuesto para los atajos del navegador / diagnóstico
+    window.__rpg_cheats_toggle__ = toggle;
+    window.__rpg_cheats_ready__ = function () { return ready; };
+
+    // Montaje al final del body (los scripts del servidor se inyectan en <head>)
+    function mount() {
+        if (!document.body) {
+            document.addEventListener("DOMContentLoaded", mount);
+            return;
         }
-        if (ready) {
-            window.clearInterval(timer);
-        }
-    }, 700);
+        document.body.appendChild(HOST);
+        var timer = window.setInterval(function () {
+            refreshReady();
+            if (ready) {
+                window.clearInterval(timer);
+            }
+        }, 700);
+    }
+    mount();
 })();

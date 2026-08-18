@@ -12,6 +12,7 @@ Lanzador universal de juegos de RPG Maker y Ren'Py para **Chrome OS** (Linux / C
 - **Descompresión automática** — si el juego viene en `.zip`, se extrae al vuelo (una sola vez) con marcador de integridad.
 - **Interfaz gráfica** — ventana sencilla tipo app de Chrome OS, con botón **Detener servidor**, **Borrar .zip** y opción de eliminar el comprimido tras extraer.
 - **Visor WebKit ligero** — los juegos web (MZ/MV) pueden abrirse en un visor WebKit propio en vez del navegador completo: menos memoria y arranque más rápido para juegos pesados.
+- **Atajos configurables** — todas las teclas (trucos, FPS, captura, pantalla completa, recargar, zoom) se editan desde la GUI y funcionan tanto en el visor WebKit como en la versión navegador.
 - **Servidor HTTP rápido** — los juegos web se sirven con un servidor multihilo que envía cabeceras de caché y el MIME correcto para `.wasm`. Evita los tirones al cargar muchos assets de golpe (el `python3 -m http.server` normal es de un solo hilo).
 - **Gestor de plugins (MZ/MV)** — herramienta `rpgmaker-plugins.py` y botón **Plugins** en la GUI para listar, analizar la compatibilidad con WebKit (APIs nw.js) y activar/desactivar plugins. Desactivar plugins pesados reduce el tiempo del bucle del juego hasta un 31%.
 - **Partidas seguras en disco** — las partidas de los juegos web se guardan como archivos reales en la carpeta `save/` de cada juego (con un puerto fijo por juego), para poder copiarlas, exportarlas o editarlas. La GUI incluye **gestor de partidas** con copias de seguridad, restaurar, exportar y borrar.
@@ -61,6 +62,24 @@ El script de instalación:
 
 Cuando termine, busca **RPG Maker Launcher** en la lista de aplicaciones de Linux de Chrome OS. Si no aparece, cierra sesión y vuelve a entrar (o reinicia el contenedor Linux).
 
+## 📦 Paquetes y releases
+
+Cada versión se publica como release en GitHub con binarios listos para usar (sin necesidad de compilar):
+
+| Formato | Archivo | Qué instala |
+|---------|---------|-------------|
+| **Debian/Ubuntu** | `rpgmaker-launcher_<versión>_amd64.deb` | App en el sistema, acceso directo y runtimes (`sudo apt install ./rpgmaker-launcher_*.deb`) |
+| **AppImage** | `rpgmaker-launcher-<versión>-x86_64.AppImage` | Portable, incluye su propio Python con tkinter (`chmod +x` y ejecutar) |
+| **Flatpak** | `rpgmaker-launcher-<versión>.flatpak` | Sandbox de GNOME (`flatpak install rpgmaker-launcher-*.flatpak`) |
+
+Las versiones instaladas guardan los juegos en `~/Games/` (se puede cambiar con la variable `RPGMAKER_DATA_DIR`). Los scripts de empaquetado están en `packaging/`:
+
+```bash
+./packaging/build_deb.sh 0.1.0        # requiere dpkg-deb
+./packaging/build_appimage.sh 0.1.0   # descarga python-build-standalone + appimagetool
+./packaging/build_flatpak.sh 0.1.0    # requiere flatpak-builder y flathub
+```
+
 ## 🕹️ Uso
 
 ### Interfaz gráfica
@@ -75,7 +94,7 @@ Cuando termine, busca **RPG Maker Launcher** en la lista de aplicaciones de Linu
 
 Para juegos web pesados, marca la casilla **"Visor WebKit (más ligero)"** antes de pulsar **Jugar**: en vez de abrir el navegador completo (que consume mucha memoria), el juego se abre en una ventana de WebKitGTK con solo la página del juego.
 
-- Atajos: `Ctrl + / Ctrl -` zoom, `Ctrl 0` tamaño normal, `F11` pantalla completa, `Esc` salir de pantalla completa, `F5` recargar, `F9` mostrar/ocultar FPS, `F12` guardar captura de pantalla en `screenshots/`.
+- Atajos: `Ctrl + / Ctrl -` zoom, `Ctrl 0` tamaño normal, `F11` pantalla completa, `Esc` salir de pantalla completa, `F5` recargar, `F9` mostrar/ocultar FPS, `F12` guardar captura de pantalla en `screenshots/`. **Todos se pueden cambiar** con el botón **Atajos** de la GUI. En la versión navegador también funcionan los atajos configurables (recargar, pantalla completa y FPS); los trucos se abren con la tecla configurada (F8 por defecto).
 - Por defecto **no** escribe los mensajes de consola a un fichero: hacerlo en cada frame provocaría tirones en juegos que loguean mucho. Si necesitas verlos para diagnosticar, añade `--log-console`.
 - Desde terminal, el lanzador te pregunta con qué abrir cada juego web.
 

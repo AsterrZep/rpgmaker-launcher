@@ -15,14 +15,17 @@ import shutil
 import threading
 import subprocess
 import tkinter as tk
-from tkinter import ttk, messagebox
-from tkinter import simpledialog, filedialog
+from tkinter import ttk
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
-GAMES_DIR = os.path.join(BASE_DIR, "games")
+# Los datos de usuario (juegos, backups, estado, config) van a
+# RPGMAKER_DATA_DIR si está definido; si no, junto a la app
+# (modo portátil: carpeta del repositorio).
+DATA_DIR = os.path.expanduser(os.environ.get("RPGMAKER_DATA_DIR", "")) or BASE_DIR
+GAMES_DIR = os.path.join(DATA_DIR, "games")
 RUN_DIR = os.path.join(BASE_DIR, "runtimes")
-BACKUPS_DIR = os.path.join(BASE_DIR, "backups")
-STATE_FILE = os.path.join(BASE_DIR, "launcher-state.json")
+BACKUPS_DIR = os.path.join(DATA_DIR, "backups")
+STATE_FILE = os.path.join(DATA_DIR, "launcher-state.json")
 MKXPZ = os.path.join(RUN_DIR, "mkxp-z")
 EASYRPG = "easyrpg-player"
 MAX_DEPTH = 5
@@ -154,7 +157,7 @@ def stable_port(game_name):
 
 def zip_for_game(name):
     """Devuelve la ruta del .zip correspondiente al nombre de la carpeta del juego."""
-    return os.path.join(BASE_DIR, name + ".zip")
+    return os.path.join(DATA_DIR, name + ".zip")
 
 
 # ---------- librería visual / estado ----------
@@ -223,10 +226,19 @@ def _plugins_module():
     return mod
 
 
+def _config_module():
+    import importlib.util
+    path = os.path.join(BASE_DIR, "rpgmaker-config.py")
+    spec = importlib.util.spec_from_file_location("rpgmaker_config", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 # ---------- extracción ----------
 def extract_zips(callback=None, auto_delete=False):
     done, errors = [], []
-    for z in sorted(glob.glob(os.path.join(BASE_DIR, "*.zip"))):
+    for z in sorted(glob.glob(os.path.join(DATA_DIR, "*.zip"))):
         name = os.path.splitext(os.path.basename(z))[0]
         target = os.path.join(GAMES_DIR, name)
         marker = os.path.join(target, MARKER)
@@ -311,75 +323,470 @@ class Launcher:
         subprocess.Popen(cmd, cwd=root, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-# ---------- ventana ----------
+# ---------- ventana (GUI moderna) ----------
+# Tema oscuro propio (sin dependencias extra): cards con portada,
+# botones planos con hover, toggles y barra de estado.
+BG = "#0f1115"
+SURFACE = "#161a22"
+CARD = "#1b202b"
+CARD_HOVER = "#232a3b"
+CARD_SEL = "#252c41"
+BORDER = "#2a3142"
+ACCENT = "#7c6cf0"
+ACCENT_HOVER = "#9182f6"
+ACCENT_SOFT = "#2a2f52"
+TEXT = "#e7e9f0"
+MUTED = "#8a92a8"
+FAINT = "#5a6275"
+BAD = "#e06c75"
+OK = "#4ade80"
+WARN = "#e5b567"
+
+F_TITLE = ("DejaVu Sans", 17, "bold")
+F_SUB = ("DejaVu Sans", 9)
+F_BTN = ("DejaVu Sans", 10)
+F_CARD = ("DejaVu Sans", 10, "bold")
+F_META = ("DejaVu Sans", 8)
+
+CARD_W = 178
+CARD_H = 218
+IMG_W = 150
+IMG_H = 104
+GAP = 12
+PADX = 16
+
+ICON_PATH = os.path.join(BASE_DIR, "rpgmaker-icon.png")
+
+
+class GameCard(tk.Frame):
+    """Tarjeta de juego: portada, nombre y metadatos, con hover y seleccion."""
+
+    def __init__(self, master, name, meta, last, photo,
+                 on_click=None, on_play=None):
+        super().__init__(master, bg=BORDER, bd=0, highlightthickness=0)
+        self.config(width=CARD_W, height=CARD_H)
+        self.pack_propagate(False)
+        self._sel = False
+
+        inner = tk.Frame(self, bg=CARD, bd=0)
+        inner.pack(fill="both", expand=True, padx=2, pady=2)
+        self._paint = [inner]
+
+        cover = tk.Frame(inner, bg="#131721", width=IMG_W, height=IMG_H)
+        cover.pack_propagate(False)
+        cover.pack(pady=(14, 8))
+        if photo:
+            lbl = tk.Label(cover, image=photo, bg="#131721", bd=0)
+            lbl.image = photo
+        else:
+            lbl = tk.Label(cover, text=(name[:1] or "?").upper(),
+                           font=("DejaVu Sans", 44, "bold"),
+                           fg="#2b3153", bg="#131721")
+        lbl.pack(expand=True)
+
+        name_lbl = tk.Label(inner, text=name, font=F_CARD, fg=TEXT, bg=CARD,
+                            wraplength=CARD_W - 34, justify="left")
+        name_lbl.pack(padx=15, anchor="w")
+        self._paint.append(name_lbl)
+
+        meta_lbl = tk.Label(inner, text=meta, font=F_META, fg=ACCENT, bg=CARD,
+                            anchor="w")
+        meta_lbl.pack(padx=15, pady=(5, 0), anchor="w")
+        self._paint.append(meta_lbl)
+
+        last_lbl = tk.Label(inner, text=last or "sin jugar aun", font=F_META,
+                            fg=FAINT, bg=CARD, anchor="w")
+        last_lbl.pack(padx=15, pady=(1, 0), anchor="w")
+        self._paint.append(last_lbl)
+
+        for w in (self, inner, cover, lbl) + tuple(self._paint):
+            w.bind("<Button-1>", lambda e: on_click and on_click(self))
+            w.bind("<Double-Button-1>", lambda e: on_play and on_play())
+        for w in (self, inner) + tuple(self._paint):
+            w.bind("<Enter>", lambda e: self._on_hover(True))
+            w.bind("<Leave>", lambda e: self._on_hover(False))
+        self._paint_bg()
+
+    def set_selected(self, sel):
+        self._sel = sel
+        self._paint_bg()
+
+    def _on_hover(self, on):
+        if not self._sel:
+            self._paint_bg(hover=on)
+
+    def _paint_bg(self, hover=False):
+        bg = CARD_SEL if self._sel else (CARD_HOVER if hover else CARD)
+        self.config(bg=ACCENT if self._sel else BORDER)
+        for w in self._paint:
+            w.config(bg=bg)
+
+
 class App:
     def __init__(self):
         self.launcher = Launcher()
-        self.games = []  # (nombre, root, engine) o None si incompleto
+        self.games = []      # (nombre, root, engine) o None si incompleto
+        self._cards = []     # (GameCard, juego_o_None)
+        self._sel = None
         self.state = load_state()
-        self._images = {}      # nombre -> PhotoImage (portadas)
+        self._images = {}    # nombre -> PhotoImage (portadas)
         self._session_start = None
         self._session_game = None
 
         self.root = tk.Tk()
         self.root.title("RPG Maker Launcher")
-        self.root.geometry("680x460")
-        self.root.minsize(560, 400)
+        self.root.geometry("1020x660")
+        self.root.minsize(760, 520)
+        self.root.configure(bg=BG)
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        cfg = _config_module().load_config()
+        self.use_webkit = tk.BooleanVar(
+            value=cfg.get("general", {}).get("webkit", False))
+        self.auto_delete = tk.BooleanVar(
+            value=cfg.get("general", {}).get("auto_delete_zip", False))
+        self._set_icon()
 
+        self._setup_ttk()
+        self._build_ui()
+        self.load_games()
+        self.root.after(60, self._reflow)
+
+    # --- icono de la ventana ---
+    def _set_icon(self):
+        try:
+            img = tk.PhotoImage(file=ICON_PATH)
+            self._icon = img
+            self.root.iconphoto(True, img)
+        except tk.TclError:
+            pass
+
+    # --- estilo ttk (tablas de los dialogos) ---
+    def _setup_ttk(self):
         style = ttk.Style()
         try:
             style.theme_use("clam")
         except tk.TclError:
             pass
+        style.configure("TFrame", background=SURFACE)
+        style.configure("TLabel", background=SURFACE, foreground=TEXT)
+        style.configure("TTreeview", background=CARD, fieldbackground=CARD,
+                        foreground=TEXT, borderwidth=0, rowheight=28)
+        style.map("TTreeview",
+                  background=[("selected", ACCENT_SOFT)],
+                  foreground=[("selected", "#ffffff")])
+        style.configure("TTreeview.Heading", background=SURFACE, foreground=MUTED,
+                        borderwidth=0, relief="flat", padding=(8, 6))
+        style.map("TTreeview.Heading", background=[("active", BORDER)])
+        style.configure("TScrollbar", background=SURFACE, troughcolor=BG,
+                        arrowcolor=MUTED, borderwidth=0, width=14)
+        style.map("TScrollbar", background=[("active", BORDER)])
+        style.configure("TButton", background=SURFACE, foreground=TEXT,
+                        borderwidth=0, padding=(12, 7), focuscolor=ACCENT)
+        style.map("TButton",
+                  background=[("active", BORDER), ("pressed", BORDER)],
+                  foreground=[("disabled", FAINT)])
 
-        top = ttk.Frame(self.root, padding=(12, 10))
-        top.pack(fill="x")
-        ttk.Label(top, text="RPG Maker Launcher", font=("Sans", 14, "bold")).pack(side="left")
-        ttk.Label(top, text="Chrome OS / Linux", foreground="#666").pack(side="left", padx=8, pady=6)
-        self.auto_delete = tk.BooleanVar(value=False)
-        ttk.Checkbutton(top, text="Eliminar .zip tras extraer",
-                        variable=self.auto_delete).pack(side="right")
-        self.use_webkit = tk.BooleanVar(value=False)
-        ttk.Checkbutton(top, text="Visor WebKit (más ligero)",
-                        variable=self.use_webkit).pack(side="right", padx=8)
+    # --- botones ---
+    def _make_button(self, parent, text, command=None, accent=False):
+        btn = tk.Button(parent, text=text, command=command, font=F_BTN,
+                        relief="flat", bd=0, takefocus=0, cursor="hand2",
+                        padx=20 if accent else 14, pady=8, highlightthickness=0)
+        btn._accent = accent
+        self._style_btn(btn, True)
+        if not accent:
+            btn.bind("<Enter>",
+                     lambda e: btn.config(bg=BORDER) if btn["state"] != "disabled" else None)
+            btn.bind("<Leave>", lambda e: btn.config(bg=SURFACE))
+        return btn
 
-        mid = ttk.Frame(self.root, padding=(12, 0))
-        mid.pack(fill="both", expand=True)
-        self.tree = ttk.Treeview(mid, columns=("engine", "last"), show="tree headings", selectmode="browse")
-        self.tree.heading("#0", text="Juego")
-        self.tree.heading("engine", text="Motor")
-        self.tree.heading("last", text="Última vez")
-        self.tree.column("#0", width=300, anchor="w")
-        self.tree.column("engine", width=150, anchor="w")
-        self.tree.column("last", width=110, anchor="w")
-        vsb = ttk.Scrollbar(mid, orient="vertical", command=self.tree.yview)
-        self.tree.configure(yscrollcommand=vsb.set)
-        self.tree.pack(side="left", fill="both", expand=True)
-        vsb.pack(side="right", fill="y")
-        self.tree.bind("<Double-1>", lambda e: self.play_selected())
-        self.tree.bind("<<TreeviewSelect>>", lambda e: self._update_tool_buttons())
+    def _style_btn(self, btn, enabled):
+        accent = getattr(btn, "_accent", False)
+        if enabled:
+            if accent:
+                btn.config(state="normal", bg=ACCENT, fg="#ffffff", cursor="hand2",
+                           activebackground=ACCENT_HOVER, activeforeground="#ffffff")
+            else:
+                btn.config(state="normal", bg=SURFACE, fg=TEXT, cursor="hand2",
+                           activebackground=BORDER, activeforeground=TEXT)
+        else:
+            btn.config(state="disabled", bg=SURFACE, fg=FAINT, cursor="arrow",
+                       activebackground=SURFACE, activeforeground=FAINT)
 
-        btns = ttk.Frame(self.root, padding=(12, 10))
-        btns.pack(fill="x")
-        self.play_btn = ttk.Button(btns, text="Jugar", command=self.play_selected)
+    # --- toggles ---
+    def _make_toggle(self, parent, label, var):
+        btn = tk.Button(parent, text="", font=F_BTN, relief="flat", bd=0,
+                        takefocus=0, cursor="hand2", padx=10, pady=8,
+                        highlightthickness=0,
+                        command=lambda: self._flip_toggle(btn, var))
+        btn._label = label
+        self._paint_toggle(btn, var)
+        return btn
+
+    def _flip_toggle(self, btn, var):
+        var.set(not var.get())
+        self._paint_toggle(btn, var)
+        try:
+            mod = _config_module()
+            cfg = mod.load_config()
+            cfg.setdefault("general", {})["webkit"] = self.use_webkit.get()
+            cfg["general"]["auto_delete_zip"] = self.auto_delete.get()
+            mod.save_config(cfg)
+        except Exception:
+            pass
+
+    def _paint_toggle(self, btn, var):
+        on = var.get()
+        btn.config(text=("● " if on else "○ ") + btn._label,
+                   bg=ACCENT_SOFT if on else SURFACE,
+                   fg="#ffffff" if on else MUTED,
+                   activebackground=ACCENT_SOFT if on else BORDER,
+                   activeforeground="#ffffff" if on else MUTED)
+
+    # --- dialogos oscuros ---
+    _DLG_KIND = {"info": OK, "warn": WARN, "error": BAD}
+
+    def _dlg_center(self, win):
+        win.update_idletasks()
+        try:
+            x = self.root.winfo_rootx() + max(0, (self.root.winfo_width() - win.winfo_reqwidth()) // 2)
+            y = self.root.winfo_rooty() + max(0, (self.root.winfo_height() - win.winfo_reqheight()) // 2)
+            win.geometry("+%d+%d" % (x, y))
+        except tk.TclError:
+            pass
+
+    def _dlg_show(self, title, msg, kind="info", buttons=("Aceptar",)):
+        win = tk.Toplevel(self.root)
+        win.title(title)
+        win.configure(bg=BG)
+        win.resizable(False, False)
+        win.transient(self.root)
+        body = tk.Frame(win, bg=BG)
+        body.pack(padx=22, pady=18)
+        tk.Label(body, text="● " + title,
+                 font=("DejaVu Sans", 12, "bold"),
+                 fg=self._DLG_KIND.get(kind, ACCENT), bg=BG).pack(anchor="w")
+        tk.Label(body, text=msg, font=("DejaVu Sans", 10), fg=MUTED, bg=BG,
+                 wraplength=430, justify="left").pack(anchor="w", pady=(8, 0))
+        bar = tk.Frame(body, bg=BG)
+        bar.pack(fill="x", pady=(18, 0))
+        result = {"v": None}
+
+        def choose(v):
+            result["v"] = v
+            win.destroy()
+
+        for i, label in enumerate(buttons):
+            b = self._make_button(bar, label,
+                                  command=lambda v=label: choose(v),
+                                  accent=(i == len(buttons) - 1))
+            b.pack(side="right", padx=(8, 0))
+        self._dlg_center(win)
+        win.grab_set()
+        self.root.wait_window(win)
+        return result["v"]
+
+    def _info(self, title, msg):
+        self._dlg_show(title, msg, kind="info")
+
+    def _warn(self, title, msg):
+        self._dlg_show(title, msg, kind="warn")
+
+    def _error(self, title, msg):
+        self._dlg_show(title, msg, kind="error")
+
+    def _ask(self, title, msg, yes="Sí", no="No"):
+        return self._dlg_show(title, msg, kind="warn", buttons=(no, yes)) == yes
+
+    def _ask_text(self, title, prompt):
+        win = tk.Toplevel(self.root)
+        win.title(title)
+        win.configure(bg=BG)
+        win.resizable(False, False)
+        win.transient(self.root)
+        body = tk.Frame(win, bg=BG)
+        body.pack(padx=22, pady=18)
+        tk.Label(body, text="● " + title,
+                 font=("DejaVu Sans", 12, "bold"), fg=ACCENT, bg=BG).pack(anchor="w")
+        tk.Label(body, text=prompt, font=("DejaVu Sans", 10), fg=MUTED, bg=BG,
+                 wraplength=430, justify="left").pack(anchor="w", pady=(8, 0))
+        e = tk.Entry(body, font=("DejaVu Sans", 10), bg=CARD, fg=TEXT,
+                     insertbackground=TEXT, relief="flat", bd=0,
+                     highlightthickness=1, highlightbackground=BORDER,
+                     highlightcolor=ACCENT)
+        e.pack(fill="x", pady=(10, 0))
+        result = {"v": None}
+
+        def ok(event=None):
+            result["v"] = e.get()
+            win.destroy()
+
+        e.bind("<Return>", ok)
+        bar = tk.Frame(body, bg=BG)
+        bar.pack(fill="x", pady=(16, 0))
+        self._make_button(bar, "Cancelar", command=win.destroy).pack(side="right", padx=(8, 0))
+        self._make_button(bar, "Aceptar", command=ok, accent=True).pack(side="right", padx=(8, 0))
+        self._dlg_center(win)
+        win.grab_set()
+        e.focus_set()
+        self.root.wait_window(win)
+        return result["v"]
+
+    def _ask_dir(self, title, start=None):
+        cur = [os.path.abspath(start or ".")]
+        result = {"v": None}
+        win = tk.Toplevel(self.root)
+        win.title(title)
+        win.configure(bg=BG)
+        win.geometry("560x440")
+        win.transient(self.root)
+        header = tk.Frame(win, bg=SURFACE)
+        header.pack(fill="x")
+        path_lbl = tk.Label(header, text="", font=("DejaVu Sans", 10, "bold"),
+                            fg=TEXT, bg=SURFACE, anchor="w")
+        path_lbl.pack(padx=16, pady=(12, 6), fill="x")
+        nav = tk.Frame(header, bg=SURFACE)
+        nav.pack(fill="x", padx=16, pady=(0, 12))
+
+        def _refresh():
+            lb.delete(0, "end")
+            path_lbl.config(text=cur[0])
+            try:
+                for d in sorted(x for x in os.listdir(cur[0])
+                                if os.path.isdir(os.path.join(cur[0], x))):
+                    lb.insert("end", d)
+            except OSError:
+                pass
+
+        def _up():
+            p = os.path.dirname(cur[0])
+            if os.path.isdir(p):
+                cur[0] = p
+                _refresh()
+
+        self._make_button(nav, "Subir", command=_up).pack(side="left")
+        self._make_button(nav, "Actualizar", command=_refresh).pack(side="left", padx=(8, 0))
+        body = tk.Frame(win, bg=BG)
+        body.pack(fill="both", expand=True, padx=16, pady=12)
+        lb = tk.Listbox(body, bg=CARD, fg=TEXT, selectbackground=ACCENT_SOFT,
+                        selectforeground="#ffffff", relief="flat", bd=0,
+                        highlightthickness=0, font=("DejaVu Sans", 10))
+        lb.pack(side="left", fill="both", expand=True)
+        vsb = tk.Scrollbar(body, command=lb.yview, bg=SURFACE, troughcolor=BG,
+                           activebackground=BORDER, bd=0, highlightthickness=0, width=12)
+        lb.configure(yscrollcommand=vsb.set)
+        vsb.pack(side="left", fill="y", padx=(4, 0))
+
+        def _enter(event=None):
+            sel = lb.curselection()
+            if sel:
+                cur[0] = os.path.join(cur[0], lb.get(sel[0]))
+                _refresh()
+
+        lb.bind("<Double-Button-1>", _enter)
+        lb.bind("<Return>", _enter)
+        bar = tk.Frame(win, bg=SURFACE)
+        bar.pack(fill="x", padx=16, pady=(0, 14))
+
+        def _ok():
+            result["v"] = cur[0]
+            win.destroy()
+
+        self._make_button(bar, "Cancelar", command=win.destroy).pack(side="right", padx=(8, 0))
+        self._make_button(bar, "Seleccionar", command=_ok, accent=True).pack(side="right", padx=(8, 0))
+        _refresh()
+        win.grab_set()
+        self.root.wait_window(win)
+        return result["v"]
+
+    # --- construccion de la interfaz ---
+    def _build_ui(self):
+        header = tk.Frame(self.root, bg=SURFACE)
+        header.pack(fill="x")
+        hinner = tk.Frame(header, bg=SURFACE)
+        hinner.pack(fill="x", padx=PADX, pady=(12, 10))
+
+        try:
+            icon = tk.PhotoImage(file=ICON_PATH).subsample(8, 8)
+            self._head_icon = icon
+            tk.Label(hinner, image=icon, bg=SURFACE).pack(side="left")
+        except tk.TclError:
+            pass
+
+        titles = tk.Frame(hinner, bg=SURFACE)
+        titles.pack(side="left", padx=(10, 0))
+        tk.Label(titles, text="RPG Maker Launcher", font=F_TITLE,
+                 fg=TEXT, bg=SURFACE).pack(anchor="w")
+        tk.Label(titles, text="Juegos de RPG Maker · Chrome OS / Linux",
+                 font=F_SUB, fg=MUTED, bg=SURFACE).pack(anchor="w")
+
+        self._btn_refresh = self._make_button(hinner, "Actualizar", self.rescan)
+        self._btn_refresh.pack(side="right")
+        self._tog_del = self._make_toggle(hinner, "Eliminar .zip", self.auto_delete)
+        self._tog_del.pack(side="right", padx=(8, 0))
+        self._tog_webkit = self._make_toggle(hinner, "Visor WebKit", self.use_webkit)
+        self._tog_webkit.pack(side="right", padx=(8, 0))
+
+        body = tk.Frame(self.root, bg=BG)
+        body.pack(fill="both", expand=True)
+        self.canvas = tk.Canvas(body, bg=BG, highlightthickness=0, bd=0)
+        self.canvas.pack(side="left", fill="both", expand=True,
+                         padx=(PADX, 0), pady=14)
+        sb = tk.Scrollbar(body, orient="vertical", command=self.canvas.yview,
+                          bg=SURFACE, troughcolor=BG, bd=0,
+                          highlightthickness=0, width=10)
+        sb.pack(side="left", fill="y", padx=(4, PADX), pady=14)
+        self.canvas.configure(yscrollcommand=sb.set)
+
+        self.inner = tk.Frame(self.canvas, bg=BG)
+        self._win = self.canvas.create_window((0, 0), window=self.inner, anchor="nw")
+        self.inner.bind("<Configure>",
+                        lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+        self.canvas.bind("<Configure>", self._on_canvas_resize)
+        self.canvas.bind("<Button-4>", lambda e: self.canvas.yview_scroll(-1, "units"))
+        self.canvas.bind("<Button-5>", lambda e: self.canvas.yview_scroll(1, "units"))
+        self.canvas.bind("<MouseWheel>",
+                         lambda e: self.canvas.yview_scroll(-1 * (e.delta // 120), "units"))
+
+        footer = tk.Frame(self.root, bg=SURFACE)
+        footer.pack(fill="x")
+        bar = tk.Frame(footer, bg=SURFACE)
+        bar.pack(fill="x", padx=PADX, pady=(10, 8))
+        self.play_btn = self._make_button(bar, "Jugar", self.play_selected, accent=True)
         self.play_btn.pack(side="left")
-        ttk.Button(btns, text="Actualizar", command=self.rescan).pack(side="left", padx=6)
-        self.stop_btn = ttk.Button(btns, text="Detener servidor", command=self.stop_server_action)
-        self.stop_btn.pack(side="left", padx=6)
-        self.plugins_btn = ttk.Button(btns, text="Plugins", command=self.plugins_selected, state="disabled")
-        self.plugins_btn.pack(side="left", padx=6)
-        self.saves_btn = ttk.Button(btns, text="Partidas", command=self.saves_selected, state="disabled")
-        self.saves_btn.pack(side="left")
-        self.decrypt_btn = ttk.Button(btns, text="Descifrar", command=self.decrypt_selected, state="disabled")
-        self.decrypt_btn.pack(side="left", padx=6)
-        ttk.Button(btns, text="Borrar .zip", command=self.delete_zip_action).pack(side="left", padx=6)
-        ttk.Button(btns, text="Salir", command=self.on_close).pack(side="right")
+        self.plugins_btn = self._make_button(bar, "Plugins", self.plugins_selected)
+        self.plugins_btn.pack(side="left", padx=(8, 0))
+        self.saves_btn = self._make_button(bar, "Partidas", self.saves_selected)
+        self.saves_btn.pack(side="left", padx=(8, 0))
+        self.decrypt_btn = self._make_button(bar, "Descifrar", self.decrypt_selected)
+        self.decrypt_btn.pack(side="left", padx=(8, 0))
+        self.stop_btn = self._make_button(bar, "Detener servidor", self.stop_server_action)
+        self.stop_btn.pack(side="left", padx=(8, 0))
+        self._btn_delzip = self._make_button(bar, "Borrar .zip", self.delete_zip_action)
+        self._btn_delzip.pack(side="left", padx=(8, 0))
+        self._btn_shortcuts = self._make_button(bar, "Atajos", self.shortcuts_dialog)
+        self._btn_shortcuts.pack(side="right", padx=(8, 0))
+        self._btn_quit = self._make_button(bar, "Salir", self.on_close)
+        self._btn_quit.pack(side="right")
 
         self.status = tk.StringVar(value="Cargando...")
-        ttk.Label(self.root, textvariable=self.status, padding=(12, 6), foreground="#555").pack(fill="x")
+        self.status_lbl = tk.Label(footer, textvariable=self.status, font=F_META,
+                                   fg=MUTED, bg=SURFACE, anchor="w")
+        self.status_lbl.pack(fill="x", padx=PADX, pady=(0, 8))
 
-        self.load_games()
+    def _on_canvas_resize(self, e):
+        self.canvas.itemconfig(self._win, width=e.width)
+        self._reflow()
+
+    def _reflow(self):
+        w = self.canvas.winfo_width()
+        if w <= 0:
+            return
+        n = max(1, (w + GAP) // (CARD_W + GAP))
+        for i, (card, _) in enumerate(self._cards):
+            card.grid_remove()
+        for i, (card, _) in enumerate(self._cards):
+            card.grid(row=i // n, column=i % n,
+                      padx=GAP // 2, pady=GAP // 2, sticky="n")
 
     # --- datos ---
     def _cover_photo(self, top, root):
@@ -391,7 +798,7 @@ class App:
             try:
                 from PIL import Image
                 img = Image.open(path)
-                img.thumbnail((112, 112))
+                img.thumbnail((IMG_W, IMG_H))
                 import io
                 buf = io.BytesIO()
                 img.save(buf, "PNG")
@@ -403,15 +810,26 @@ class App:
         except tk.TclError:
             return None
         w, h = img.width(), img.height()
-        target = 28
-        if w > target or h > target:
-            s = max(1, min(w, h) // target)
+        if w <= 0 or h <= 0:
+            return None
+        if w < IMG_W or h < IMG_H:
+            z = min(IMG_W // max(w, 1), IMG_H // max(h, 1), 2)
+            if z > 1:
+                img = img.zoom(z, z)
+                w, h = img.width(), img.height()
+        scale = min(IMG_W / w, IMG_H / h, 1.0)
+        if scale < 1.0:
+            s = max(1, int(round(1 / scale)))
             img = img.subsample(s, s)
         return img
 
     def load_games(self):
         self.games = []
-        self.tree.delete(*self.tree.get_children())
+        self._cards = []
+        self._sel = None
+        for child in self.inner.winfo_children():
+            child.destroy()
+
         for top in sorted(glob.glob(os.path.join(GAMES_DIR, "*"))):
             if not os.path.isdir(top):
                 continue
@@ -420,33 +838,51 @@ class App:
             if eng is None:
                 continue
             if eng in ("incomplete", "renpy-incomplete"):
-                label = ENGINE_LABEL.get(eng, eng)
-                iid = self.tree.insert("", "end", text=name, values=("(!) " + label, ""))
-                self.tree.item(iid, tags=("bad",))
+                label = "(!) " + ENGINE_LABEL.get(eng, eng)
+                card = GameCard(self.inner, name, label, "No se puede lanzar",
+                                None, on_click=self._select,
+                                on_play=self.play_selected)
+                self._cards.append((card, None))
                 self.games.append(None)
             else:
                 info = self.state.get("games", {}).get(name, {})
                 last = fmt_last(info.get("last_played"))
                 hours = info.get("seconds", 0)
-                eng_lab = ENGINE_LABEL.get(eng, eng)
+                meta = ENGINE_LABEL.get(eng, eng)
                 if hours:
-                    eng_lab += "  ·  %s" % fmt_hours(hours)
+                    meta += " · " + fmt_hours(hours)
                 photo = self._cover_photo(top, root)
                 self._images[name] = photo
-                iid = self.tree.insert("", "end", text=name, image=photo,
-                                       values=(eng_lab, last))
+                card = GameCard(self.inner, name, meta, last, photo,
+                                on_click=self._select, on_play=self.play_selected)
+                self._cards.append((card, (name, root, eng)))
                 self.games.append((name, root, eng))
-        self.tree.tag_configure("bad", foreground="#b00")
+
+        if not self._cards:
+            tk.Label(self.inner,
+                     text="No hay juegos todavia.\nColoca los .zip junto al "
+                          "lanzador y pulsa Actualizar.",
+                     font=("DejaVu Sans", 12), fg=FAINT, bg=BG,
+                     justify="center").pack(pady=70)
+        self._reflow()
+        self._update_tool_buttons()
         self._update_status("Listos: %d juego(s)" % sum(1 for g in self.games if g))
+
+    def _select(self, card):
+        for i, (c, g) in enumerate(self._cards):
+            c.set_selected(c is card)
+            if c is card:
+                self._sel = i
+        self._update_tool_buttons()
 
     def _update_tool_buttons(self):
         sel = self.selected()
         eng = sel[1][2] if sel and sel[1] else None
-        is_web = eng in ("MZ", "MV", "web")
-        is_rgss = eng in ("XP", "VX", "VXAce")
-        self.plugins_btn.config(state="normal" if is_web else "disabled")
-        self.saves_btn.config(state="normal" if is_web else "disabled")
-        self.decrypt_btn.config(state="normal" if is_rgss else "disabled")
+        has = bool(sel and sel[1])
+        self._style_btn(self.play_btn, has)
+        self._style_btn(self.plugins_btn, has and eng in ("MZ", "MV", "web"))
+        self._style_btn(self.saves_btn, has and eng in ("MZ", "MV", "web"))
+        self._style_btn(self.decrypt_btn, has and eng in ("XP", "VX", "VXAce"))
 
     def decrypt_selected(self):
         sel = self.selected()
@@ -456,10 +892,12 @@ class App:
         if engine not in ("XP", "VX", "VXAce"):
             return
         out = root.rstrip(os.sep) + "_descifrado"
-        if not messagebox.askyesno(
-                "Descifrar", "¿Descifrar '%s'?\n\n"
+        if not self._ask(
+                "Descifrar",
+                "¿Descifrar '%s'?\n\n"
                 "Se descargará RPGMakerDecrypter (una sola vez) y los archivos "
-                "del archivo cifrado (%s) se escribirán en:\n%s" % (name, os.path.basename(root), out)):
+                "del archivo cifrado (%s) se escribirán en:\n%s"
+                % (name, os.path.basename(root), out)):
             return
         self._update_status("Descifrando '%s'... esto puede tardar un poco." % name)
         threading.Thread(target=self._decrypt_worker, args=(root, out, name), daemon=True).start()
@@ -514,20 +952,18 @@ class App:
     def _update_status(self, msg):
         if self.launcher.server_running and self.launcher.server_info:
             name, port = self.launcher.server_info
-            self.status.set("Servidor ACTIVO: %s -> http://localhost:%d   |   %s"
+            self.status.set("● Servidor ACTIVO: %s → http://localhost:%d   ·   %s"
                             % (name, port, msg))
+            self.status_lbl.config(fg=OK)
         else:
             self.status.set(msg)
+            self.status_lbl.config(fg=MUTED)
 
     # --- acciones ---
     def selected(self):
-        sel = self.tree.focus()
-        if not sel:
+        if self._sel is None or self._sel >= len(self.games):
             return None
-        idx = self.tree.index(sel)
-        if idx >= len(self.games):
-            return None
-        return idx, self.games[idx]
+        return self._sel, self.games[self._sel]
 
     def play_selected(self):
         sel = self.selected()
@@ -535,8 +971,8 @@ class App:
             return
         idx, game = sel
         if not game:
-            messagebox.showwarning("RPG Maker Launcher",
-                                   "Este juego está incompleto (descarga con archivos faltantes).\nVuelve a descargarlo.")
+            self._warn("RPG Maker Launcher",
+                       "Este juego está incompleto (descarga con archivos faltantes).\nVuelve a descargarlo.")
             return
         name, root, engine = game
         if engine in ("MZ", "MV", "web"):
@@ -566,25 +1002,163 @@ class App:
 
     def delete_zip_action(self):
         sel = self.selected()
-        if not sel:
+        if not sel or not sel[1]:
+            self._update_status("Selecciona un juego primero.")
             return
-        idx, game = sel
-        name = self.tree.item(self.tree.focus(), "text")
+        name = sel[1][0]
         zpath = zip_for_game(name)
         if not os.path.isfile(zpath):
             self._update_status("No existe el .zip de '%s'." % name)
             return
         size = os.path.getsize(zpath) / (1024 * 1024)
-        ok = messagebox.askyesno("RPG Maker Launcher",
-                                 "¿Eliminar el .zip de '%s'?\n\n%s\n(%.0f MB — el juego ya extraído se conserva)"
-                                 % (name, os.path.basename(zpath), size))
+        ok = self._ask("Borrar .zip",
+                       "¿Eliminar el .zip de '%s'?\n\n%s\n(%.0f MB — el juego ya extraído se conserva)"
+                       % (name, os.path.basename(zpath), size))
         if not ok:
             return
         try:
             os.remove(zpath)
             self._update_status(".zip de '%s' eliminado. El juego sigue disponible." % name)
         except OSError as e:
-            messagebox.showerror("RPG Maker Launcher", "No se pudo borrar: %s" % e)
+            self._error("RPG Maker Launcher", "No se pudo borrar: %s" % e)
+
+    # --- editor de atajos de teclado ---
+    def shortcuts_dialog(self):
+        mod = _config_module()
+        cfg = mod.load_config()
+        working = dict(cfg.get("teclas", {}))
+        defaults = dict(mod.DEFAULT_CONFIG["teclas"])
+
+        win = tk.Toplevel(self.root)
+        win.title("Atajos de teclado")
+        win.geometry("560x600")
+        win.configure(bg=BG)
+        win.transient(self.root)
+
+        header = tk.Frame(win, bg=SURFACE)
+        header.pack(fill="x")
+        tk.Label(header, text="Atajos de teclado del visor",
+                 font=("DejaVu Sans", 13, "bold"), fg=TEXT, bg=SURFACE
+                 ).pack(padx=16, pady=(12, 4), anchor="w")
+        tk.Label(header, text="Haz clic en un atajo y pulsa la combinación de teclas.\n"
+                              "Escape cancela la captura. Se guardan en launcher-config.json.",
+                 font=F_META, fg=MUTED, bg=SURFACE).pack(padx=16, pady=(0, 12), anchor="w")
+
+        body = tk.Frame(win, bg=BG)
+        body.pack(fill="both", expand=True, padx=16, pady=12)
+        canvas = tk.Canvas(body, bg=BG, highlightthickness=0, bd=0)
+        canvas.pack(side="left", fill="both", expand=True)
+        vsb = tk.Scrollbar(body, orient="vertical", command=canvas.yview,
+                           bg=SURFACE, troughcolor=BG, activebackground=BORDER,
+                           bd=0, highlightthickness=0, width=12)
+        canvas.configure(yscrollcommand=vsb.set)
+        vsb.pack(side="left", fill="y", padx=(6, 0))
+        inner = tk.Frame(canvas, bg=BG)
+        win_id = canvas.create_window((0, 0), window=inner, anchor="nw")
+        inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.bind("<Configure>", lambda e: canvas.itemconfig(win_id, width=e.width))
+        canvas.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))
+        canvas.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))
+
+        keybtns = {}
+
+        def _make_row(desc, action):
+            row = tk.Frame(inner, bg=BG)
+            row.pack(fill="x", pady=4)
+            tk.Label(row, text=desc, font=F_BTN, fg=TEXT, bg=BG,
+                     anchor="w").pack(side="left")
+            btn = tk.Button(row, text="", font=("DejaVu Sans", 9, "bold"),
+                            bg=CARD, fg=ACCENT, activebackground=BORDER,
+                            activeforeground=TEXT, relief="flat", bd=0,
+                            cursor="hand2", padx=14, pady=4,
+                            highlightthickness=0)
+            btn.pack(side="right")
+
+            def set_text():
+                key = working.get(action, "") or "—"
+                btn.config(text=key)
+                btn.config(fg=ACCENT if working.get(action) else FAINT)
+
+            btn.config(command=lambda: _begin_record(btn))
+            set_text()
+            keybtns[action] = (btn, set_text)
+
+        def _begin_record(btn):
+            win.recording = btn
+            for b, _ in keybtns.values():
+                b.config(bg=CARD, fg=ACCENT)
+            btn.config(text="Pulsa la tecla...", bg=ACCENT, fg="#ffffff")
+            win.focus_force()
+
+        def _on_key(e):
+            btn = getattr(win, "recording", None)
+            if btn is None:
+                return
+            if e.keysym in ("Escape",):
+                win.recording = None
+                for b, set_text in keybtns.values():
+                    b.config(bg=CARD, fg=ACCENT)
+                    set_text()
+                return
+            if e.keysym in ("Control_L", "Control_R", "Shift_L", "Shift_R",
+                            "Alt_L", "Alt_R", "Super_L", "Super_R", "Mode_switch"):
+                return
+            mods = []
+            if e.state & 0x4:
+                mods.append("Control")
+            if e.state & 0x1:
+                mods.append("Shift")
+            if e.state & 0x8:
+                mods.append("Alt")
+            keysym = e.keysym
+            value = "+".join(mods + [keysym])
+            action = next((a for a, (b, _) in keybtns.items() if b is btn), None)
+            if action is not None:
+                try:
+                    kv, _m = mod.parse_key(value)
+                    if not kv:
+                        self._warn("Atajos", "Tecla no válida: %s" % value)
+                        win.recording = None
+                        return
+                except Exception:
+                    pass
+                working[action] = value
+            win.recording = None
+            for b, set_text in keybtns.values():
+                b.config(bg=CARD, fg=ACCENT)
+                set_text()
+
+        win.bind("<Key>", _on_key)
+        win.bind("<Button-4>", lambda e: canvas.yview_scroll(-1, "units"))
+        win.bind("<Button-5>", lambda e: canvas.yview_scroll(1, "units"))
+
+        for action, desc in mod.KEY_ACTIONS:
+            _make_row(desc, action)
+
+        bar = tk.Frame(win, bg=SURFACE)
+        bar.pack(fill="x", padx=16, pady=(0, 14))
+
+        def _restore():
+            working.clear()
+            working.update(defaults)
+            for b, set_text in keybtns.values():
+                set_text()
+
+        def _save():
+            try:
+                cfg["teclas"] = working
+                mod.save_config(cfg)
+            except OSError as e:
+                self._error("Atajos", "No se pudo guardar: %s" % e)
+                return
+            win.destroy()
+            self._update_status("Atajos de teclado guardados.")
+
+        self._make_button(bar, "Cancelar", command=win.destroy).pack(side="right", padx=(8, 0))
+        self._make_button(bar, "Guardar", command=_save, accent=True).pack(side="right", padx=(8, 0))
+        self._make_button(bar, "Restaurar valores por defecto", command=_restore).pack(side="left")
+
+        win.grab_set()
 
     # --- gestor de plugins ---
     def plugins_selected(self):
@@ -598,23 +1172,36 @@ class App:
         try:
             path, raw, plugins = mod.load_plugins(root)
         except SystemExit as e:
-            messagebox.showwarning("Plugins", str(e))
+            self._warn("Plugins", str(e))
             return
 
         win = tk.Toplevel(self.root)
         win.title("Plugins - %s" % name)
-        win.geometry("600x460")
-        tv = ttk.Treeview(win, columns=("estado", "cat"), show="tree headings", selectmode="extended")
+        win.geometry("660x480")
+        win.configure(bg=BG)
+        header = tk.Frame(win, bg=SURFACE)
+        header.pack(fill="x")
+        tk.Label(header, text="Plugins · %s" % name,
+                 font=("DejaVu Sans", 13, "bold"), fg=TEXT, bg=SURFACE
+                 ).pack(padx=16, pady=(12, 4), anchor="w")
+        tk.Label(header, text="Activa o desactiva los plugins del juego (js/plugins.js).",
+                 font=F_META, fg=MUTED, bg=SURFACE).pack(padx=16, pady=(0, 12), anchor="w")
+        body = tk.Frame(win, bg=BG)
+        body.pack(fill="both", expand=True, padx=16, pady=12)
+        tv = ttk.Treeview(body, columns=("estado", "cat"),
+                          show="tree headings", selectmode="extended")
         tv.heading("#0", text="Plugin")
-        tv.column("#0", width=290, anchor="w")
+        tv.column("#0", width=300, anchor="w")
         tv.heading("estado", text="Estado")
         tv.column("estado", width=60, anchor="center")
         tv.heading("cat", text="WebKit")
         tv.column("cat", width=190, anchor="w")
-        tv.pack(side="left", fill="both", expand=True, padx=(10, 0), pady=10)
-        vsb = ttk.Scrollbar(win, orient="vertical", command=tv.yview)
+        tv.pack(side="left", fill="both", expand=True)
+        vsb = tk.Scrollbar(body, orient="vertical", command=tv.yview,
+                           bg=SURFACE, troughcolor=BG, activebackground=BORDER,
+                           bd=0, highlightthickness=0, width=12)
         tv.configure(yscrollcommand=vsb.set)
-        vsb.pack(side="left", fill="y", pady=10)
+        vsb.pack(side="left", fill="y", padx=(6, 0))
 
         def _fill():
             tv.delete(*tv.get_children())
@@ -628,14 +1215,14 @@ class App:
         def _toggle(on, selected):
             targets = [tv.item(i, "text") for i in selected]
             if not targets:
-                messagebox.showinfo("Plugins", "Selecciona al menos un plugin.")
+                self._info("Plugins", "Selecciona al menos un plugin.")
                 return
             try:
                 path2, raw2, plugins2 = mod.load_plugins(root)
                 names = {p.get("name") for p in plugins2}
                 bad = [n for n in targets if n not in names]
                 if bad:
-                    messagebox.showwarning("Plugins", "No encontrados: %s" % ", ".join(bad))
+                    self._warn("Plugins", "No encontrados: %s" % ", ".join(bad))
                     return
                 ch = 0
                 for p in plugins2:
@@ -645,39 +1232,39 @@ class App:
                 if ch:
                     mod.save_plugins(path2, raw2, plugins2)
             except SystemExit as e:
-                messagebox.showerror("Plugins", str(e))
+                self._error("Plugins", str(e))
                 return
             _fill()
             self._update_status("Plugins de '%s' %s: %d" % (name, "activados" if on else "desactivados", ch))
 
         def _restore():
-            if not messagebox.askyesno("Plugins", "¿Restaurar js/plugins.js al original?"):
+            if not self._ask("Plugins", "¿Restaurar js/plugins.js al original?"):
                 return
             try:
                 p, _, _ = mod.load_plugins(root)
                 bak = p + ".bak"
                 if not os.path.isfile(bak):
-                    messagebox.showinfo("Plugins", "Aún no hay copia original (no se ha modificado nada).")
+                    self._info("Plugins", "Aún no hay copia original (no se ha modificado nada).")
                     return
                 shutil.copy2(bak, p)
             except SystemExit as e:
-                messagebox.showerror("Plugins", str(e))
+                self._error("Plugins", str(e))
                 return
             _fill()
             self._update_status("plugins.js de '%s' restaurado." % name)
 
-        btns = ttk.Frame(win)
-        btns.pack(fill="x", padx=10, pady=(0, 10))
-        ttk.Button(btns, text="Activar",
-                   command=lambda: _toggle(True, tv.selection())).pack(side="left")
-        ttk.Button(btns, text="Desactivar",
-                   command=lambda: _toggle(False, tv.selection())).pack(side="left", padx=6)
-        ttk.Button(btns, text="Todo ON",
-                   command=lambda: _toggle(True, tv.get_children())).pack(side="left")
-        ttk.Button(btns, text="Todo OFF",
-                   command=lambda: _toggle(False, tv.get_children())).pack(side="left", padx=6)
-        ttk.Button(btns, text="Restaurar original", command=_restore).pack(side="left")
-        ttk.Button(btns, text="Cerrar", command=win.destroy).pack(side="right")
+        bar = tk.Frame(win, bg=SURFACE)
+        bar.pack(fill="x", padx=16, pady=(0, 14))
+        self._make_button(bar, "Cerrar", command=win.destroy).pack(side="right")
+        self._make_button(bar, "Restaurar original", command=_restore).pack(side="right", padx=(8, 0))
+        self._make_button(bar, "Todo OFF",
+                          command=lambda: _toggle(False, tv.get_children())).pack(side="right", padx=(8, 0))
+        self._make_button(bar, "Todo ON",
+                          command=lambda: _toggle(True, tv.get_children())).pack(side="right", padx=(8, 0))
+        self._make_button(bar, "Desactivar",
+                          command=lambda: _toggle(False, tv.selection())).pack(side="right", padx=(8, 0))
+        self._make_button(bar, "Activar",
+                          command=lambda: _toggle(True, tv.selection()), accent=True).pack(side="right", padx=(8, 0))
         _fill()
 
     # --- gestor de partidas ---
@@ -690,25 +1277,38 @@ class App:
             return
         sdir = os.path.join(root, "save")
         if not os.path.isdir(sdir):
-            messagebox.showinfo("Partidas",
-                                "Aún no existe la carpeta 'save/' de este juego.\n"
-                                "Guarda al menos una vez dentro del juego y vuelve.")
+            self._info("Partidas",
+                       "Aún no existe la carpeta 'save/' de este juego.\n"
+                       "Guarda al menos una vez dentro del juego y vuelve.")
             return
 
         win = tk.Toplevel(self.root)
         win.title("Partidas - %s" % name)
-        win.geometry("560x420")
-        tv = ttk.Treeview(win, columns=("size", "mod"), show="tree headings", selectmode="extended")
+        win.geometry("620x460")
+        win.configure(bg=BG)
+        header = tk.Frame(win, bg=SURFACE)
+        header.pack(fill="x")
+        tk.Label(header, text="Partidas · %s" % name,
+                 font=("DejaVu Sans", 13, "bold"), fg=TEXT, bg=SURFACE
+                 ).pack(padx=16, pady=(12, 4), anchor="w")
+        tk.Label(header, text="Copia, restaura, exporta o borra los archivos de guardado.",
+                 font=F_META, fg=MUTED, bg=SURFACE).pack(padx=16, pady=(0, 12), anchor="w")
+        body = tk.Frame(win, bg=BG)
+        body.pack(fill="both", expand=True, padx=16, pady=12)
+        tv = ttk.Treeview(body, columns=("size", "mod"),
+                          show="tree headings", selectmode="extended")
         tv.heading("#0", text="Archivo")
-        tv.column("#0", width=250, anchor="w")
+        tv.column("#0", width=270, anchor="w")
         tv.heading("size", text="Tamaño")
         tv.column("size", width=90, anchor="e")
         tv.heading("mod", text="Modificado")
         tv.column("mod", width=130, anchor="w")
-        tv.pack(side="left", fill="both", expand=True, padx=(10, 0), pady=10)
-        vsb = ttk.Scrollbar(win, orient="vertical", command=tv.yview)
+        tv.pack(side="left", fill="both", expand=True)
+        vsb = tk.Scrollbar(body, orient="vertical", command=tv.yview,
+                           bg=SURFACE, troughcolor=BG, activebackground=BORDER,
+                           bd=0, highlightthickness=0, width=12)
         tv.configure(yscrollcommand=vsb.set)
-        vsb.pack(side="left", fill="y", pady=10)
+        vsb.pack(side="left", fill="y", padx=(6, 0))
 
         def _fill():
             tv.delete(*tv.get_children())
@@ -731,18 +1331,18 @@ class App:
                     shutil.copy2(full, os.path.join(dest, fn))
                     n += 1
             self._update_status("Copia de '%s': %d archivo(s) en backups/%s/%s" % (name, n, name, ts))
-            messagebox.showinfo("Partidas", "Copia de seguridad creada:\n%s" % dest)
+            self._info("Partidas", "Copia de seguridad creada:\n%s" % dest)
 
         def _restore():
             bdir = os.path.join(BACKUPS_DIR, name)
             if not os.path.isdir(bdir):
-                messagebox.showinfo("Partidas", "Aún no hay copias de seguridad.")
+                self._info("Partidas", "Aún no hay copias de seguridad.")
                 return
             snaps = sorted(d for d in os.listdir(bdir) if os.path.isdir(os.path.join(bdir, d)))
             if not snaps:
-                messagebox.showinfo("Partidas", "Aún no hay copias de seguridad.")
+                self._info("Partidas", "Aún no hay copias de seguridad.")
                 return
-            choice = simpledialog.askstring(
+            choice = self._ask_text(
                 "Restaurar", "Copias disponibles:\n%s\n\nEscribe una para restaurarla:" % "\n".join(snaps))
             if not choice or choice not in snaps:
                 return
@@ -757,9 +1357,9 @@ class App:
         def _export():
             sel = [tv.item(i, "text") for i in tv.selection()]
             if not sel:
-                messagebox.showinfo("Partidas", "Selecciona archivos para exportar.")
+                self._info("Partidas", "Selecciona archivos para exportar.")
                 return
-            dest = filedialog.askdirectory(title="Carpeta de destino")
+            dest = self._ask_dir("Carpeta de destino")
             if not dest:
                 return
             for fn in sel:
@@ -770,26 +1370,27 @@ class App:
             sel = [tv.item(i, "text") for i in tv.selection()]
             if not sel:
                 return
-            if not messagebox.askyesno("Partidas", "¿Borrar %d archivo(s) de partida?" % len(sel)):
+            if not self._ask("Partidas", "¿Borrar %d archivo(s) de partida?" % len(sel)):
                 return
             for fn in sel:
                 try:
                     os.remove(os.path.join(sdir, fn))
                 except OSError as e:
-                    messagebox.showerror("Partidas", str(e))
+                    self._error("Partidas", str(e))
             _fill()
 
         def _open_dir():
             subprocess.Popen(["xdg-open", sdir], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-        btns = ttk.Frame(win)
-        btns.pack(fill="x", padx=10, pady=(0, 10))
-        ttk.Button(btns, text="Copia de seguridad", command=_backup).pack(side="left")
-        ttk.Button(btns, text="Restaurar", command=_restore).pack(side="left", padx=6)
-        ttk.Button(btns, text="Exportar", command=_export).pack(side="left")
-        ttk.Button(btns, text="Borrar", command=_delete).pack(side="left", padx=6)
-        ttk.Button(btns, text="Abrir carpeta", command=_open_dir).pack(side="left")
-        ttk.Button(btns, text="Cerrar", command=win.destroy).pack(side="right")
+        bar = tk.Frame(win, bg=SURFACE)
+        bar.pack(fill="x", padx=16, pady=(0, 14))
+        self._make_button(bar, "Cerrar", command=win.destroy).pack(side="right")
+        self._make_button(bar, "Abrir carpeta", command=_open_dir).pack(side="right", padx=(8, 0))
+        self._make_button(bar, "Borrar", command=_delete).pack(side="right", padx=(8, 0))
+        self._make_button(bar, "Exportar", command=_export).pack(side="right", padx=(8, 0))
+        self._make_button(bar, "Restaurar", command=_restore).pack(side="right", padx=(8, 0))
+        self._make_button(bar, "Copia de seguridad", command=_backup,
+                          accent=True).pack(side="right", padx=(8, 0))
         _fill()
 
     def on_close(self):

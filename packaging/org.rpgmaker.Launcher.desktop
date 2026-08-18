@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=RPG Maker Launcher
+Comment=Lanza juegos de RPG Maker (MV, MZ, XP, VX, VX Ace, 2000/2003, Ren'Py)
+Exec=rpgmaker-launcher
+Icon=org.rpgmaker.Launcher
+Terminal=false
+Categories=Game;
+StartupNotify=true
