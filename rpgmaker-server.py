@@ -14,7 +14,9 @@
 #    rpgmaker-server.py PUERTO --dir CARPETA_DEL_JUEGO
 # ============================================================
 import argparse
+import base64
 import functools
+import json
 import os
 import sys
 import urllib.parse
@@ -100,6 +102,23 @@ class GameHandler(SimpleHTTPRequestHandler):
             return
         self.send_error(405, "Method Not Allowed")
 
+    def _handle_save_list(self):
+        """Lista todas las partidas existentes con su contenido en base64."""
+        save_dir = os.path.join(self.directory, "save")
+        out = {}
+        if os.path.isdir(save_dir):
+            for fn in sorted(os.listdir(save_dir)):
+                full = os.path.join(save_dir, fn)
+                if os.path.isfile(full):
+                    with open(full, "rb") as fh:
+                        out[fn] = base64.b64encode(fh.read()).decode("ascii")
+        data = json.dumps(out).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
     def do_GET(self):
         path = self.path.split("?")[0]
         if path == "/__savebridge.js":
@@ -110,6 +129,9 @@ class GameHandler(SimpleHTTPRequestHandler):
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             self.wfile.write(data)
+            return
+        if path == "/__save/__all":
+            self._handle_save_list()
             return
         if path.startswith("/__save/"):
             name = urllib.parse.unquote(path[len("/__save/"):])

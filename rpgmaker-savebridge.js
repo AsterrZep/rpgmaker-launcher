@@ -4,27 +4,99 @@
 //  rpgmaker-server.py en la carpeta save/ de cada juego.
 //
 //  Inyectado automáticamente en index.html por el servidor.
+//
+//  Rendimiento: TODAS las lecturas se sirven desde una caché en
+//  memoria y las escrituras se envían en segundo plano (async),
+//  de modo que el hilo de JavaScript del juego NUNCA se bloquea
+//  (el tiro clásico de los XHR síncronos desaparece).
 // ============================================================
 (function () {
     "use strict";
 
-    // ---------- utilidades de red ----------
-    function xhrSync(method, name, body) {
-        var xhr = new XMLHttpRequest();
-        xhr.open(method, "/__save/" + encodeURIComponent(name), false);
-        xhr.setRequestHeader("Content-Type", "text/plain");
-        xhr.send(body === undefined ? null : body);
-        if (xhr.status >= 200 && xhr.status < 300) {
-            return xhr.responseText;
+    // ---------- caché en memoria ----------
+    var cache = {};
+    var cacheReady = false;
+
+    function b64decode(s) {
+        try {
+            return atob(s);
+        } catch (e) {
+            return null;
         }
-        return null;
     }
 
-    function fetchAsync(method, name, body) {
-        return fetch("/__save/" + encodeURIComponent(name), {
-            method: method,
-            body: body === undefined ? undefined : body
-        });
+    function storeAll(raw) {
+        try {
+            var obj = JSON.parse(raw);
+            for (var k in obj) {
+                cache[k] = b64decode(obj[k]);
+            }
+        } catch (e) {
+            /* ignora: sin partidas o JSON corrupto */
+        }
+        cacheReady = true;
+    }
+
+    // Precarga asíncrona de todas las partidas existentes.
+    function loadAllAsync() {
+        fetch("/__save/__all")
+            .then(function (r) { return r.text(); })
+            .then(storeAll)
+            .catch(function () { cacheReady = true; });
+    }
+
+    // Último recurso (solo al arrancar y si la precarga aún no acabó):
+    // un único XHR síncrono con el listado completo.
+    function loadAllSync() {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "/__save/__all", false);
+        xhr.send(null);
+        if (xhr.status >= 200 && xhr.status < 300) {
+            storeAll(xhr.responseText);
+        } else {
+            cacheReady = true;
+        }
+    }
+
+    function ensureCache() {
+        if (!cacheReady) {
+            loadAllSync();
+        }
+    }
+
+    // Lecturas: siempre desde la caché (instantáneas, sin red).
+    function read(name) {
+        ensureCache();
+        return (name in cache) ? cache[name] : null;
+    }
+
+    // Escrituras: actualizan la caché al instante y envían la
+    // petición en segundo plano (no bloquean el juego).
+    function write(name, data, binary) {
+        ensureCache();
+        cache[name] = data;
+        var body = binary ? strToBytes(data) : data;
+        fetch("/__save/" + encodeURIComponent(name), {
+            method: "POST",
+            body: body
+        }).catch(function () {});
+    }
+
+    function remove(name) {
+        ensureCache();
+        cache[name] = null;
+        fetch("/__save/" + encodeURIComponent(name), {
+            method: "DELETE"
+        }).catch(function () {});
+    }
+
+    // ---------- binario (partidas MZ) ----------
+    function strToBytes(s) {
+        var b = new Uint8Array(s.length);
+        for (var i = 0; i < s.length; i++) {
+            b[i] = s.charCodeAt(i) & 0xff;
+        }
+        return b;
     }
 
     // ---------- nombres de archivo ----------
@@ -44,41 +116,36 @@
         return saveName + ".rmmzsave" + (backup ? ".bak" : "");
     }
 
+    // ---------- parcheo del motor ----------
     function applyBridge() {
         // ---------- RPG Maker MV ----------
         if (window.StorageManager && window.LZString &&
                 typeof StorageManager.saveToWebStorage === "function") {
             StorageManager.saveToWebStorage = function (savefileId, json) {
                 var data = LZString.compressToBase64(json);
-                var key = StorageManager.webStorageKey(savefileId);
-                xhrSync("POST", mvFilename(key, false), data);
+                write(mvFilename(StorageManager.webStorageKey(savefileId), false), data);
             };
             StorageManager.loadFromWebStorage = function (savefileId) {
-                var key = StorageManager.webStorageKey(savefileId);
-                var data = xhrSync("GET", mvFilename(key, false));
+                var data = read(mvFilename(StorageManager.webStorageKey(savefileId), false));
                 return data ? LZString.decompressFromBase64(data) : null;
             };
             StorageManager.webStorageExists = function (savefileId) {
-                var key = StorageManager.webStorageKey(savefileId);
-                return xhrSync("GET", mvFilename(key, false)) !== null;
+                return read(mvFilename(StorageManager.webStorageKey(savefileId), false)) !== null;
             };
             StorageManager.removeWebStorage = function (savefileId) {
-                var key = StorageManager.webStorageKey(savefileId);
-                xhrSync("DELETE", mvFilename(key, false));
+                remove(mvFilename(StorageManager.webStorageKey(savefileId), false));
             };
             StorageManager.webStorageBackupExists = function (savefileId) {
-                var key = StorageManager.webStorageKey(savefileId);
-                return xhrSync("GET", mvFilename(key, true)) !== null;
+                return read(mvFilename(StorageManager.webStorageKey(savefileId), true)) !== null;
             };
             StorageManager.loadFromWebStorageBackup = function (savefileId) {
-                var key = StorageManager.webStorageKey(savefileId);
-                var data = xhrSync("GET", mvFilename(key, true));
+                var data = read(mvFilename(StorageManager.webStorageKey(savefileId), true));
                 return data ? LZString.decompressFromBase64(data) : null;
             };
             StorageManager.removeBackup = function (savefileId) {
-                var key = StorageManager.webStorageKey(savefileId);
-                xhrSync("DELETE", mvFilename(key, true));
+                remove(mvFilename(StorageManager.webStorageKey(savefileId), true));
             };
+            loadAllAsync();
             return true;
         }
 
@@ -86,24 +153,20 @@
         if (window.StorageManager &&
                 typeof StorageManager.saveToForage === "function") {
             StorageManager.saveToForage = function (saveName, zip) {
-                return fetchAsync("POST", mzFilename(saveName, false), zip)
-                    .then(function () { return true; });
+                write(mzFilename(saveName, false), zip, true);
+                return Promise.resolve(true);
             };
             StorageManager.loadFromForage = function (saveName) {
-                return fetchAsync("GET", mzFilename(saveName, false))
-                    .then(function (resp) {
-                        if (resp.ok) { return resp.text(); }
-                        return null;
-                    });
+                return Promise.resolve(read(mzFilename(saveName, false)));
             };
             StorageManager.forageExists = function (saveName) {
-                return fetchAsync("GET", mzFilename(saveName, false))
-                    .then(function (resp) { return resp.ok; });
+                return Promise.resolve(read(mzFilename(saveName, false)) !== null);
             };
             StorageManager.removeForage = function (saveName) {
-                return fetchAsync("DELETE", mzFilename(saveName, false))
-                    .then(function () { return true; });
+                remove(mzFilename(saveName, false));
+                return Promise.resolve(true);
             };
+            loadAllAsync();
             return true;
         }
 
