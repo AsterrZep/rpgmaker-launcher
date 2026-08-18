@@ -78,6 +78,19 @@ extract_zips() {
     done
 }
 
+# ---------- utilidades de detección Ren'Py ----------
+# Comprueba si existe la parte Linux de un juego Ren'Py.
+# Ren'Py moderno (Py3) usa lib/linux-{x86_64,i686}; versiones
+# antiguas (Py2) usan lib/py2-linux-{x86_64,i686}.
+_renpy_lib_ok() {
+    local rdir="$1"
+    local d
+    for d in linux-x86_64 linux-i686 py2-linux-x86_64 py2-linux-i686; do
+        [ -d "$rdir/lib/$d" ] && return 0
+    done
+    return 1
+}
+
 # ---------- detección de motor ----------
 # Devuelve "RAIZ|MOTOR|ETIQUETA"
 detect_engine() {
@@ -123,7 +136,7 @@ detect_engine() {
     f="$(first_find "$top" "*.py")"
     if [ -n "$f" ]; then
         rdir="$(dirname "$f")"
-        if [ -d "$rdir/renpy" ] && [ -d "$rdir/game" ] && [ -d "$rdir/lib/linux-x86_64" ]; then
+        if [ -d "$rdir/renpy" ] && [ -d "$rdir/game" ] && _renpy_lib_ok "$rdir"; then
             echo "$rdir|renpy"
             return
         fi
@@ -209,7 +222,7 @@ for top in "$GAMES_DIR"/*/; do
             echo "!! $(basename "$top"): parece RPG Maker (MZ/MV) pero su descarga está INCOMPLETA"
             echo "   (falta la carpeta js/ e index.html). No se puede lanzar."
         elif [ -d "$(find "$top" -maxdepth "$MAX_DEPTH" -type d -name renpy 2>/dev/null | head -n1)" ]; then
-            echo "!! $(basename "$top"): juego Ren'Py sin la parte Linux (falta lib/linux-x86_64)."
+            echo "!! $(basename "$top"): juego Ren'Py sin la parte Linux (falta lib/linux-x86_64 o lib/py2-linux-x86_64)."
         fi
         continue
     fi

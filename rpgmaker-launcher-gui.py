@@ -85,6 +85,16 @@ def find_dir(root, name):
     return None
 
 
+# Comprueba si existe la parte Linux de un juego Ren'Py.
+# Ren'Py moderno (Py3) usa lib/linux-{x86_64,i686}; versiones
+# antiguas (Py2) usan lib/py2-linux-{x86_64,i686}.
+def _renpy_lib_ok(rdir):
+    for d in ("linux-x86_64", "linux-i686", "py2-linux-x86_64", "py2-linux-i686"):
+        if os.path.isdir(os.path.join(rdir, "lib", d)):
+            return True
+    return False
+
+
 def detect_engine(top):
     f = first_find(top, "index.html")
     if f:
@@ -111,7 +121,7 @@ def detect_engine(top):
     f = find_glob(top, "*.py")
     if f:
         rdir = os.path.dirname(f)
-        if all(os.path.isdir(os.path.join(rdir, d)) for d in ("renpy", "game", "lib/linux-x86_64")):
+        if all(os.path.isdir(os.path.join(rdir, d)) for d in ("renpy", "game")) and _renpy_lib_ok(rdir):
             return rdir, "renpy"
 
     for file, eng in (("Scripts.rvdata2", "VXAce"), ("Scripts.rvdata", "VX"), ("Scripts.rxdata", "XP")):
