@@ -13,8 +13,12 @@ Lanzador universal de juegos de RPG Maker y Ren'Py para **Chrome OS** (Linux / C
 - **Interfaz gráfica** — ventana sencilla tipo app de Chrome OS, con botón **Detener servidor**, **Borrar .zip** y opción de eliminar el comprimido tras extraer.
 - **Visor WebKit ligero** — los juegos web (MZ/MV) pueden abrirse en un visor WebKit propio en vez del navegador completo: menos memoria y arranque más rápido para juegos pesados.
 - **Servidor HTTP rápido** — los juegos web se sirven con un servidor multihilo que envía cabeceras de caché y el MIME correcto para `.wasm`. Evita los tirones al cargar muchos assets de golpe (el `python3 -m http.server` normal es de un solo hilo).
-- **Gestor de plugins (MZ/MV)** — herramienta `rpgmaker-plugins.py` para listar, analizar la compatibilidad con WebKit (APIs nw.js) y activar/desactivar plugins. Desactivar plugins pesados reduce el tiempo del bucle del juego hasta un 31%.
-- **Partidas seguras en disco** — las partidas de los juegos web se guardan como archivos reales en la carpeta `save/` de cada juego (con un puerto fijo por juego), para poder copiarlas, exportarlas o editarlas.
+- **Gestor de plugins (MZ/MV)** — herramienta `rpgmaker-plugins.py` y botón **Plugins** en la GUI para listar, analizar la compatibilidad con WebKit (APIs nw.js) y activar/desactivar plugins. Desactivar plugins pesados reduce el tiempo del bucle del juego hasta un 31%.
+- **Partidas seguras en disco** — las partidas de los juegos web se guardan como archivos reales en la carpeta `save/` de cada juego (con un puerto fijo por juego), para poder copiarlas, exportarlas o editarlas. La GUI incluye **gestor de partidas** con copias de seguridad, restaurar, exportar y borrar.
+- **Trucos estilo JoyPlay** — menú de trucos flotante (F8) en juegos MZ/MV: oro, HP/MP, objetos, variables, switches, teletransporte y consola de código.
+- **Mando (gamepad)** — juega con mando en MZ/MV (mapeo automático a las teclas del motor).
+- **Librería visual** — portadas en la lista, "última vez jugado" y tiempo total de juego.
+- **Descifrador integrado** — botón **Descifrar** y script para abrir archivos cifrados de XP/VX/VX Ace/MV/MZ (descarga RPGMakerDecrypter al vuelo).
 - **Versión de terminal** — menú clásico para quien prefiera la consola.
 - **Sin solapamientos** — si lanzas un juego web y luego otro, el servidor anterior se cierra solo.
 - **Advertencia de descarga incompleta** — detecta juegos a medio descomprimir o descargas cortadas.
@@ -64,13 +68,14 @@ Cuando termine, busca **RPG Maker Launcher** en la lista de aplicaciones de Linu
 1. Abre la app **RPG Maker Launcher**.
 2. Si hay un `.zip` en `~/Games`, se extrae automáticamente al lanzar el juego.
 3. Pulsa el nombre del juego. Los juegos web (MZ/MV) se abren en el navegador (o en el **visor WebKit ligero** si marcas la casilla "Visor WebKit (más ligero)"); los demás se abren en una ventana.
-4. Usa **Detener servidor** para apagar el servidor web en cualquier momento (también se apaga solo al cerrar la app).
+4. Con un juego web seleccionado, los botones **Plugins** y **Partidas** abren sus gestores. Con un juego XP/VX/VX Ace, el botón **Descifrar** extrae sus datos cifrados.
+5. Usa **Detener servidor** para apagar el servidor web en cualquier momento (también se apaga solo al cerrar la app).
 
 ### Visor WebKit ligero
 
 Para juegos web pesados, marca la casilla **"Visor WebKit (más ligero)"** antes de pulsar **Jugar**: en vez de abrir el navegador completo (que consume mucha memoria), el juego se abre en una ventana de WebKitGTK con solo la página del juego.
 
-- Atajos: `Ctrl + / Ctrl -` zoom, `Ctrl 0` tamaño normal, `F11` pantalla completa, `Esc` salir de pantalla completa, `F5` recargar.
+- Atajos: `Ctrl + / Ctrl -` zoom, `Ctrl 0` tamaño normal, `F11` pantalla completa, `Esc` salir de pantalla completa, `F5` recargar, `F9` mostrar/ocultar FPS, `F12` guardar captura de pantalla en `screenshots/`.
 - Por defecto **no** escribe los mensajes de consola a un fichero: hacerlo en cada frame provocaría tirones en juegos que loguean mucho. Si necesitas verlos para diagnosticar, añade `--log-console`.
 - Desde terminal, el lanzador te pregunta con qué abrir cada juego web.
 
@@ -120,6 +125,37 @@ games/Mi_Juego/www/save/
 ```
 
 Esa carpeta está a la vista en tu disco: puedes **copiar, exportar, hacer copias de seguridad o editarlas** con herramientas externas (editores de partidas de RPG Maker) mientras el juego esté cerrado. Los formatos son los nativos de cada motor (`.rpgsave` para MV, `.rmmzsave` para MZ).
+
+Desde la **GUI**, el botón **Partidas** (juegos MZ/MV) permite hacer copias de seguridad, restaurar, exportar, borrar archivos de partida y abrir la carpeta `save/` (las copias quedan en `backups/<juego>/<fecha>/`).
+
+### Trucos / cheats (estilo JoyPlay)
+
+El servidor inyecta en los juegos MZ/MV un **menú de trucos** flotante: pulsa **F8** (o el botón "T" abajo a la derecha) para abrirlo. Permite:
+
+- Dar **oro**.
+- **HP/MP/TP al máximo** y quitar estados al grupo.
+- Dar **objetos** por ID (o 99 de todos).
+- Cambiar **variables** y **switches** por ID.
+- **Teletransporte** (mapa, X, Y).
+- **Consola de código** para ejecutar JavaScript directamente (`$gameParty._gold = 999999`).
+
+### Mando (gamepad)
+
+Los juegos MZ/MV se pueden jugar con mando: el script `rpgmaker-gamepad.js` traduce el gamepad a los atajos del motor (flechas = moverse, Z = confirmar, X = cancelar, Shift = correr, Start/Select = menú). Requiere un navegador o visor con la Gamepad API (WebKitGTK moderno la soporta).
+
+### Descifrar juegos cifrados (`rpgmaker-decrypter.py`)
+
+Algunos juegos de XP/VX/VX Ace vienen con los datos cifrados en `Game.rgss3a`/`.rgss2a`/`.rgssad` (y MV/MZ pueden llevar imágenes/audio cifrados). Para modding o traducción puedes descifrarlos:
+
+```bash
+# Descifra el juego (descarga RPGMakerDecrypter en runtimes/ en la 1ª ejecución)
+python3 rpgmaker-decrypter.py "games/Mi_Juego"
+
+# Opciones: --output DIR, --recreate (reconstruir el proyecto), --overwrite
+python3 rpgmaker-decrypter.py "games/Mi_Juego" --recreate --overwrite
+```
+
+En la GUI hay un botón **Descifrar** activo al seleccionar un juego XP/VX/VX Ace.
 
 ### Terminal
 
