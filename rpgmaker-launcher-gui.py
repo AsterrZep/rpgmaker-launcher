@@ -371,6 +371,8 @@ class App:
         self.plugins_btn.pack(side="left", padx=6)
         self.saves_btn = ttk.Button(btns, text="Partidas", command=self.saves_selected, state="disabled")
         self.saves_btn.pack(side="left")
+        self.decrypt_btn = ttk.Button(btns, text="Descifrar", command=self.decrypt_selected, state="disabled")
+        self.decrypt_btn.pack(side="left", padx=6)
         ttk.Button(btns, text="Borrar .zip", command=self.delete_zip_action).pack(side="left", padx=6)
         ttk.Button(btns, text="Salir", command=self.on_close).pack(side="right")
 
@@ -439,9 +441,37 @@ class App:
 
     def _update_tool_buttons(self):
         sel = self.selected()
-        is_web = bool(sel and sel[1] and sel[1][2] in ("MZ", "MV", "web"))
+        eng = sel[1][2] if sel and sel[1] else None
+        is_web = eng in ("MZ", "MV", "web")
+        is_rgss = eng in ("XP", "VX", "VXAce")
         self.plugins_btn.config(state="normal" if is_web else "disabled")
         self.saves_btn.config(state="normal" if is_web else "disabled")
+        self.decrypt_btn.config(state="normal" if is_rgss else "disabled")
+
+    def decrypt_selected(self):
+        sel = self.selected()
+        if not sel or not sel[1]:
+            return
+        name, root, engine = sel[1]
+        if engine not in ("XP", "VX", "VXAce"):
+            return
+        out = root.rstrip(os.sep) + "_descifrado"
+        if not messagebox.askyesno(
+                "Descifrar", "¿Descifrar '%s'?\n\n"
+                "Se descargará RPGMakerDecrypter (una sola vez) y los archivos "
+                "del archivo cifrado (%s) se escribirán en:\n%s" % (name, os.path.basename(root), out)):
+            return
+        self._update_status("Descifrando '%s'... esto puede tardar un poco." % name)
+        threading.Thread(target=self._decrypt_worker, args=(root, out, name), daemon=True).start()
+
+    def _decrypt_worker(self, root, out, name):
+        script = os.path.join(BASE_DIR, "rpgmaker-decrypter.py")
+        r = subprocess.run([sys.executable, script, root, "--output", out],
+                           stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                           text=True)
+        tail = "\n".join((r.stdout or "").strip().splitlines()[-6:])
+        self._set_status("Descifrado de '%s' %s.\n%s" % (
+            name, "completado" if r.returncode == 0 else "con errores (código %d)" % r.returncode, tail))
 
     # --- sesión de juego (tiempo jugado / última vez) ---
     def _start_session(self, name):
