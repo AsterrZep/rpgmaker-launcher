@@ -27,7 +27,13 @@ class GameHandler(SimpleHTTPRequestHandler):
             super().log_message(*args)
 
     def end_headers(self):
-        self.send_header("Cache-Control", "public, max-age=300")
+        # Evitar cachear configuración crítica que el usuario o el lanzador modifican,
+        # como plugins.js, index.html o package.json.
+        path = self.path.split("?")[0].lower()
+        if path.endswith("plugins.js") or path.endswith("index.html") or path.endswith("package.json"):
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        else:
+            self.send_header("Cache-Control", "public, max-age=300")
         super().end_headers()
 
     def log_request(self, code="-", size="-"):
