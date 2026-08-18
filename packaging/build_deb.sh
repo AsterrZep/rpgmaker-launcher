@@ -34,6 +34,7 @@ for f in rpgmaker-launcher.sh rpgmaker-launcher-gui.py rpgmaker-server.py \
     cp "$ROOT/$f" "$PKGROOT$LIBDIR/"
 done
 cp -r "$ROOT/runtimes" "$PKGROOT$LIBDIR/runtimes"
+rm -f "$PKGROOT$LIBDIR/runtimes/rpgmaker-launcher.desktop"
 chmod +x "$PKGROOT$LIBDIR/rpgmaker-launcher.sh" \
         "$PKGROOT$LIBDIR/rpgmaker-launcher-gui.py" \
         "$PKGROOT$LIBDIR/rpgmaker-webview.py" \
