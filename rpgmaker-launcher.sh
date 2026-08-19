@@ -91,6 +91,26 @@ _renpy_lib_ok() {
     return 1
 }
 
+# Devuelve el script .sh que arranca un juego Ren'Py. Los juegos
+# Ren'Py llevan <nombre>.sh junto a su <nombre>.py (p. ej.
+# "Game of Whores.py" -> "Game of Whores.sh"); si ese par no existe,
+# se usa cualquier .sh de la raíz del juego.
+_renpy_launcher_sh() {
+    local rdir="$1" py sh
+    py="$(first_find "$rdir" "*.py")"
+    if [ -n "$py" ]; then
+        sh="${py%.py}.sh"
+        if [ -f "$sh" ]; then
+            echo "$sh"
+            return 0
+        fi
+    fi
+    for f in "$rdir"/*.sh; do
+        [ -f "$f" ] && { echo "$f"; return 0; }
+    done
+    return 1
+}
+
 # ---------- detección de motor ----------
 # Devuelve "RAIZ|MOTOR|ETIQUETA"
 detect_engine() {
@@ -193,7 +213,16 @@ launch_native() {
             cmd=("$EASYRPG" "$dir")
             ;;
         renpy)
-            cmd=("./$(basename "$(first_find "$dir" "*.py")" .py).sh")
+            sh="$( _renpy_launcher_sh "$dir" )"
+            if [ -z "$sh" ] || [ ! -f "$sh" ]; then
+                echo "!! No se encontró el lanzador .sh del juego Ren'Py en: $dir"
+                return 1
+            fi
+            if [ -x "$sh" ]; then
+                cmd=("$sh")
+            else
+                cmd=("sh" "$sh")
+            fi
             ;;
         *)
             cmd=("$MKXPZ")

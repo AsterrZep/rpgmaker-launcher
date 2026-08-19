@@ -95,6 +95,24 @@ def _renpy_lib_ok(rdir):
     return False
 
 
+def renpy_launcher_sh(root):
+    """Devuelve el script .sh que arranca un juego Ren'Py.
+
+    Los juegos Ren'Py llevan <nombre>.sh junto a su <nombre>.py
+    (p. ej. "Game of Whores.py" -> "Game of Whores.sh"). Si ese par
+    no existe, se usa cualquier .sh de la raíz del juego.
+    """
+    py = find_glob(root, "*.py")
+    if py:
+        candidate = os.path.splitext(py)[0] + ".sh"
+        if os.path.isfile(candidate):
+            return candidate
+    for f in sorted(os.listdir(root)):
+        if f.endswith(".sh") and os.path.isfile(os.path.join(root, f)):
+            return os.path.join(root, f)
+    return None
+
+
 def detect_engine(top):
     f = first_find(top, "index.html")
     if f:
@@ -326,8 +344,11 @@ class Launcher:
         if engine == "2000-2003":
             cmd = [EASYRPG, root]
         elif engine == "renpy":
-            py = first_find(root, "*.py")
-            cmd = [os.path.join(root, os.path.splitext(py)[0] + ".sh")]
+            sh = renpy_launcher_sh(root)
+            if not sh:
+                raise RuntimeError(
+                    "No se encontró el lanzador .sh del juego Ren'Py en:\n%s" % root)
+            cmd = [sh]
         else:
             cmd = [MKXPZ]
         subprocess.Popen(cmd, cwd=root, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -993,7 +1014,12 @@ class App:
         else:
             self._update_status("Lanzando %s (%s) en su ventana..." % (name, ENGINE_LABEL.get(engine, engine)))
             self.root.update_idletasks()
-            self.launcher.launch_native(root, engine)
+            try:
+                self.launcher.launch_native(root, engine)
+            except Exception as e:
+                self._error("RPG Maker Launcher",
+                            "No se pudo lanzar '%s' (%s).\n\n%s" % (name, ENGINE_LABEL.get(engine, engine), e))
+                return
             self._update_status("%s lanzado. Cierra la ventana del juego cuando termines." % name)
         self._start_session(name)
 
