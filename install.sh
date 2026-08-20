@@ -21,10 +21,10 @@ EASYRPG_VER="0.8.1.1-3+14.3"
 LIBLCF_VER="0.8.1-3+14.3"
 JOBS="$(nproc)"
 
-c_log()  { printf '\033[1;34m[install]\033[0m %s\n' "$*"; }
-c_ok()   { printf '\033[1;32m[ok]     \033[0m %s\n' "$*"; }
-c_warn() { printf '\033[1;33m[aviso]  \033[0m %s\n' "$*"; }
-c_err()  { printf '\033[1;31m[error]  \033[0m %s\n' "$*"; }
+c_log()  { printf '\033[1;34m[install]\033[0m EN: %s\n\033[1;34m[install]\033[0m ES: %s\n' "$1" "$2"; }
+c_ok()   { printf '\033[1;32m[ok]     \033[0m EN: %s\n\033[1;32m[ok]     \033[0m ES: %s\n' "$1" "$2"; }
+c_warn() { printf '\033[1;33m[warn]   \033[0m EN: %s\n\033[1;33m[aviso]  \033[0m ES: %s\n' "$1" "$2"; }
+c_err()  { printf '\033[1;31m[error]  \033[0m EN: %s\n\033[1;31m[error]  \033[0m ES: %s\n' "$1" "$2"; }
 
 need_sudo() {
   if [ "$(id -u)" -eq 0 ]; then
@@ -32,19 +32,22 @@ need_sudo() {
   elif command -v sudo >/dev/null 2>&1; then
     SUDO="sudo"
   else
-    c_err "Necesitas privilegios de root. Ejecuta con sudo o desde una cuenta con sudo."
+    c_err "You need root privileges. Run with sudo or from a sudo-enabled account." \
+          "Necesitas privilegios de root. Ejecuta con sudo o desde una cuenta con sudo."
     exit 1
   fi
 }
 
-die() { c_err "$1"; exit 1; }
+die() { c_err "$1" "$2"; exit 1; }
 
 # ---------------------------------------------------------------- requisitos
 need_sudo
-[ -x "$(command -v apt-get)" ] || die "Solo se soportan sistemas Debian/Ubuntu (apt)."
+[ -x "$(command -v apt-get)" ] || die "Only Debian/Ubuntu systems (apt) are supported." \
+                                      "Solo se soportan sistemas Debian/Ubuntu (apt)."
 
 # ----------------------------------------------------- dependencias del sistema
-c_log "Instalando dependencias del sistema (apt)..."
+c_log "Installing system dependencies (apt)..." \
+      "Instalando dependencias del sistema (apt)..."
 $SUDO apt-get update -qq
 $SUDO apt-get install -y --no-install-recommends \
   python3-tk python3-pil unzip ca-certificates wget curl git \
@@ -56,31 +59,38 @@ $SUDO apt-get install -y --no-install-recommends \
   libpng-dev zlib1g-dev libtheora-dev libvorbis-dev libogg-dev \
   libfreetype-dev libpixman-1-dev libuchardet-dev libbz2-dev \
   libmp3lame-dev libmpg123-dev libjack-jackd2-dev libsndfile1-dev
-c_ok "Dependencias del sistema instaladas."
+c_ok "System dependencies installed." \
+     "Dependencias del sistema instaladas."
 
 # ------------------------------------------------------------- EasyRPG Player
 if command -v easyrpg-player >/dev/null 2>&1; then
-  c_ok "easyrpg-player ya está instalado ($(easyrpg-player --version 2>/dev/null | head -1 || echo '?'))."
+  c_ok "easyrpg-player is already installed ($(easyrpg-player --version 2>/dev/null | head -1 || echo '?'))." \
+       "easyrpg-player ya está instalado ($(easyrpg-player --version 2>/dev/null | head -1 || echo '?'))."
 else
-  c_log "Instalando EasyRPG Player (2000/2003)..."
+  c_log "Installing EasyRPG Player (2000/2003)..." \
+        "Instalando EasyRPG Player (2000/2003)..."
   mkdir -p "$WORKDIR"
   wget -q -O "$WORKDIR/liblcf0.deb"  "$OBS_BASE/liblcf0_${LIBLCF_VER}_amd64.deb"
   wget -q -O "$WORKDIR/easyrpg.deb"  "$OBS_BASE/easyrpg-player_${EASYRPG_VER}_amd64.deb"
   $SUDO apt-get install -y --no-install-recommends "$WORKDIR/liblcf0.deb" "$WORKDIR/easyrpg.deb"
-  c_ok "easyrpg-player instalado (${EASYRPG_VER})."
+  c_ok "easyrpg-player installed (${EASYRPG_VER})." \
+       "easyrpg-player instalado (${EASYRPG_VER})."
 fi
 
 # ------------------------------------------------------------------ mkxp-z
 if [ -x "$RUNTIMES/mkxp-z" ]; then
-  c_ok "mkxp-z ya compilado en $RUNTIMES/mkxp-z."
+  c_ok "mkxp-z already built at $RUNTIMES/mkxp-z." \
+       "mkxp-z ya compilado en $RUNTIMES/mkxp-z."
 else
-  c_log "Compilando mkxp-z (XP/VX/VX Ace). Esto puede tardar varios minutos..."
-  [ "$(uname -m)" = "x86_64" ] || c_warn "mkxp-z solo se ha probado en x86_64."
+  c_log "Building mkxp-z (XP/VX/VX Ace). This can take several minutes..." \
+        "Compilando mkxp-z (XP/VX/VX Ace). Esto puede tardar varios minutos..."
+  [ "$(uname -m)" = "x86_64" ] || c_warn "mkxp-z has only been tested on x86_64." \
+                                         "mkxp-z solo se ha probado en x86_64."
 
   mkdir -p "$WORKDIR" "$RUNTIMES"
   cd "$WORKDIR"
 
-  # --- SDL_sound (fork compatible con mkxp-z, librería compartida)
+  # --- SDL_sound (mkxp-z compatible fork, shared library)
   if [ ! -d SDL_sound/.git ]; then
     git clone --quiet https://github.com/icculus/SDL_sound.git SDL_sound
   fi
@@ -89,9 +99,10 @@ else
   cmake --build build -j"$JOBS" >/dev/null
   $SUDO cmake --install build >/dev/null
   cd "$WORKDIR"
-  c_ok "SDL_sound construido."
+  c_ok "SDL_sound built." \
+       "SDL_sound construido."
 
-  # --- SDL2_ttf (fork de mkxp-z)
+  # --- SDL2_ttf (mkxp-z fork)
   if [ ! -d sdl2_ttf/.git ]; then
     git clone --quiet -b mkxp-z https://github.com/mkxp-z/sdl_ttf.git sdl2_ttf
   fi
@@ -99,21 +110,23 @@ else
   cmake -S . -B build >/dev/null
   cmake --build build -j"$JOBS" >/dev/null
   $SUDO cmake --install build >/dev/null
-  # la cabecera del fork debe usarse en lugar de la del sistema
+  # the fork header must be used instead of the system one
   if [ -f SDL_ttf.h ]; then
     $SUDO cp -f SDL_ttf.h /usr/include/SDL2/SDL_ttf.h
   fi
   cd "$WORKDIR"
-  c_ok "SDL2_ttf (fork mkxp-z) construido."
+  c_ok "SDL2_ttf (mkxp-z fork) built." \
+       "SDL2_ttf (fork mkxp-z) construido."
 
-  # --- libiconv/libcharset: glibc los proporciona dentro de libc.so.6
+  # --- libiconv/libcharset: glibc provides them inside libc.so.6
   if [ ! -e /usr/local/lib/libiconv.so ]; then
     $SUDO ln -sf /lib/x86_64-linux-gnu/libc.so.6 /usr/local/lib/libiconv.so
     $SUDO ln -sf /lib/x86_64-linux-gnu/libc.so.6 /usr/local/lib/libcharset.so
-    c_ok "Symlinks de libiconv/libcharset creados."
+    c_ok "libiconv/libcharset symlinks created." \
+         "Symlinks de libiconv/libcharset creados."
   fi
 
-  # --- pkg-config override de Theora (añade -ltheoradec -ltheoraenc)
+  # --- pkg-config override of Theora (adds -ltheoradec -ltheoraenc)
   mkdir -p /usr/local/lib/pkgconfig
   if ! grep -q "theoradec" /usr/local/lib/pkgconfig/theora.pc 2>/dev/null; then
     $SUDO tee /usr/local/lib/pkgconfig/theora.pc >/dev/null <<'EOF'
@@ -128,10 +141,11 @@ Version: 1.1.1
 Libs: -L${libdir} -ltheora -ltheoradec -ltheoraenc
 Cflags: -I${includedir}
 EOF
-    c_ok "Override pkg-config de Theora instalado."
+    c_ok "Theora pkg-config override installed." \
+         "Override pkg-config de Theora instalado."
   fi
 
-  # --- libphysfs.a de Debian puede llegar sin índice de símbolos
+  # --- Debian's libphysfs.a may arrive without a symbol index
   if [ -f /usr/lib/x86_64-linux-gnu/libphysfs.a ]; then
     $SUDO ranlib /usr/lib/x86_64-linux-gnu/libphysfs.a
   fi
@@ -142,16 +156,19 @@ EOF
   fi
   cd mkxp-z
   MRI_VER="$(ruby -e 'print RUBY_VERSION' | cut -d. -f1-2)"
-  c_log "Detectada MRI ${MRI_VER} (usa la versión de mruby correspondiente)."
+  c_log "Detected MRI ${MRI_VER} (uses the matching mruby version)." \
+        "Detectada MRI ${MRI_VER} (usa la versión de mruby correspondiente)."
   meson setup build -Dmri_version="$MRI_VER" -Dstatic_executable=false >/dev/null
   ninja -C build >/dev/null
   cp build/mkxp-z.x86_64 "$RUNTIMES/mkxp-z"
   cd "$BASEDIR"
-  c_ok "mkxp-z compilado y copiado a $RUNTIMES/mkxp-z."
+  c_ok "mkxp-z compiled and copied to $RUNTIMES/mkxp-z." \
+       "mkxp-z compilado y copiado a $RUNTIMES/mkxp-z."
 fi
 
 # ------------------------------------------------------ acceso directo de la app
-c_log "Generando acceso directo..."
+c_log "Generating the app shortcut..." \
+      "Generando acceso directo..."
 chmod +x "$BASEDIR/rpgmaker-launcher.sh" "$BASEDIR/rpgmaker-launcher-gui.py" "$BASEDIR/rpgmaker-webview.py" "$BASEDIR/rpgmaker-server.py" "$BASEDIR/rpgmaker-plugins.py"
 mkdir -p "$HOME/.local/share/applications"
 sed "s|__BASEDIR__|$BASEDIR|g" "$RUNTIMES/rpgmaker-launcher.desktop" \
@@ -159,14 +176,29 @@ sed "s|__BASEDIR__|$BASEDIR|g" "$RUNTIMES/rpgmaker-launcher.desktop" \
 if command -v desktop-file-validate >/dev/null 2>&1; then
   desktop-file-validate "$HOME/.local/share/applications/rpgmaker-launcher.desktop" || true
 fi
-c_ok "Acceso directo creado: RPG Maker Launcher."
+c_ok "Shortcut created: RPG Maker Launcher." \
+     "Acceso directo creado: RPG Maker Launcher."
 
 # ---------------------------------------------------------------------- fin
 cat <<EOF
 
 ------------------------------------------------------------------
-  RPG Maker Launcher instalado.
+  RPG Maker Launcher installed. / RPG Maker Launcher instalado.
 
+  EN:
+  - Add your games as .zip (or folders) inside:
+        $BASEDIR
+  - Open the "RPG Maker Launcher" app from your Linux desktop's
+    application menu.
+  - From the terminal:
+        $BASEDIR/rpgmaker-launcher.sh
+  - Web games (MZ/MV) can open in the browser or in the lightweight
+    WebKit viewer (rpgmaker-webview.py), which uses less memory.
+    In the GUI, tick "WebKit viewer (lighter)".
+  - On Chrome OS the shortcut appears in chrome://apps
+    (if it does not, restart the Linux container or log out/in).
+
+  ES:
   - Añade tus juegos como .zip (o carpetas) dentro de:
         $BASEDIR
   - Abre la app "RPG Maker Launcher" desde el menú de aplicaciones
@@ -179,7 +211,7 @@ cat <<EOF
   - En Chrome OS, el acceso directo aparece en chrome://apps
     (si no sale, reinicia el contenedor Linux o cierra sesión).
 
-  Recuerda: este lanzador NO incluye juegos. Pon solo juegos
-  que tengas legalmente y respeta las licencias de cada autor.
+  Remember / Recuerda: this launcher does NOT include games. Put only
+  games you legally own and respect each author's license.
 ------------------------------------------------------------------
 EOF

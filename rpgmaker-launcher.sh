@@ -67,12 +67,12 @@ extract_zips() {
         if [ -f "$marker" ]; then
             continue
         fi
-        echo ">> Extrayendo: $(basename "$zip")"
+        echo ">> Extracting / Extrayendo: $(basename "$zip")"
         mkdir -p "$GAMES_DIR/$name"
         if unzip -o -q "$zip" -d "$GAMES_DIR/$name" && touch "$marker"; then
             echo "   OK"
         else
-            echo "   ERROR extrayendo $zip"
+            echo "   ERROR extracting $zip / ERROR extrayendo $zip"
             rm -f "$marker"
         fi
     done
@@ -184,21 +184,21 @@ launch_web() {
     local port
     port="$(stable_port "$name")"
     echo ""
-    echo ">> Servidor en: http://localhost:$port  (directorio: $dir)"
+    echo ">> Server at / Servidor en: http://localhost:$port  (dir: $dir)"
     python3 "$WEBSRV" "$port" --dir "$dir" >/dev/null 2>&1 &
     local pid=$!
     sleep 1
     if [ "$viewer" = "webkit" ]; then
-        echo ">> Abriendo el visor WebKit ligero..."
+        echo ">> Opening the lightweight WebKit viewer... / Abriendo el visor WebKit ligero..."
         python3 -u "$WEBVIEW" --url "http://localhost:$port/index.html" \
             --title "$(basename "$dir")" >/dev/null 2>&1 &
         local vpid=$!
         trap 'kill "$pid" "$vpid" 2>/dev/null; exit 0' INT
         wait "$pid"
     else
-        echo ">> Abriendo el navegador..."
+        echo ">> Opening the browser... / Abriendo el navegador..."
         xdg-open "http://localhost:$port/index.html" >/dev/null 2>&1 || true
-        echo ">> Juego abierto. Pulsa Ctrl+C para cerrar el servidor."
+        echo ">> Game open. Press Ctrl+C to stop the server. / Juego abierto. Pulsa Ctrl+C para cerrar el servidor."
         trap 'kill "$pid" 2>/dev/null; exit 0' INT
         wait "$pid"
     fi
@@ -215,7 +215,7 @@ launch_native() {
         renpy)
             sh="$( _renpy_launcher_sh "$dir" )"
             if [ -z "$sh" ] || [ ! -f "$sh" ]; then
-                echo "!! No se encontró el lanzador .sh del juego Ren'Py en: $dir"
+                echo "!! No Ren'Py .sh launcher found for the game at / No se encontró el lanzador .sh del juego Ren'Py en: $dir"
                 return 1
             fi
             if [ -x "$sh" ]; then
@@ -229,9 +229,9 @@ launch_native() {
             ;;
     esac
     echo ""
-    echo ">> Lanzando ($engine): ${cmd[*]}  (directorio: $dir)"
+    echo ">> Launching ($engine) / Lanzando ($engine): ${cmd[*]}  (dir: $dir)"
     (cd "$dir" && nohup "${cmd[@]}" >/dev/null 2>&1 &)
-    echo ">> Abierto en su propia ventana. Vuelve aquí cuando quieras."
+    echo ">> Opened in its own window. Come back here when you want. / Abierto en su propia ventana. Vuelve aquí cuando quieras."
     sleep 2
 }
 
@@ -248,10 +248,12 @@ for top in "$GAMES_DIR"/*/; do
     det="$(detect_engine "${top%/}")"
     if [ -z "$det" ]; then
         if [ -n "$(first_find "${top%/}" "System.json")" ] || [ -n "$(first_find "${top%/}" "Map001.json")" ]; then
-            echo "!! $(basename "$top"): parece RPG Maker (MZ/MV) pero su descarga está INCOMPLETA"
-            echo "   (falta la carpeta js/ e index.html). No se puede lanzar."
+            echo "!! $(basename "$top"): looks like RPG Maker (MZ/MV) but the download is INCOMPLETE"
+            echo "   (missing js/ folder and index.html). Cannot launch. /"
+            echo "   parece RPG Maker (MZ/MV) pero su descarga está INCOMPLETA (falta la carpeta js/ e index.html). No se puede lanzar."
         elif [ -d "$(find "$top" -maxdepth "$MAX_DEPTH" -type d -name renpy 2>/dev/null | head -n1)" ]; then
-            echo "!! $(basename "$top"): juego Ren'Py sin la parte Linux (falta lib/linux-x86_64 o lib/py2-linux-x86_64)."
+            echo "!! $(basename "$top"): Ren'Py game without the Linux part (missing lib/linux-x86_64 or lib/py2-linux-x86_64). /"
+            echo "   juego Ren'Py sin la parte Linux (falta lib/linux-x86_64 o lib/py2-linux-x86_64)."
         fi
         continue
     fi
@@ -272,22 +274,23 @@ for top in "$GAMES_DIR"/*/; do
 done
 
 if [ "${#GAMES[@]}" -eq 0 ]; then
-    echo "No se encontraron juegos en: $GAMES_DIR"
+    echo "No games found in / No se encontraron juegos en: $GAMES_DIR"
+    echo "Put your RPG Maker game .zip files next to this script and run it again. /"
     echo "Coloca los .zip de tus juegos de RPG Maker junto a este script y vuelve a ejecutarlo."
     exit 1
 fi
 
 echo ""
-echo "Juegos disponibles:"
-PS3="Elige un número (o $((${#GAMES[@]} + 1)) para salir): "
-select name in "${NAMES[@]}" "Salir"; do
+echo "Available games / Juegos disponibles:"
+PS3="Pick a number (or $((${#GAMES[@]} + 1)) to exit) / Elige un número (o $((${#GAMES[@]} + 1)) para salir): "
+select name in "${NAMES[@]}" "Exit / Salir"; do
     case "$name" in
-        "Salir")
-            echo "¡Hasta luego!"
+        "Exit / Salir")
+            echo "Goodbye! / ¡Hasta luego!"
             exit 0
             ;;
         "")
-            echo "Opción inválida."
+            echo "Invalid option. / Opción inválida."
             ;;
         *)
             idx=$((REPLY - 1))
@@ -297,13 +300,13 @@ select name in "${NAMES[@]}" "Salir"; do
                 MZ|MV|web)
                     if [ -f "$WEBVIEW" ]; then
                         echo ""
-                        echo "¿Cómo abrir '$(basename "$root")'?"
-                        select v in "Navegador (Chrome)" "Visor WebKit ligero" "Cancelar"; do
+                        echo "How do you want to open '$(basename "$root")'? / ¿Cómo abrir '$(basename "$root")'?"
+                        select v in "Browser (Chrome) / Navegador" "Lightweight WebKit viewer / Visor WebKit ligero" "Cancel / Cancelar"; do
                             case "$v" in
-                                "Visor WebKit ligero") launch_web "$root" webkit "$(basename "$top")"; break ;;
-                                "Cancelar") echo "Cancelado."; break ;;
-                                "Navegador (Chrome)") launch_web "$root" browser "$(basename "$top")"; break ;;
-                                *) echo "Opción inválida." ;;
+                                "Lightweight WebKit viewer / Visor WebKit ligero") launch_web "$root" webkit "$(basename "$top")"; break ;;
+                                "Cancel / Cancelar") echo "Cancelled. / Cancelado."; break ;;
+                                "Browser (Chrome) / Navegador") launch_web "$root" browser "$(basename "$top")"; break ;;
+                                *) echo "Invalid option. / Opción inválida." ;;
                             esac
                         done
                     else
