@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
   <id>org.rpgmaker.Launcher</id>
-  <metadata_license>GPL-3.0-or-later</metadata_license>
+  <metadata_license>MIT</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <name>RPG Maker Launcher</name>
   <summary>Lanza juegos de RPG Maker (MV, MZ, XP, VX, VX Ace, 2000/2003, Ren'Py)</summary>
