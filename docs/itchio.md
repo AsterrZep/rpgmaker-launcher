@@ -11,7 +11,7 @@ clasificación, etiquetas y material de promoción. Está pensada para una
 | Campo | Valor |
 |---|---|
 | **Título** | RPG Maker Launcher |
-| **Tagline / sub** | Juega a tus RPG Maker y Ren'Py en Linux (incluido Chrome OS) |
+| **Tagline / sub** | Play your RPG Maker & Ren'Py games on Linux (incl. Chrome OS) |
 | **Clasificación** | Tools (Herramientas) |
 | **Género** | Software / Utilidad |
 | **Plataforma** | Linux (incluye Chrome OS · Crostini) |
@@ -28,78 +28,24 @@ clasificación, etiquetas y material de promoción. Está pensada para una
 
 ### Version corta (para el tagline)
 
-> ¿Usas Linux y quieres jugar a tus RPG Maker y novelas visuales de Ren'Py sin instalar Windows? Este lanzador detecta el motor de cada juego, descomprime el `.zip` si hace falta y lo ejecuta con el runtime correcto, sin tocar nada del juego. Funciona en cualquier distribución con escritorio (empezó como una app para Chromebooks).
+> Playing RPG Maker and Ren'Py games on Linux without Windows? This launcher detects the engine of every game, extracts the `.zip` if needed and runs it with the correct runtime, without touching the game itself. Works on any Linux desktop (it started life as a Chrome OS app).
 
-### Descripción larga (markdown)
+### Descripción larga (HTML con diseño)
 
-```markdown
-**¿Usas Linux y te mueres por jugar a esos RPG Maker y novelas visuales de Ren'Py?**
+Pega **todo el contenido de [`docs/itchio-long-description.html`](itchio-long-description.html)** en el campo
+**Long description** del editor de itch.io. Es HTML auto-contenido con diseño oscuro
+(tarjetas, tabla de motores, bloques de instalación) que hace juego con la app:
 
-**RPG Maker Launcher** es un lanzador universal de escritorio para **Linux**. Empezó como una app pensada para **Chrome OS (Linux/Crostini)** y ha evolucionado hasta funcionar en cualquier distribución con escritorio: detecta automáticamente el motor de cada juego, descomprime el `.zip` si hace falta y lo ejecuta con el runtime adecuado, sin tocar nada del juego.
-
-### Motores soportados
-
-- **RPG Maker MZ y MV** (web) → se abren en el navegador o en un visor WebKit ligero.
-- **RPG Maker XP, VX y VX Ace** → con mkxp-z (binario nativo).
-- **RPG Maker 2000 y 2003** → con EasyRPG Player.
-- **Ren'Py** → tanto los juegos antiguos de **Python 2** como los modernos de **Python 3** (se usa el motor que el propio juego incluye).
-
-### Características
-
-- ✅ **Descompresión automática** de `.zip` (una sola vez, con marcador de integridad).
-- ✅ **Detección automática del motor** en más de 10 variantes.
-- ✅ **Visor WebKit ligero** para juegos web pesados (mucho menos memoria que el navegador).
-- ✅ **Servidor HTTP multihilo con caché**: sin tirones al cargar muchos assets de golpe.
-- ✅ **Gestor de plugins MZ/MV**: detecta plugins incompatibles o pesados y los desactiva (hasta un 31 % más rápido).
-- ✅ **Partidas en disco real**: guarda en archivos `.rpgsave`/`.rmmzsave` exportables, con copias de seguridad desde la propia GUI.
-- ✅ **Trucos estilo JoyPlay** (F8): oro, HP/MP, objetos, variables, switches, teletransporte y consola de código.
-- ✅ **Mando (gamepad)** para juegos MZ/MV.
-- ✅ **Atajos configurables**: FPS, captura de pantalla, pantalla completa, zoom, recargar…
-- ✅ **Descifrador integrado** para XP/VX/VX Ace/MV/MZ.
-- ✅ **Librería visual** con portadas, "última vez jugado" y tiempo total.
-- ✅ **Versión de terminal** y **versión gráfica** (GUI).
-- ✅ **Diagnóstico de errores** (`--test`) para saber por qué un juego no arranca.
-
-### Instalación (elige una)
-
-1. **Debian/Ubuntu — recomendado** (ocupa poco):
-   ```bash
-   sudo apt install ./rpgmaker-launcher_<versión>_amd64.deb
-   ```
-2. **AppImage** (portable, sin instalar, incluye su propio Python):
-   ```bash
-   chmod +x rpgmaker-launcher-<versión>-x86_64.AppImage && ./rpgmaker-launcher-<versión>-x86_64.AppImage
-   ```
-3. **Flatpak** (sandbox de GNOME; ojo: la primera vez descarga el runtime de GNOME, ~2-3 GB):
-   ```bash
-   flatpak install rpgmaker-launcher-<versión>.flatpak
-   ```
-
-> Si el espacio te preocupa, usa el **.deb** o el **AppImage**: ocupan muchísimo menos que el Flatpak.
-
-### Cómo se usa
-
-1. Coloca tus juegos (`.zip` o carpetas ya descomprimidas) dentro de `~/Games/`.
-2. Abre **RPG Maker Launcher**.
-3. Pulsa el nombre del juego… ¡y a jugar!
-
-### Requisitos
-
-- Cualquier Linux con escritorio (incluido Chrome OS con **Linux/Crostini** activado).
-- **Python 3** (viene en todas las distribuciones).
-- `unzip`.
-- XP/VX/VX Ace: `mkxp-z` (lo compila el instalador automáticamente).
-- 2000/2003: `easyrpg-player` (lo instala el instalador).
-
-### Enlaces
-
-- **Código fuente y releases**: https://github.com/AsterrZep/rpgmaker-launcher
-- **Guía completa (README)**: instalación, solución de problemas, trucos, partidas.
-
-### Licencia
-
-Proyecto bajo **GNU General Public License versión 3 (GPLv3)**: software libre con copyleft — puedes usarlo, modificarlo y compartirlo, y las obras derivadas deben distribuirse bajo la misma licencia. Este lanzador **no incluye ningún juego**: las partidas y comprimidos que pongas en `~/Games/` son tuyos y de sus autores.
+```text
+docs/itchio-long-description.html  <- copia TODO este archivo y pégalo en itch.io
 ```
+
+> **Antes de publicar:**
+> 1. Sube 3-5 capturas de pantalla a itch.io y sustituye `REPLACE_WITH_SCREENSHOT_1/2/3`
+>    por las URLs de tus capturas dentro del HTML.
+> 2. Los botones de descarga apuntan a GitHub Releases; si prefieres que se descargue
+>    el fichero desde itch.io, cambia los `href` por las URLs de tus ficheros de itch.io.
+> 3. La descripción está en **inglés** (comunidad internacional).
 
 ---
 
@@ -129,27 +75,13 @@ Proyecto bajo **GNU General Public License versión 3 (GPLv3)**: software libre 
 ### Texto corto (Reddit / Discord / foros)
 
 ```
-RPG Maker Launcher v0.1.2
+RPG Maker Launcher v0.2.0
 
-Lanzador universal de juegos de RPG Maker y Ren'Py para Linux (empezó como una app de Chrome OS).
-Detecta el motor, descomprime .zips y ejecuta MZ, MV, XP, VX, VX Ace, 2000/2003 y Ren'Py
-(tanto los de Python 2 como los de Python 3). Incluye visor WebKit ligero, partidas en disco,
-trucos, mando, gestor de plugins y descifrador.
-
-Gratis y open-source (GPLv3).
-Descárgalo: https://github.com/AsterrZep/rpgmaker-launcher/releases
-Página en itch.io: https://asterrzep.itch.io/rpg-maker-launcher
-```
-
-### Texto en inglés (para comunidades internacionales)
-
-```
-RPG Maker Launcher v0.1.2
-
-A universal RPG Maker & Ren'Py launcher for Linux (started as a Chrome OS app).
+A universal RPG Maker & Ren'Py launcher for Linux (started life as a Chrome OS app).
 Auto-detects the engine, extracts .zips and runs MZ, MV, XP, VX, VX Ace, 2000/2003
 and Ren'Py games (both old Python 2 and modern Python 3 ones). Includes a lightweight
 WebKit viewer, on-disk saves, cheats, gamepad support, a plugin manager and a decrypter.
+Now in English and Spanish (switchable from the GUI).
 
 Free & open-source (GPLv3).
 Download: https://github.com/AsterrZep/rpgmaker-launcher/releases
