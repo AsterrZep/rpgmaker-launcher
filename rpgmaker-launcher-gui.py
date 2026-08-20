@@ -46,8 +46,10 @@ ENGINE_LABEL = {
 
 # ---------- idioma (es -> en) ----------
 # El español es el idioma base del código; LANG selecciona el idioma
-# activo ("es" devuelve el texto tal cual, "en" lo traduce).
-LANG = "es"
+# activo ("es" devuelve el texto tal cual, "en" lo traduce). El
+# idioma por defecto es inglés; se cambia con el selector de la
+# cabecera o con --lang es|en, y se persiste en general.lang.
+LANG = "en"
 CLI_LANG = None
 
 I18N = {
@@ -637,9 +639,9 @@ class App:
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         cfg = _config_module().load_config()
         global LANG
-        LANG = CLI_LANG or cfg.get("general", {}).get("lang", "es")
+        LANG = CLI_LANG or cfg.get("general", {}).get("lang", "en")
         if LANG not in ("es", "en"):
-            LANG = "es"
+            LANG = "en"
         self.use_webkit = tk.BooleanVar(
             value=cfg.get("general", {}).get("webkit", False))
         self.auto_delete = tk.BooleanVar(
