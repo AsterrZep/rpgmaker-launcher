@@ -28,7 +28,8 @@ for f in rpgmaker-launcher.sh rpgmaker-launcher-gui.py rpgmaker-server.py \
          rpgmaker-gamepad.js rpgmaker-browser-keys.js rpgmaker-icon.png; do
     cp "$ROOT/$f" "$SRC/"
 done
-cp -r "$ROOT/runtimes/mkxp-z" "$SRC/runtimes/"
+cp -r "$ROOT/runtimes/mkxp-z" "$SRC/runtimes/" 2>/dev/null || \
+    echo ">> aviso: no existe runtimes/mkxp-z (se compila con install.sh); el Flatpak no podrá lanzar XP/VX/VX Ace."
 if [ -f "$ROOT/runtimes/RPGMakerDecrypter-cli" ]; then
     cp -r "$ROOT/runtimes/RPGMakerDecrypter-cli" "$SRC/runtimes/"
 fi

@@ -28,6 +28,10 @@ jobs:
         id: ver
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
+      - name: Compilar runtime mkxp-z (XP/VX/VX Ace)
+        run: |
+          ./install.sh 2>&1 | tail -n 30
+
       - name: Construir .deb
         run: ./packaging/build_deb.sh "${{ steps.ver.outputs.version }}"
 
