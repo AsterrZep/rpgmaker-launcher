@@ -72,6 +72,8 @@ Cada versión se publica como release en GitHub con binarios listos para usar (s
 | **AppImage** | `rpgmaker-launcher-<versión>-x86_64.AppImage` | Portable, incluye su propio Python con tkinter (`chmod +x` y ejecutar) |
 | **Flatpak** | `rpgmaker-launcher-<versión>.flatpak` | Sandbox de GNOME (`flatpak install rpgmaker-launcher-*.flatpak`) |
 
+> ⚠️ **Sobre el Flatpak**: es la opción **menos recomendada si el espacio te preocupa**. El paquete en sí pesa ~55 MB, pero Flatpak instala el runtime de GNOME (`org.gnome.Platform` + SDK, **~2-3 GB** en disco) la primera vez. En Chrome OS / Crostini el espacio del contenedor Linux suele ser limitado, así que si no necesitas el sandbox **usa mejor el `.deb` (recomendado en Chrome OS) o el AppImage**: ocupan mucho menos y se instalan al momento. Los tres dan exactamente el mismo lanzador.
+
 Las versiones instaladas guardan los juegos en `~/Games/` (se puede cambiar con la variable `RPGMAKER_DATA_DIR`). Los scripts de empaquetado están en `packaging/`:
 
 ```bash
