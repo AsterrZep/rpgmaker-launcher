@@ -1,0 +1,48 @@
+name: Release packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar herramientas de empaquetado
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends dpkg-dev wget flatpak flatpak-builder
+          flatpak --user remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+      - name: Obtener versión desde el tag
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Construir .deb
+        run: ./packaging/build_deb.sh "${{ steps.ver.outputs.version }}"
+
+      - name: Construir AppImage
+        run: ./packaging/build_appimage.sh "${{ steps.ver.outputs.version }}"
+
+      - name: Construir Flatpak
+        run: ./packaging/build_flatpak.sh "${{ steps.ver.outputs.version }}"
+
+      - name: Subir artefactos al release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" \
+            dist/rpgmaker-launcher_*.deb \
+            dist/rpgmaker-launcher-*.AppImage \
+            dist/rpgmaker-launcher-*.flatpak \
+            --clobber

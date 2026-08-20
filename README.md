@@ -80,6 +80,8 @@ Las versiones instaladas guardan los juegos en `~/Games/` (se puede cambiar con 
 ./packaging/build_flatpak.sh 0.1.0    # requiere flatpak-builder y flathub
 ```
 
+> **Builds automáticos**: al publicar un tag `v*` (p. ej. `git tag v0.1.3 && git push origin v0.1.3`), **GitHub Actions** construye los tres paquetes (`.deb`, AppImage y `.flatpak`) y los adjunta al release automáticamente (`.github/workflows/release.yml`).
+
 ## 🕹️ Uso
 
 ### Interfaz gráfica

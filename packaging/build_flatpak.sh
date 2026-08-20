@@ -28,7 +28,10 @@ for f in rpgmaker-launcher.sh rpgmaker-launcher-gui.py rpgmaker-server.py \
          rpgmaker-gamepad.js rpgmaker-browser-keys.js rpgmaker-icon.png; do
     cp "$ROOT/$f" "$SRC/"
 done
-cp -r "$ROOT/runtimes/mkxp-z" "$ROOT/runtimes/RPGMakerDecrypter-cli" "$SRC/runtimes/"
+cp -r "$ROOT/runtimes/mkxp-z" "$SRC/runtimes/"
+if [ -f "$ROOT/runtimes/RPGMakerDecrypter-cli" ]; then
+    cp -r "$ROOT/runtimes/RPGMakerDecrypter-cli" "$SRC/runtimes/"
+fi
 
 echo ">> Instalando runtime/sdk org.gnome.Platform 48 (si falta)..."
 flatpak install -y --noninteractive --user flathub org.gnome.Platform//48 org.gnome.Sdk//48 >/dev/null
