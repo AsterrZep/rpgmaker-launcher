@@ -225,9 +225,9 @@ Este proyecto es un **lanzador**: no incluye ningún juego. Las partidas y compr
 
 ## 📄 Licencia
 
-Este proyecto se distribuye bajo **Creative Commons Atribución-NoComercial 4.0 Internacional** (`CC BY-NC 4.0`).
+Este proyecto se distribuye bajo **GNU General Public License versión 3** (`GPLv3`).
 
-Puedes **usar, modificar y compartir** este lanzador **libremente para fines no comerciales**, citando al autor. Está **prohibido** el uso comercial, incluida la venta del código o de servicios basados en él.
+Puedes **usar, modificar y compartir** este lanzador libremente, siempre que las obras derivadas también se distribuyan bajo la misma licencia (copyleft) y se cite al autor. Consulta la [licencia completa](https://www.gnu.org/licenses/gpl-3.0.html) para los detalles.
 
 Ver el fichero [`LICENSE`](LICENSE) para el texto completo.
 

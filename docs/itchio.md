@@ -16,7 +16,7 @@ clasificación, etiquetas y material de promoción. Está pensada para una
 | **Género** | Software / Utilidad |
 | **Plataforma** | Linux (Chrome OS · Crostini) |
 | **Precio** | Gratis (puedes activar "Name your own price" con donación opcional) |
-| **Licencia** | Creative Commons Atribución-NoComercial 4.0 (CC BY-NC 4.0) |
+| **Licencia** | GNU GPL v3 (GPLv3) |
 | **URL sugerida** | `https://asterrzep.itch.io/rpg-maker-launcher` |
 
 **Tags recomendados** (10 máximo en itch.io):
@@ -98,7 +98,7 @@ clasificación, etiquetas y material de promoción. Está pensada para una
 
 ### Licencia
 
-Proyecto bajo **Creative Commons Atribución-NoComercial 4.0 Internacional (CC BY-NC 4.0)**: libre de usar, modificar y compartir para **fines no comerciales**, citando al autor. Este lanzador **no incluye ningún juego**: las partidas y comprimidos que pongas en `~/Games/` son tuyos y de sus autores.
+Proyecto bajo **GNU General Public License versión 3 (GPLv3)**: software libre con copyleft — puedes usarlo, modificarlo y compartirlo, y las obras derivadas deben distribuirse bajo la misma licencia. Este lanzador **no incluye ningún juego**: las partidas y comprimidos que pongas en `~/Games/` son tuyos y de sus autores.
 ```
 
 ---
@@ -136,7 +136,7 @@ Detecta el motor, descomprime .zips y ejecuta MZ, MV, XP, VX, VX Ace, 2000/2003 
 (tanto los de Python 2 como los de Python 3). Incluye visor WebKit ligero, partidas en disco,
 trucos, mando, gestor de plugins y descifrador.
 
-Gratis y open-source (CC BY-NC 4.0).
+Gratis y open-source (GPLv3).
 Descárgalo: https://github.com/AsterrZep/rpgmaker-launcher/releases
 Página en itch.io: https://asterrzep.itch.io/rpg-maker-launcher
 ```
@@ -151,7 +151,7 @@ Auto-detects the engine, extracts .zips and runs MZ, MV, XP, VX, VX Ace, 2000/20
 and Ren'Py games (both old Python 2 and modern Python 3 ones). Includes a lightweight
 WebKit viewer, on-disk saves, cheats, gamepad support, a plugin manager and a decrypter.
 
-Free & open-source (CC BY-NC 4.0).
+Free & open-source (GPLv3).
 Download: https://github.com/AsterrZep/rpgmaker-launcher/releases
 itch.io: https://asterrzep.itch.io/rpg-maker-launcher
 ```
