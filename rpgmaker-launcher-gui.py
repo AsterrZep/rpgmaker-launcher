@@ -747,7 +747,7 @@ class App:
         titles.pack(side="left", padx=(10, 0))
         tk.Label(titles, text="RPG Maker Launcher", font=F_TITLE,
                  fg=TEXT, bg=SURFACE).pack(anchor="w")
-        tk.Label(titles, text="Juegos de RPG Maker · Chrome OS / Linux",
+        tk.Label(titles, text="Juegos de RPG Maker · Linux (origen: Chrome OS)",
                  font=F_SUB, fg=MUTED, bg=SURFACE).pack(anchor="w")
 
         self._btn_refresh = self._make_button(hinner, "Actualizar", self.rescan)

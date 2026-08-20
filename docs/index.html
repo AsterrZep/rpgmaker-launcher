@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RPG Maker Launcher · Juega tus RPG Maker en Chrome OS</title>
-<meta name="description" content="Lanzador universal de juegos de RPG Maker y Ren'Py para Chrome OS y Linux. Detecta el motor, descomprime y ejecuta MZ, MV, XP, VX, VX Ace, 2000 y 2003.">
+<title>RPG Maker Launcher · Juega tus RPG Maker en Linux</title>
+<meta name="description" content="Lanzador universal de juegos de RPG Maker y Ren'Py para Linux (nació para Chrome OS). Detecta el motor, descomprime y ejecuta MZ, MV, XP, VX, VX Ace, 2000, 2003 y Ren'Py.">
 <style>
   :root {
     --bg: #0f1220;
@@ -133,7 +133,7 @@
   <div class="wrap">
     <img class="logo" src="https://raw.githubusercontent.com/AsterrZep/rpgmaker-launcher/main/runtimes/icon.png" alt="Icono del lanzador">
     <h1>RPG Maker Launcher</h1>
-    <p class="tagline">Juega tus juegos de RPG Maker en Chrome OS, sin complicaciones.</p>
+    <p class="tagline">Juega tus juegos de RPG Maker y Ren'Py en Linux, sin complicaciones.</p>
     <div class="badges">
       <span class="badge">MZ · <b>MV</b></span>
       <span class="badge">XP · <b>VX</b> · <b>VX Ace</b></span>
@@ -153,14 +153,15 @@
   <section id="que-es">
     <h2><span class="num">01</span> ¿Qué es?</h2>
     <p style="color:var(--muted); margin-bottom:24px;">
-      Un lanzador universal para Chromebooks. Detecta automáticamente el motor de cada juego de RPG Maker o
+      Un lanzador universal para Linux. Nació para Chromebooks y ha evolucionado hasta funcionar en
+      cualquier distribución con escritorio. Detecta automáticamente el motor de cada juego de RPG Maker o
       Ren'Py que tengas, descomprime el <code>.zip</code> si hace falta y lo abre con el runtime correcto.
       Sin emuladores, sin tocar nada del juego, sin entornos raros.
     </p>
     <div class="grid">
       <div class="card"><h3>🛰️ Detección automática</h3><p>Mira los ficheros del juego y elige el motor exacto sin que tengas que configurar nada.</p></div>
       <div class="card"><h3>📦 Descomprime solo</h3><p>Extrae el <code>.zip</code> al vuelo, una sola vez, con marcador de integridad.</p></div>
-      <div class="card"><h3>🖥️ Interfaz gráfica</h3><p>App nativa de Chrome OS con botón para detener servidores y borrar comprimidos.</p></div>
+      <div class="card"><h3>🖥️ Interfaz gráfica</h3><p>App nativa de escritorio con botón para detener servidores y borrar comprimidos.</p></div>
       <div class="card"><h3>⚡ Visor WebKit ligero</h3><p>Para juegos web pesados: se abren en un visor WebKit propio, con menos memoria que el navegador completo.</p></div>
       <div class="card"><h3>🚀 Servidor rápido</h3><p>Multihilo, con caché y MIME correcto para <code>.wasm</code>: evita tirones al cargar muchos assets de golpe.</p></div>
       <div class="card"><h3>🧩 Gestor de plugins</h3><p>Analiza la compatibilidad de plugins (APIs <code>nw.js</code>) y permite desactivar los pesados (reduce el coste de update un 31%).</p></div>
@@ -187,15 +188,15 @@
 
   <section id="instalacion">
     <h2><span class="num">03</span> Instalación</h2>
-    <p style="color:var(--muted); margin-bottom:16px;">Desde el terminal de Linux de tu Chrome OS (Crostini):</p>
+    <p style="color:var(--muted); margin-bottom:16px;">Desde un terminal Linux (funciona en Chrome OS/Crostini):</p>
     <pre><code>git clone https://github.com/AsterrZep/rpgmaker-launcher.git
 cd rpgmaker-launcher
 chmod +x install.sh
 ./install.sh</code></pre>
     <p style="color:var(--muted); margin-top:16px;">
       El instalador configura las dependencias, instala EasyRPG, compila mkxp-z y crea el acceso directo.
-      Busca <b>RPG Maker Launcher</b> en las apps de Linux (en Chrome OS puede hacer falta cerrar sesión o
-      reiniciar el contenedor para que aparezca).
+      Busca <b>RPG Maker Launcher</b> en el menú de aplicaciones de tu escritorio (en Chrome OS puede hacer falta
+      cerrar sesión o reiniciar el contenedor para que aparezca).
     </p>
   </section>
 
@@ -248,7 +249,7 @@ chmod +x install.sh
 <footer>
   <div class="wrap">
     <p>RPG Maker Launcher · <a href="https://github.com/AsterrZep/rpgmaker-launcher">repositorio en GitHub</a> · <a href="https://github.com/AsterrZep/rpgmaker-launcher/blob/main/README.md">README</a> · <a href="https://github.com/AsterrZep/rpgmaker-launcher/blob/main/LICENSE">LICENSE</a></p>
-    <p style="margin-top:8px;">Hecho con ❤️ para jugar en Chromebooks.</p>
+    <p style="margin-top:8px;">Hecho con ❤️ para jugar en Linux (empezó como una app para Chromebooks).</p>
   </div>
 </footer>
 

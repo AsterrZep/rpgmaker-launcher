@@ -6,7 +6,7 @@
 #   1. Dependencias del sistema (python3-tk, unzip, SDL, herramientas de build)
 #   2. EasyRPG Player        (RPG Maker 2000 / 2003)
 #   3. mkxp-z compilado      (RPG Maker XP / VX / VX Ace)
-#   4. Acceso directo de la app en Chrome OS / escritorio Linux
+#   4. Acceso directo de la app en el escritorio Linux / Chrome OS
 #
 # Uso:  ./install.sh
 #
@@ -169,16 +169,15 @@ cat <<EOF
 
   - Añade tus juegos como .zip (o carpetas) dentro de:
         $BASEDIR
-  - Abre la app "RPG Maker Launcher" desde las apps de Linux
-    (en Chrome OS puede hacer falta cerrar sesión o reiniciar el
-    contenedor Linux para que aparezca).
+  - Abre la app "RPG Maker Launcher" desde el menú de aplicaciones
+    de tu escritorio Linux.
   - Desde terminal:
         $BASEDIR/rpgmaker-launcher.sh
   - Los juegos web (MZ/MV) pueden abrirse con el navegador o con
     el visor WebKit ligero (rpgmaker-webview.py), que consume
     menos memoria. En la GUI, marca "Visor WebKit (más ligero)".
-  - En Chrome OS, las aplicaciones .desktop aparecen en:
-        chrome://apps
+  - En Chrome OS, el acceso directo aparece en chrome://apps
+    (si no sale, reinicia el contenedor Linux o cierra sesión).
 
   Recuerda: este lanzador NO incluye juegos. Pon solo juegos
   que tengas legalmente y respeta las licencias de cada autor.

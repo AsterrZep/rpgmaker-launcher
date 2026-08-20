@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-#  RPG Maker Launcher  (Chrome OS / Linux)
+#  RPG Maker Launcher  (Linux / Chrome OS)
 #  Detecta el motor de cada juego y lo lanza con el runtime
 #  adecuado:
 #    - MV / MZ          -> servidor HTTP + navegador

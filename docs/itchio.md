@@ -11,16 +11,16 @@ clasificación, etiquetas y material de promoción. Está pensada para una
 | Campo | Valor |
 |---|---|
 | **Título** | RPG Maker Launcher |
-| **Tagline / sub** | Juega a tus RPG Maker y Ren'Py en tu Chromebook o Linux |
+| **Tagline / sub** | Juega a tus RPG Maker y Ren'Py en Linux (incluido Chrome OS) |
 | **Clasificación** | Tools (Herramientas) |
 | **Género** | Software / Utilidad |
-| **Plataforma** | Linux (Chrome OS · Crostini) |
+| **Plataforma** | Linux (incluye Chrome OS · Crostini) |
 | **Precio** | Gratis (puedes activar "Name your own price" con donación opcional) |
 | **Licencia** | GNU GPL v3 (GPLv3) |
 | **URL sugerida** | `https://asterrzep.itch.io/rpg-maker-launcher` |
 
 **Tags recomendados** (10 máximo en itch.io):
-`rpg-maker`, `renpy`, `launcher`, `chrome-os`, `crostini`, `chromebook`, `linux`, `rpg`, `visual-novel`, `tools`
+`rpg-maker`, `renpy`, `launcher`, `linux`, `chrome-os`, `crostini`, `rpg`, `visual-novel`, `tools`, `utility`
 
 ---
 
@@ -28,14 +28,14 @@ clasificación, etiquetas y material de promoción. Está pensada para una
 
 ### Version corta (para el tagline)
 
-> ¿Tienes un Chromebook? Juega a tus RPG Maker y novelas visuales de Ren'Py sin instalar Windows. Este lanzador detecta el motor de cada juego, descomprime el `.zip` si hace falta y lo ejecuta con el runtime correcto, sin tocar nada del juego.
+> ¿Usas Linux y quieres jugar a tus RPG Maker y novelas visuales de Ren'Py sin instalar Windows? Este lanzador detecta el motor de cada juego, descomprime el `.zip` si hace falta y lo ejecuta con el runtime correcto, sin tocar nada del juego. Funciona en cualquier distribución con escritorio (empezó como una app para Chromebooks).
 
 ### Descripción larga (markdown)
 
 ```markdown
-**¿Tienes un Chromebook y te mueres por jugar a esos RPG Maker y novelas visuales de Ren'Py?**
+**¿Usas Linux y te mueres por jugar a esos RPG Maker y novelas visuales de Ren'Py?**
 
-**RPG Maker Launcher** es un lanzador universal de escritorio para **Chrome OS (Linux/Crostini)** y cualquier Linux con escritorio. Detecta automáticamente el motor de cada juego, descomprime el `.zip` si hace falta y lo ejecuta con el runtime adecuado, sin tocar nada del juego.
+**RPG Maker Launcher** es un lanzador universal de escritorio para **Linux**. Empezó como una app pensada para **Chrome OS (Linux/Crostini)** y ha evolucionado hasta funcionar en cualquier distribución con escritorio: detecta automáticamente el motor de cada juego, descomprime el `.zip` si hace falta y lo ejecuta con el runtime adecuado, sin tocar nada del juego.
 
 ### Motores soportados
 
@@ -62,7 +62,7 @@ clasificación, etiquetas y material de promoción. Está pensada para una
 
 ### Instalación (elige una)
 
-1. **Debian/Ubuntu — recomendado en Chrome OS** (ocupa poco):
+1. **Debian/Ubuntu — recomendado** (ocupa poco):
    ```bash
    sudo apt install ./rpgmaker-launcher_<versión>_amd64.deb
    ```
@@ -85,7 +85,7 @@ clasificación, etiquetas y material de promoción. Está pensada para una
 
 ### Requisitos
 
-- Chrome OS con **Linux (Crostini)** activado, o cualquier Linux con escritorio.
+- Cualquier Linux con escritorio (incluido Chrome OS con **Linux/Crostini** activado).
 - **Python 3** (viene en todas las distribuciones).
 - `unzip`.
 - XP/VX/VX Ace: `mkxp-z` (lo compila el instalador automáticamente).
@@ -131,7 +131,7 @@ Proyecto bajo **GNU General Public License versión 3 (GPLv3)**: software libre 
 ```
 RPG Maker Launcher v0.1.2
 
-Lanzador universal de juegos de RPG Maker y Ren'Py para Chrome OS (Crostini) y Linux.
+Lanzador universal de juegos de RPG Maker y Ren'Py para Linux (empezó como una app de Chrome OS).
 Detecta el motor, descomprime .zips y ejecuta MZ, MV, XP, VX, VX Ace, 2000/2003 y Ren'Py
 (tanto los de Python 2 como los de Python 3). Incluye visor WebKit ligero, partidas en disco,
 trucos, mando, gestor de plugins y descifrador.
@@ -146,7 +146,7 @@ Página en itch.io: https://asterrzep.itch.io/rpg-maker-launcher
 ```
 RPG Maker Launcher v0.1.2
 
-A universal RPG Maker & Ren'Py launcher for Chrome OS (Crostini) and Linux.
+A universal RPG Maker & Ren'Py launcher for Linux (started as a Chrome OS app).
 Auto-detects the engine, extracts .zips and runs MZ, MV, XP, VX, VX Ace, 2000/2003
 and Ren'Py games (both old Python 2 and modern Python 3 ones). Includes a lightweight
 WebKit viewer, on-disk saves, cheats, gamepad support, a plugin manager and a decrypter.
@@ -158,15 +158,15 @@ itch.io: https://asterrzep.itch.io/rpg-maker-launcher
 
 ### Dónde publicar
 
-- **Reddit**: r/chromeos, r/ChromebookGaming, r/RPGMaker, r/visualnovels, r/linux_gaming, r/opensource.
-- **Discord**: servidores de la comunidad de itch.io, de RPG Maker, de Ren'Py y de Chrome OS.
-- **Redes**: X/Twitter (etiqueta @itchio, @makecode si procede), Mastodon, grupos de Facebook de Chrome OS/Chromebook.
-- **YouTube**: un vídeo corto de 30-60 s mostrando cómo se lanza un MZ y un Ren'Py en un Chromebook ayuda muchísimo.
+- **Reddit**: r/linux_gaming, r/RPGMaker, r/visualnovels, r/opensource, y de paso r/chromeos y r/ChromebookGaming (su comunidad original).
+- **Discord**: servidores de la comunidad de itch.io, de RPG Maker, de Ren'Py y de Linux.
+- **Redes**: X/Twitter (etiqueta @itchio), Mastodon, grupos de Facebook de Linux/Chrome OS.
+- **YouTube**: un vídeo corto de 30-60 s mostrando cómo se lanza un MZ y un Ren'Py en Linux ayuda muchísimo.
 
 ### Consejos para el lanzamiento
 
 1. Publica primero en itch.io y luego comparte el enlace (el tráfico de itch.io es gratuito para herramientas).
 2. Sube capturas reales del launcher, no maquetas.
-3. Responde rápido a los comentarios: la comunidad de Chrome OS agradece que el proyecto tenga soporte.
+3. Responde rápido a los comentarios: la comunidad de Linux/Chrome OS agradece que el proyecto tenga soporte.
 4. En el README ya hay sección de "Solución de problemas": enlázala en cada respuesta a bugs.
 5. Si quieres donaciones, marca el precio "a tu gusto" (name your own price) en itch.io.

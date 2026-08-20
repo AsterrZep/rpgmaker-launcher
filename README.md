@@ -1,8 +1,8 @@
 # 🎮 RPG Maker Launcher
 
-Lanzador universal de juegos de RPG Maker y Ren'Py para **Chrome OS** (Linux / Crostini) y cualquier Linux con escritorio. Detecta automáticamente el motor de cada juego, descomprime el `.zip` si hace falta y lo ejecuta con el runtime correcto, sin tocar nada del juego.
+Lanzador universal de juegos de RPG Maker y Ren'Py para **Linux** con escritorio. Nació pensado para **Chrome OS** (Linux / Crostini) y ha evolucionado hasta funcionar en cualquier distribución: detecta automáticamente el motor de cada juego, descomprime el `.zip` si hace falta y lo ejecuta con el runtime correcto, sin tocar nada del juego.
 
-> Probado en: Chrome OS con contenedor Linux (Debian trixie), Debian 13 trixie x86_64.
+> Probado en: Debian 13 trixie x86_64 y Chrome OS con contenedor Linux (Debian trixie).
 
 ---
 
@@ -10,7 +10,7 @@ Lanzador universal de juegos de RPG Maker y Ren'Py para **Chrome OS** (Linux / C
 
 - **Detección automática de motor** — MZ, MV, XP, VX, VX Ace, 2000 y 2003, y Ren'Py.
 - **Descompresión automática** — si el juego viene en `.zip`, se extrae al vuelo (una sola vez) con marcador de integridad.
-- **Interfaz gráfica** — ventana sencilla tipo app de Chrome OS, con botón **Detener servidor**, **Borrar .zip** y opción de eliminar el comprimido tras extraer.
+- **Interfaz gráfica** — ventana sencilla tipo app, con botón **Detener servidor**, **Borrar .zip** y opción de eliminar el comprimido tras extraer.
 - **Visor WebKit ligero** — los juegos web (MZ/MV) pueden abrirse en un visor WebKit propio en vez del navegador completo: menos memoria y arranque más rápido para juegos pesados.
 - **Atajos configurables** — todas las teclas (trucos, FPS, captura, pantalla completa, recargar, zoom) se editan desde la GUI y funcionan tanto en el visor WebKit como en la versión navegador.
 - **Servidor HTTP rápido** — los juegos web se sirven con un servidor multihilo que envía cabeceras de caché y el MIME correcto para `.wasm`. Evita los tirones al cargar muchos assets de golpe (el `python3 -m http.server` normal es de un solo hilo).
@@ -37,7 +37,7 @@ Lanzador universal de juegos de RPG Maker y Ren'Py para **Chrome OS** (Linux / C
 
 ## 📦 Requisitos
 
-- Chrome OS con **Linux (Crostini)** activado, o cualquier Linux con escritorio.
+- Cualquier Linux con escritorio (incluido Chrome OS con **Linux/Crostini** activado).
 - Python 3 (viene en todas las distribuciones).
 - `unzip`.
 - Para XP/VX/VX Ace: construir `mkxp-z` (lo hace `install.sh`).
@@ -58,9 +58,9 @@ El script de instalación:
 1. Instala dependencias del sistema (`python3-tk`, `unzip`, SDL, etc.).
 2. Instala **EasyRPG Player** (2000/2003).
 3. Compila **mkxp-z** desde el código fuente (XP/VX/VX Ace).
-4. Genera e instala el acceso directo de la app en Chrome OS.
+4. Genera e instala el acceso directo de la app en tu escritorio (Linux o Chrome OS).
 
-Cuando termine, busca **RPG Maker Launcher** en la lista de aplicaciones de Linux de Chrome OS. Si no aparece, cierra sesión y vuelve a entrar (o reinicia el contenedor Linux).
+Cuando termine, busca **RPG Maker Launcher** en la lista de aplicaciones de tu sistema. En Chrome OS, si no aparece, cierra sesión y vuelve a entrar (o reinicia el contenedor Linux).
 
 ## 📦 Paquetes y releases
 
@@ -72,7 +72,7 @@ Cada versión se publica como release en GitHub con binarios listos para usar (s
 | **AppImage** | `rpgmaker-launcher-<versión>-x86_64.AppImage` | Portable, incluye su propio Python con tkinter (`chmod +x` y ejecutar) |
 | **Flatpak** | `rpgmaker-launcher-<versión>.flatpak` | Sandbox de GNOME (`flatpak install rpgmaker-launcher-*.flatpak`) |
 
-> ⚠️ **Sobre el Flatpak**: es la opción **menos recomendada si el espacio te preocupa**. El paquete en sí pesa ~55 MB, pero Flatpak instala el runtime de GNOME (`org.gnome.Platform` + SDK, **~2-3 GB** en disco) la primera vez. En Chrome OS / Crostini el espacio del contenedor Linux suele ser limitado, así que si no necesitas el sandbox **usa mejor el `.deb` (recomendado en Chrome OS) o el AppImage**: ocupan mucho menos y se instalan al momento. Los tres dan exactamente el mismo lanzador.
+> ⚠️ **Sobre el Flatpak**: es la opción **menos recomendada si el espacio te preocupa**. El paquete en sí pesa ~55 MB, pero Flatpak instala el runtime de GNOME (`org.gnome.Platform` + SDK, **~2-3 GB** en disco) la primera vez. En máquinas con poco espacio (p. ej. el contenedor Linux de Chrome OS) usa mejor el **`.deb`** o el **AppImage**: ocupan mucho menos y se instalan al momento. Los tres dan exactamente el mismo lanzador.
 
 Las versiones instaladas guardan los juegos en `~/Games/` (se puede cambiar con la variable `RPGMAKER_DATA_DIR`). Los scripts de empaquetado están en `packaging/`:
 
@@ -239,4 +239,4 @@ Ver el fichero [`LICENSE`](LICENSE) para el texto completo.
 
 ---
 
-Hecho con ❤️ para jugar en Chromebooks.
+Hecho con ❤️ para jugar en Linux (empezó como una app para Chromebooks).
