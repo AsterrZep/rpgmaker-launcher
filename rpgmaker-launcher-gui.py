@@ -30,7 +30,7 @@ MKXPZ = os.path.join(RUN_DIR, "mkxp-z")
 EASYRPG = "easyrpg-player"
 MAX_DEPTH = 5
 MARKER = ".extracted"
-APP_VERSION = "0.3.0"
+APP_VERSION = "0.3.1"
 REPO_LATEST_API = "https://api.github.com/repos/AsterrZep/rpgmaker-launcher/releases/latest"
 REPO_RELEASES_URL = "https://github.com/AsterrZep/rpgmaker-launcher/releases"
 
@@ -246,6 +246,8 @@ I18N = {
     "%d elemento(s)": "%d item(s)",
     "Sin datos legibles (¿cifrados o vacíos?)":
         "No readable data (encrypted or empty?)",
+    "Esta acción solo está disponible para juegos %s.":
+        "This action is only available for %s games.",
 
     # editor de partidas
     "Editar contenido": "Edit content",
@@ -793,6 +795,11 @@ class App:
         self.root.minsize(760, 520)
         self.root.configure(bg=BG)
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+
+        # Los errores en callbacks de Tkinter no deben morir en silencio
+        def _tk_err(exc_type, exc, _tb):
+            self._error("Error", "%s: %s" % (exc_type.__name__, exc))
+        self.root.report_callback_exception = _tk_err
         cfg = _config_module().load_config()
         global LANG
         LANG = CLI_LANG or cfg.get("general", {}).get("lang", "en")
@@ -1302,21 +1309,28 @@ class App:
 
     def _update_tool_buttons(self):
         sel = self.selected()
-        eng = sel[1][2] if sel and sel[1] else None
         has = bool(sel and sel[1])
-        self._style_btn(self.play_btn, has)
-        self._style_btn(self.plugins_btn, has and eng in ("MZ", "MV", "web"))
-        self._style_btn(self.saves_btn, has and eng in ("MZ", "MV", "web"))
-        self._style_btn(self.preset_btn, has and eng in ("MZ", "MV", "web"))
-        self._style_btn(self.data_btn, has and eng in ("MZ", "MV", "web"))
-        self._style_btn(self.decrypt_btn, has and eng in ("XP", "VX", "VXAce"))
+        # Los botones se quedan pulsables: si el motor no corresponde,
+        # el propio diálogo avisa en lugar de no hacer nada.
+        for btn in (self.play_btn, self.plugins_btn, self.saves_btn,
+                    self.preset_btn, self.data_btn, self.decrypt_btn,
+                    self.stop_btn, self._btn_delzip):
+            self._style_btn(btn, has or btn in (self.stop_btn,))
+
+    def _require_engine(self, engine, valid, what):
+        """Avisa en pantalla si la acción no aplica al motor del juego."""
+        if engine in valid:
+            return True
+        self._info(what, _("Esta acción solo está disponible para juegos %s.")
+                   % "/".join(valid))
+        return False
 
     def decrypt_selected(self):
         sel = self.selected()
         if not sel or not sel[1]:
             return
         name, root, engine = sel[1]
-        if engine not in ("XP", "VX", "VXAce"):
+        if not self._require_engine(engine, ("XP", "VX", "VXAce"), _("Descifrar")):
             return
         out = root.rstrip(os.sep) + "_descifrado"
         if not self._ask(
@@ -1629,7 +1643,7 @@ class App:
         if not sel or not sel[1]:
             return
         name, root, engine = sel[1]
-        if engine not in ("MZ", "MV", "web"):
+        if not self._require_engine(engine, ("MZ", "MV", "web"), _("Plugins")):
             return
         mod = _plugins_module()
         try:
@@ -1668,10 +1682,11 @@ class App:
 
         def _fill():
             tv.delete(*tv.get_children())
+            labels = {"ok": _("ok"), "nw-protegido": _("NW protegido"),
+                      "roto": _("ROTO (nw.js)"), "sin-fichero": _("sin fichero")}
             for p in plugins:
                 a = mod.analyze(p.get("name", "?"), root)
-                lab = {_("ok"): "ok", _("NW protegido"): "nw-protegido",
-                       _("ROTO (nw.js)"): "roto", _("sin fichero"): "sin-fichero"}[a["categoria"]]
+                lab = labels.get(a["categoria"], a["categoria"])
                 tv.insert("", "end", text=p.get("name", "?"),
                           values=("ON" if p.get("status") else "off", lab))
 
@@ -1775,7 +1790,7 @@ class App:
         if not sel or not sel[1]:
             return
         name, root, engine = sel[1]
-        if engine not in ("MZ", "MV", "web"):
+        if not self._require_engine(engine, ("MZ", "MV", "web"), _("Plantilla trucos")):
             return
         dest = os.path.join(root, "cheats-presets.json")
         if os.path.isfile(dest):
@@ -1803,7 +1818,7 @@ class App:
         if not sel or not sel[1]:
             return
         name, root, engine = sel[1]
-        if engine not in ("MZ", "MV", "web"):
+        if not self._require_engine(engine, ("MZ", "MV", "web"), _("Partidas")):
             return
         sdir = os.path.join(root, "save")
         if not os.path.isdir(sdir):
@@ -1944,7 +1959,7 @@ class App:
         if not sel or not sel[1]:
             return
         name, root, engine = sel[1]
-        if engine not in ("MZ", "MV", "web"):
+        if not self._require_engine(engine, ("MZ", "MV", "web"), _("Datos")):
             return
         ddir = os.path.join(root, "data")
         if not os.path.isdir(ddir):
