@@ -41,12 +41,15 @@ jobs:
       - name: Construir Flatpak
         run: ./packaging/build_flatpak.sh "${{ steps.ver.outputs.version }}"
 
-      - name: Subir artefactos al release
+      - name: Crear release y subir artefactos (.deb, AppImage, Flatpak)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload "$GITHUB_REF_NAME" \
-            dist/rpgmaker-launcher_*.deb \
-            dist/rpgmaker-launcher-*.AppImage \
-            dist/rpgmaker-launcher-*.flatpak \
-            --clobber
+          FILES=(dist/rpgmaker-launcher_*.deb dist/rpgmaker-launcher-*.AppImage dist/rpgmaker-launcher-*.flatpak)
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${FILES[@]}" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "${FILES[@]}" \
+              --title "RPG Maker Launcher ${GITHUB_REF_NAME}" \
+              --generate-notes
+          fi

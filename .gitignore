@@ -6,6 +6,9 @@ games/
 *.7z
 *.tgz
 
+# Capturas personales para documentación (no van al repo público)
+FOTOS-GITHUB/
+
 # Binarios / artefactos de build
 runtimes/mkxp-z
 runtimes/RPGMakerDecrypter-cli
