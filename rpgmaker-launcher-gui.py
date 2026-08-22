@@ -30,6 +30,9 @@ MKXPZ = os.path.join(RUN_DIR, "mkxp-z")
 EASYRPG = "easyrpg-player"
 MAX_DEPTH = 5
 MARKER = ".extracted"
+APP_VERSION = "0.2.9"
+REPO_LATEST_API = "https://api.github.com/repos/AsterrZep/rpgmaker-launcher/releases/latest"
+REPO_RELEASES_URL = "https://github.com/AsterrZep/rpgmaker-launcher/releases"
 
 # Drag & drop de .zip (opcional; requiere tkinterdnd2 si está instalado)
 try:
@@ -227,6 +230,51 @@ I18N = {
     "Copiados %d .zip; extrayendo...": "Copied %d .zip file(s); extracting...",
     "no se pudo copiar %s: %s": "could not copy %s: %s",
     "Suelta archivos .zip para instalarlos": "Drop .zip files here to install them",
+
+    # actualizaciones
+    "Nueva versión disponible: %s": "New version available: %s",
+
+    # navegador de datos
+    "Datos": "Data",
+    "Este juego no tiene carpeta 'data/' legible.\nSi está cifrada, descífrala primero.":
+        "This game has no readable 'data/' folder.\nIf it is encrypted, decrypt it first.",
+    "Categoría:": "Category:",
+    "Buscar:": "Search:",
+    "Nombre": "Name",
+    "Precio": "Price",
+    "Oro": "Gold",
+    "%d elemento(s)": "%d item(s)",
+
+    # editor de partidas
+    "Editar contenido": "Edit content",
+    "Selecciona exactamente un archivo de partida para editarlo.":
+        "Select exactly one save file to edit.",
+    "Vas a editar '%s'.\n\nSe hará una copia de seguridad automática antes de guardar.\n¿Continuar?":
+        "You are about to edit '%s'.\n\nAn automatic backup will be made before saving.\nContinue?",
+    "No se pudo leer el save:\n%s": "Could not read the save:\n%s",
+    "Editar partida": "Edit save",
+    "General": "General",
+    "Oro:": "Gold:",
+    "Objetos": "Items",
+    "Cantidad:": "Quantity:",
+    "Aplicar": "Apply",
+    "Añadir objeto": "Add item",
+    "ID de objeto y cantidad:\n(por ejemplo: 5 20)": "Item ID and quantity:\n(e.g.: 5 20)",
+    "Añadir por ID": "Add by ID",
+    "Variables": "Variables",
+    "Switches": "Switches",
+    "Valor:": "Value:",
+    "Guardar cambios": "Save changes",
+    "Partida '%s' guardada con backup automático.":
+        "Save '%s' stored with automatic backup.",
+    "Guardado.\nCopia de seguridad del original en backups/%s/.":
+        "Saved.\nBackup of the original in backups/%s/.",
+    "Oro: %(gold)s   ·   Objetos distintos: %(items_kinds)s   ·   "
+    "Variables usadas: %(variables_used)s   ·   Switches ON: "
+    "%(switches_on)s\nPersonajes: %(actors)s":
+        "Gold: %(gold)s   ·   Distinct items: %(items_kinds)s   ·   "
+        "Used variables: %(variables_used)s   ·   Switches ON: "
+        "%(switches_on)s\nCharacters: %(actors)s",
 }
 
 
@@ -513,6 +561,15 @@ def _config_module():
     return mod
 
 
+def _saveedit_module():
+    import importlib.util
+    path = os.path.join(BASE_DIR, "rpgmaker-saveedit.py")
+    spec = importlib.util.spec_from_file_location("rpgmaker_saveedit", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 # ---------- extracción ----------
 def extract_zips(callback=None, auto_delete=False):
     done, errors = [], []
@@ -749,6 +806,7 @@ class App:
         self._build_ui()
         self.load_games()
         self.root.after(60, self._reflow)
+        self.root.after(2500, self._check_updates_async)
 
     # --- icono de la ventana ---
     def _set_icon(self):
@@ -1051,6 +1109,9 @@ class App:
         self._btn_lang = self._make_button(hinner, "EN" if LANG == "es" else "ES",
                                            self.toggle_lang)
         self._btn_lang.pack(side="right", padx=(8, 0))
+        # Botón de actualización: oculto hasta que el checker encuentre una
+        self._btn_update = self._make_button(hinner, "↓", self._open_releases,
+                                             accent=True)
         self._tog_del = self._make_toggle(hinner, _("Eliminar .zip"), self.auto_delete)
         self._tog_del.pack(side="right", padx=(8, 0))
         self._tog_webkit = self._make_toggle(hinner, _("Visor WebKit"), self.use_webkit)
@@ -1097,6 +1158,8 @@ class App:
         self.preset_btn = self._make_button(bar, _("Plantilla trucos"),
                                             self.preset_selected)
         self.preset_btn.pack(side="left", padx=(8, 0))
+        self.data_btn = self._make_button(bar, _("Datos"), self.datos_selected)
+        self.data_btn.pack(side="left", padx=(8, 0))
         self.decrypt_btn = self._make_button(bar, _("Descifrar"), self.decrypt_selected)
         self.decrypt_btn.pack(side="left", padx=(8, 0))
         self.stop_btn = self._make_button(bar, _("Detener servidor"), self.stop_server_action)
@@ -1243,6 +1306,7 @@ class App:
         self._style_btn(self.plugins_btn, has and eng in ("MZ", "MV", "web"))
         self._style_btn(self.saves_btn, has and eng in ("MZ", "MV", "web"))
         self._style_btn(self.preset_btn, has and eng in ("MZ", "MV", "web"))
+        self._style_btn(self.data_btn, has and eng in ("MZ", "MV", "web"))
         self._style_btn(self.decrypt_btn, has and eng in ("XP", "VX", "VXAce"))
 
     def decrypt_selected(self):
@@ -1666,6 +1730,44 @@ class App:
         _fill()
 
     # --- gestor de partidas ---
+    # --- verificador de actualizaciones ---
+    def _check_updates_async(self):
+        threading.Thread(target=self._check_updates_worker, daemon=True).start()
+
+    def _check_updates_worker(self):
+        import urllib.request
+        try:
+            req = urllib.request.Request(
+                REPO_LATEST_API,
+                headers={"Accept": "application/vnd.github+json",
+                         "User-Agent": "rpgmaker-launcher"})
+            with urllib.request.urlopen(req, timeout=8) as fh:
+                data = json.load(fh)
+            tag = data.get("tag_name") or ""
+        except Exception:
+            return
+        if self._version_newer(tag, APP_VERSION):
+            self.root.after(0, lambda: self._show_update_available(tag))
+
+    @staticmethod
+    def _version_newer(tag, current):
+        def nums(s):
+            return tuple(int(p) for p in s.lstrip("v").split(".") if p.isdigit())
+        try:
+            return nums(tag) > nums(current)
+        except Exception:
+            return False
+
+    def _show_update_available(self, tag):
+        self._btn_update.config(text="↓ %s" % tag)
+        if not self._btn_update.winfo_ismapped():
+            self._btn_update.pack(side="right", padx=(8, 0))
+        self._update_status(_("Nueva versión disponible: %s") % tag)
+
+    def _open_releases(self):
+        subprocess.Popen(["xdg-open", REPO_RELEASES_URL],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
     def preset_selected(self):
         sel = self.selected()
         if not sel or not sel[1]:
@@ -1808,6 +1910,20 @@ class App:
         def _open_dir():
             subprocess.Popen(["xdg-open", sdir], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+        def _edit():
+            sel = [tv.item(i, "text") for i in tv.selection()]
+            if len(sel) != 1:
+                self._info(_("Editar contenido"),
+                           _("Selecciona exactamente un archivo de partida para editarlo."))
+                return
+            if not self._ask(
+                    _("Editar contenido"),
+                    _("Vas a editar '%s'.\n\n"
+                      "Se hará una copia de seguridad automática antes de guardar.\n"
+                      "Continuar?") % sel[0]):
+                return
+            self._save_editor_window(name, root, sdir, sel[0])
+
         bar = tk.Frame(win, bg=SURFACE)
         bar.pack(fill="x", padx=16, pady=(0, 14))
         self._make_button(bar, _("Cerrar"), command=win.destroy).pack(side="right")
@@ -1817,7 +1933,424 @@ class App:
         self._make_button(bar, _("Restaurar"), command=_restore).pack(side="right", padx=(8, 0))
         self._make_button(bar, _("Copia de seguridad"), command=_backup,
                           accent=True).pack(side="right", padx=(8, 0))
+        self._make_button(bar, _("Editar contenido"), command=_edit).pack(side="left")
         _fill()
+
+    # --- navegador de datos del juego (solo lectura) ---
+    def datos_selected(self):
+        sel = self.selected()
+        if not sel or not sel[1]:
+            return
+        name, root, engine = sel[1]
+        if engine not in ("MZ", "MV", "web"):
+            return
+        ddir = os.path.join(root, "data")
+        if not os.path.isdir(ddir):
+            self._info(_("Datos"),
+                       _("Este juego no tiene carpeta 'data/' legible.\n"
+                         "Si está cifrada, descífrala primero."))
+            return
+
+        def param(it, idx):
+            p = it.get("params") or []
+            return p[idx] if idx < len(p) else 0
+
+        cats = [
+            ("Objetos", "Items.json",
+             [(lambda it: it.get("price", 0), _("Precio"))]),
+            ("Armas", "Weapons.json",
+             [(lambda it: it.get("price", 0), _("Precio")),
+              (lambda it: param(it, 2), "ATK")]),
+            ("Defensas", "Armors.json",
+             [(lambda it: it.get("price", 0), _("Precio")),
+              (lambda it: param(it, 3), "DEF")]),
+            ("Habilidades", "Skills.json",
+             [(lambda it: it.get("mpCost", 0), "MP")]),
+            ("Enemigos", "Enemies.json",
+             [(lambda it: param(it, 0), "HP"),
+              (lambda it: it.get("exp", 0), "EXP"),
+              (lambda it: it.get("gold", 0), _("Oro"))]),
+        ]
+
+        win = tk.Toplevel(self.root)
+        win.title(_("Datos") + " - %s" % name)
+        win.geometry("760x540")
+        win.configure(bg=BG)
+        self._dlg_center(win)
+
+        top = tk.Frame(win, bg=SURFACE)
+        top.pack(fill="x")
+        tk.Label(top, text=_("Datos") + " · %s" % name,
+                 font=("DejaVu Sans", 13, "bold"), fg=TEXT, bg=SURFACE
+                 ).pack(padx=16, pady=(12, 2), anchor="w")
+        row = tk.Frame(top, bg=SURFACE)
+        row.pack(fill="x", padx=16, pady=(0, 10))
+        tk.Label(row, text=_("Categoría:"), font=F_META, fg=MUTED,
+                 bg=SURFACE).pack(side="left")
+        cat_var = tk.StringVar(value=cats[0][0])
+        cb = ttk.Combobox(row, textvariable=cat_var, state="readonly",
+                          values=[c[0] for c in cats], width=13)
+        cb.pack(side="left", padx=(6, 12))
+        tk.Label(row, text=_("Buscar:"), font=F_META, fg=MUTED,
+                 bg=SURFACE).pack(side="left")
+        q = tk.StringVar()
+        tk.Entry(row, textvariable=q, width=24, bg=CARD, fg=TEXT,
+                 insertbackground=TEXT, relief="flat").pack(side="left", padx=(6, 12))
+        count_lbl = tk.Label(row, text="", font=F_META, fg=MUTED, bg=SURFACE)
+        count_lbl.pack(side="left")
+
+        body = tk.Frame(win, bg=BG)
+        body.pack(fill="both", expand=True, padx=16, pady=(0, 12))
+        tv = ttk.Treeview(body, columns=("nombre", "v1", "v2", "v3"),
+                          show="tree headings", selectmode="browse")
+        tv.heading("#0", text="ID")
+        tv.column("#0", width=56, anchor="e", stretch=False)
+        tv.pack(side="left", fill="both", expand=True)
+        vsb = tk.Scrollbar(body, orient="vertical", command=tv.yview,
+                           bg=SURFACE, troughcolor=BG, activebackground=BORDER,
+                           bd=0, highlightthickness=0, width=12)
+        tv.configure(yscrollcommand=vsb.set)
+        vsb.pack(side="left", fill="y", padx=(6, 0))
+
+        cache = {}
+
+        def _db(fn):
+            if fn not in cache:
+                try:
+                    with open(os.path.join(ddir, fn), "r", encoding="utf-8") as fh:
+                        cache[fn] = json.load(fh)
+                except (OSError, ValueError):
+                    cache[fn] = []
+            return cache[fn]
+
+        def fmt_val(v):
+            if isinstance(v, float) and v.is_integer():
+                return str(int(v))
+            return str(v)
+
+        def _fill(*_):
+            cat = next(c for c in cats if c[0] == cat_var.get())
+            _, fn, cols = cat
+            heads = [("nombre", _("Nombre"), 320, "w")] + \
+                    [("v%d" % (i + 1), h, 92, "e")
+                     for i, (_f, h) in enumerate(cols)]
+            for j in range(len(cols), 3):
+                heads.append(("v%d" % (j + 1), "", 1, "e"))
+            for cid, txt, w, anch in heads:
+                tv.heading(cid, text=txt)
+                tv.column(cid, width=w, anchor=anch, stretch=(cid == "nombre"))
+            filtro = q.get().strip().lower()
+            tv.delete(*tv.get_children())
+            db = _db(fn)
+            n = 0
+            for it in (db[1:] if isinstance(db, list) else []):
+                if not it or not it.get("name"):
+                    continue
+                if filtro and filtro not in it["name"].lower() \
+                        and filtro != str(it.get("id")):
+                    continue
+                vals = [fmt_val(f(it)) for f, _h in cols]
+                tv.insert("", "end", text=str(it.get("id", "")),
+                          values=[it["name"]] + vals)
+                n += 1
+            count_lbl.config(text=_("%d elemento(s)") % n)
+
+        cat_var.trace_add("write", _fill)
+        q.trace_add("write", _fill)
+        _fill()
+
+    # --- editor de contenido de partidas (MZ/MV: zlib+JSON) ---
+    def _save_editor_window(self, game_name, game_root, sdir, filename):
+        se = _saveedit_module()
+        path = os.path.join(sdir, filename)
+        ddir = os.path.join(game_root, "data")
+        try:
+            obj = se.load_save(path)
+        except Exception as e:
+            self._error(_("Editar contenido"), _("No se pudo leer el save:\n%s") % e)
+            return
+
+        item_names, var_names, sw_names = {}, [], []
+
+        def load_dbs():
+            nonlocal var_names, sw_names
+            try:
+                with open(os.path.join(ddir, "System.json"), encoding="utf-8") as fh:
+                    sysd = json.load(fh)
+                var_names = sysd.get("variables") or []
+                sw_names = sysd.get("switches") or []
+            except Exception:
+                pass
+            for fn in ("Items.json", "Weapons.json", "Armors.json"):
+                try:
+                    with open(os.path.join(ddir, fn), encoding="utf-8") as fh:
+                        db = json.load(fh)
+                except Exception:
+                    continue
+                for it in db[1:]:
+                    if it and it.get("name"):
+                        item_names[it["id"]] = it["name"]
+        load_dbs()
+
+        party = obj.setdefault("party", {})
+        variables = obj.setdefault("variables", {}).setdefault("_data", [])
+        switches = obj.setdefault("switches", {}).setdefault("_data", [])
+        items = party.setdefault("_items", {})
+
+        win = tk.Toplevel(self.root)
+        win.title(_("Editar partida") + " - %s · %s" % (game_name, filename))
+        win.geometry("780x560")
+        win.configure(bg=BG)
+        self._dlg_center(win)
+
+        head = tk.Frame(win, bg=SURFACE)
+        head.pack(fill="x")
+        sum_lbl = tk.Label(head, text="", font=F_META, fg=TEXT, bg=SURFACE,
+                           anchor="w", justify="left")
+        sum_lbl.pack(padx=16, pady=(10, 8), anchor="w")
+
+        nb = ttk.Notebook(win)
+        nb.pack(fill="both", expand=True, padx=16, pady=(0, 10))
+
+        def _mk_tab(title):
+            f = ttk.Frame(nb, style="TFrame")
+            nb.add(f, text=title)
+            return f
+
+        def _tree(parent, cols):
+            tv = ttk.Treeview(parent, columns=cols, show="tree headings",
+                              selectmode="browse")
+            tv.heading("#0", text="ID")
+            tv.column("#0", width=52, anchor="e", stretch=False)
+            tv.pack(side="left", fill="both", expand=True)
+            vsb = tk.Scrollbar(parent, orient="vertical", command=tv.yview,
+                               bg=SURFACE, troughcolor=BG,
+                               activebackground=BORDER, bd=0,
+                               highlightthickness=0, width=12)
+            tv.configure(yscrollcommand=vsb.set)
+            vsb.pack(side="left", fill="y")
+            return tv
+
+        # ---- General: oro ----
+        f_gen = _mk_tab(_("General"))
+        rowg = tk.Frame(f_gen, bg=SURFACE)
+        rowg.pack(fill="x", padx=12, pady=12)
+        tk.Label(rowg, text=_("Oro:"), font=F_META, fg=MUTED,
+                 bg=SURFACE).pack(side="left")
+        gold_var = tk.StringVar(value=str(party.get("_gold", 0)))
+        ge = tk.Entry(rowg, textvariable=gold_var, width=14, bg=CARD, fg=TEXT,
+                      insertbackground=TEXT, relief="flat")
+        ge.pack(side="left", padx=(8, 0))
+
+        # ---- Objetos ----
+        f_it = _mk_tab(_("Objetos"))
+        rowq = tk.Frame(f_it, bg=SURFACE)
+        rowq.pack(fill="x", padx=12, pady=(10, 4))
+        q_it = tk.StringVar()
+        tk.Entry(rowq, textvariable=q_it, width=24, bg=CARD, fg=TEXT,
+                 insertbackground=TEXT, relief="flat").pack(side="left")
+        tv_it = _tree(rowq, ("nombre", "cant"))
+        tv_it.heading("nombre", text=_("Nombre"))
+        tv_it.column("nombre", width=360, anchor="w")
+        tv_it.heading("cant", text=_("Cantidad"))
+        tv_it.column("cant", width=80, anchor="e", stretch=False)
+        rowe = tk.Frame(f_it, bg=SURFACE)
+        rowe.pack(fill="x", padx=12, pady=6)
+        tk.Label(rowe, text=_("Cantidad:"), font=F_META, fg=MUTED,
+                 bg=SURFACE).pack(side="left")
+        qty_var = tk.StringVar()
+        tk.Entry(rowe, textvariable=qty_var, width=8, bg=CARD, fg=TEXT,
+                 insertbackground=TEXT, relief="flat").pack(side="left", padx=(6, 8))
+
+        def _it_fill(*_):
+            filtro = q_it.get().strip().lower()
+            tv_it.delete(*tv_it.get_children())
+            for k in sorted(items, key=lambda x: int(x)):
+                v = items[k]
+                if not v:
+                    continue
+                nom = item_names.get(int(k), "?")
+                if filtro and filtro not in nom.lower() and filtro != str(k):
+                    continue
+                tv_it.insert("", "end", text=str(k),
+                             values=[nom, v])
+        q_it.trace_add("write", lambda *_: _it_fill())
+        _it_fill()
+
+        def _it_pick(_e=None):
+            selid = tv_it.selection()
+            if selid:
+                qty_var.set(tv_it.item(selid[0], "values")[1])
+        tv_it.bind("<<TreeviewSelect>>", _it_pick)
+
+        def _it_apply():
+            selid = tv_it.selection()
+            if not selid:
+                return
+            try:
+                n = max(0, int(qty_var.get()))
+            except ValueError:
+                return
+            k = str(tv_it.item(selid[0], "text"))
+            if n:
+                items[k] = n
+            else:
+                items.pop(k, None)
+            _it_fill()
+
+        self._make_button(rowe, _("Aplicar"), _it_apply).pack(side="left")
+
+        def _it_add():
+            txt = (self._ask_text(_("Añadir objeto"),
+                                  _("ID de objeto y cantidad:\n(por ejemplo: 5 20)")) or "").split()
+            if len(txt) == 2:
+                try:
+                    iid, n = str(int(txt[0])), int(txt[1])
+                except ValueError:
+                    return
+                if n:
+                    items[iid] = items.get(iid, 0) + n
+                _it_fill()
+        self._make_button(rowe, _("Añadir por ID"), _it_add).pack(side="left", padx=(8, 0))
+
+        # ---- Variables ----
+        f_var = _mk_tab(_("Variables"))
+        rowv = tk.Frame(f_var, bg=SURFACE)
+        rowv.pack(fill="x", padx=12, pady=(10, 4))
+        q_var = tk.StringVar()
+        tk.Entry(rowv, textvariable=q_var, width=24, bg=CARD, fg=TEXT,
+                 insertbackground=TEXT, relief="flat").pack(side="left")
+        tv_var = _tree(rowv, ("nombre", "valor"))
+        tv_var.heading("nombre", text=_("Nombre"))
+        tv_var.column("nombre", width=330, anchor="w")
+        tv_var.heading("valor", text=_("Valor"))
+        tv_var.column("valor", width=110, anchor="w", stretch=False)
+        rowve = tk.Frame(f_var, bg=SURFACE)
+        rowve.pack(fill="x", padx=12, pady=6)
+        tk.Label(rowve, text=_("Valor:"), font=F_META, fg=MUTED,
+                 bg=SURFACE).pack(side="left")
+        val_var = tk.StringVar()
+        tk.Entry(rowve, textvariable=val_var, width=18, bg=CARD, fg=TEXT,
+                 insertbackground=TEXT, relief="flat").pack(side="left", padx=(6, 8))
+
+        def _var_rows():
+            filtro = q_var.get().strip().lower()
+            out = []
+            for i in range(1, len(variables)):
+                v = variables[i]
+                nom = var_names[i] if i < len(var_names) else ""
+                if not nom and v in (None, 0, ""):
+                    continue
+                if filtro:
+                    if filtro not in (nom or "").lower() and filtro != str(i) \
+                            and filtro not in str(v).lower():
+                        continue
+                elif v in (None, 0, ""):
+                    continue
+                out.append((i, nom, v))
+            return out
+
+        def _var_fill():
+            tv_var.delete(*tv_var.get_children())
+            for i, nom, v in _var_rows()[:400]:
+                tv_var.insert("", "end", text=str(i),
+                              values=[nom or "-", v if v is not None else ""])
+        q_var.trace_add("write", lambda *_: _var_fill())
+        _var_fill()
+
+        def _var_pick(_e=None):
+            selid = tv_var.selection()
+            if selid:
+                val_var.set(str(tv_var.item(selid[0], "values")[1]))
+        tv_var.bind("<<TreeviewSelect>>", _var_pick)
+
+        def _var_apply():
+            selid = tv_var.selection()
+            if not selid:
+                return
+            i = int(tv_var.item(selid[0], "text"))
+            raw = val_var.get()
+            try:
+                variables[i] = int(raw)
+            except ValueError:
+                variables[i] = raw
+            _var_fill()
+        self._make_button(rowve, _("Aplicar"), _var_apply).pack(side="left")
+
+        # ---- Switches ----
+        f_sw = _mk_tab(_("Switches"))
+        rows = tk.Frame(f_sw, bg=SURFACE)
+        rows.pack(fill="x", padx=12, pady=(10, 4))
+        q_sw = tk.StringVar()
+        tk.Entry(rows, textvariable=q_sw, width=24, bg=CARD, fg=TEXT,
+                 insertbackground=TEXT, relief="flat").pack(side="left")
+        tv_sw = _tree(rows, ("nombre", "estado"))
+        tv_sw.heading("nombre", text=_("Nombre"))
+        tv_sw.column("nombre", width=330, anchor="w")
+        tv_sw.heading("estado", text=_("Estado"))
+        tv_sw.column("estado", width=90, anchor="center", stretch=False)
+
+        def _sw_rows():
+            filtro = q_sw.get().strip().lower()
+            out = []
+            for i in range(1, len(switches)):
+                v = switches[i]
+                nom = sw_names[i] if i < len(sw_names) else ""
+                on = v is True
+                if not nom and not on:
+                    continue
+                if filtro and filtro not in (nom or "").lower() and filtro != str(i):
+                    continue
+                elif not filtro and not on:
+                    continue
+                out.append((i, nom, on))
+            return out
+
+        def _sw_fill():
+            tv_sw.delete(*tv_sw.get_children())
+            for i, nom, on in _sw_rows()[:400]:
+                tv_sw.insert("", "end", text=str(i),
+                             values=[nom or "-", _("ON") if on else _("OFF")])
+        q_sw.trace_add("write", lambda *_: _sw_fill())
+        _sw_fill()
+
+        def _sw_toggle():
+            selid = tv_sw.selection()
+            if not selid:
+                return
+            i = int(tv_sw.item(selid[0], "text"))
+            switches[i] = not (switches[i] is True)
+            _sw_fill()
+        btns_sw = tk.Frame(f_sw, bg=SURFACE)
+        btns_sw.pack(fill="x", padx=12, pady=6)
+        self._make_button(btns_sw, _("ON/OFF"), _sw_toggle).pack(side="left")
+
+        def _refresh_summary():
+            s = se.summary(obj)
+            sum_lbl.config(text=_(
+                "Oro: %(gold)s   ·   Objetos distintos: %(items_kinds)s   ·   "
+                "Variables usadas: %(variables_used)s   ·   Switches ON: "
+                "%(switches_on)s\nPersonajes: %(actors)s") % s)
+        _refresh_summary()
+
+        bar = tk.Frame(win, bg=SURFACE)
+        bar.pack(fill="x", padx=16, pady=(0, 14))
+
+        def _save():
+            try:
+                party["_gold"] = int(gold_var.get())
+            except ValueError:
+                pass
+            se.dump_save(path, obj, backups_dir=BACKUPS_DIR, game_name=game_name)
+            _refresh_summary()
+            self._update_status(_("Partida '%s' guardada con backup automático.")
+                                % filename)
+            self._info(_("Editar contenido"),
+                       _("Guardado.\nCopia de seguridad del original en backups/%s/.")
+                       % game_name)
+
+        self._make_button(bar, _("Guardar cambios"), _save, accent=True).pack(side="right")
+        self._make_button(bar, _("Cerrar"), command=win.destroy).pack(side="right", padx=(8, 0))
 
     def on_close(self):
         self._end_session()
