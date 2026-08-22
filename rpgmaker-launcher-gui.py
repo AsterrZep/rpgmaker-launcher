@@ -30,7 +30,7 @@ MKXPZ = os.path.join(RUN_DIR, "mkxp-z")
 EASYRPG = "easyrpg-player"
 MAX_DEPTH = 5
 MARKER = ".extracted"
-APP_VERSION = "0.3.2"
+APP_VERSION = "0.4.0"
 REPO_LATEST_API = "https://api.github.com/repos/AsterrZep/rpgmaker-launcher/releases/latest"
 REPO_RELEASES_URL = "https://github.com/AsterrZep/rpgmaker-launcher/releases"
 
@@ -248,6 +248,11 @@ I18N = {
         "No readable data (encrypted or empty?)",
     "Esta acción solo está disponible para juegos %s.":
         "This action is only available for %s games.",
+
+    # mods
+    "Mods": "Mods",
+    "Carpeta de mods de '%s' abierta. Cada .js se inyecta al arrancar; recarga con F5.":
+        "Opened mods folder of '%s'. Every .js is injected on launch; reload with F5.",
 
     # editor de partidas
     "Editar contenido": "Edit content",
@@ -519,6 +524,46 @@ PRESET_TEMPLATE = {
         }
     ]
 }
+
+MOD_TEMPLATE = """// ============================================================
+//  Mod de ejemplo para RPG Maker Launcher
+//
+//  Todos los .js de esta carpeta se inyectan automaticamente en
+//  el juego al arrancar (despues de los scripts base y antes de
+//  que empiece la partida). Borra o renombra este archivo para
+//  desactivar el ejemplo.
+//
+//  Ideas:
+//   - Parchear prototipos del motor (rmmz_objects.js, etc.)
+//   - Atajos propios con document.addEventListener("keydown", ...)
+//   - HUDs personalizados, autoguardado extra, estadisticas...
+// ============================================================
+
+(function () {
+    "use strict";
+
+    // Ejemplo 1: F10 alterna pantalla completa
+    document.addEventListener("keydown", function (ev) {
+        if (ev.key === "F10") {
+            ev.preventDefault();
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else {
+                document.documentElement.requestFullscreen();
+            }
+        }
+    });
+
+    // Ejemplo 2: log en consola cuando el juego esta listo
+    var timer = setInterval(function () {
+        if (typeof window.$gameParty !== "undefined" && window.$gameParty) {
+            clearInterval(timer);
+            console.log("[mod ejemplo] juego cargado; oro:", window.$gameParty._gold);
+        }
+    }, 700);
+})();
+"""
+
 
 PRESET_README = """cheats-presets.json - presets de trucos para este juego
 ========================================================
@@ -1169,6 +1214,8 @@ class App:
         self.preset_btn.pack(side="left", padx=(8, 0))
         self.data_btn = self._make_button(bar, _("Datos"), self.datos_selected)
         self.data_btn.pack(side="left", padx=(8, 0))
+        self.mods_btn = self._make_button(bar, _("Mods"), self.mods_selected)
+        self.mods_btn.pack(side="left", padx=(8, 0))
         self.decrypt_btn = self._make_button(bar, _("Descifrar"), self.decrypt_selected)
         self.decrypt_btn.pack(side="left", padx=(8, 0))
         self.stop_btn = self._make_button(bar, _("Detener servidor"), self.stop_server_action)
@@ -1313,8 +1360,8 @@ class App:
         # Los botones se quedan pulsables: si el motor no corresponde,
         # el propio diálogo avisa en lugar de no hacer nada.
         for btn in (self.play_btn, self.plugins_btn, self.saves_btn,
-                    self.preset_btn, self.data_btn, self.decrypt_btn,
-                    self.stop_btn, self._btn_delzip):
+                    self.preset_btn, self.data_btn, self.mods_btn,
+                    self.decrypt_btn, self.stop_btn, self._btn_delzip):
             self._style_btn(btn, has or btn in (self.stop_btn,))
 
     def _require_engine(self, engine, valid, what):
@@ -1812,6 +1859,28 @@ class App:
             _("Creados:\n%s\nLEEME-presets.txt\n\nEdita el JSON con tus trucos y "
               "pulsa F5 dentro del juego:\naparecerán como botones en la pestaña "
               "'Presets' del panel (F8).") % dest)
+
+    def mods_selected(self):
+        sel = self.selected()
+        if not sel or not sel[1]:
+            return
+        name, root, engine = sel[1]
+        if not self._require_engine(engine, ("MZ", "MV", "web"), _("Mods")):
+            return
+        mdir = os.path.join(root, "mods")
+        example = os.path.join(mdir, "ejemplo-mod.js")
+        try:
+            if not os.path.isdir(mdir) or not os.listdir(mdir):
+                os.makedirs(mdir, exist_ok=True)
+                with open(example, "w", encoding="utf-8") as fh:
+                    fh.write(MOD_TEMPLATE)
+        except OSError as e:
+            self._error(_("Mods"), _("No se pudo guardar: %s") % e)
+            return
+        subprocess.Popen(["xdg-open", mdir],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self._update_status(_("Carpeta de mods de '%s' abierta. Cada .js se "
+                              "inyecta al arrancar; recarga con F5.") % name)
 
     def saves_selected(self):
         sel = self.selected()

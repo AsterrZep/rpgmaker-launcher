@@ -10,6 +10,14 @@
 (function () {
     "use strict";
 
+    // i18n mínimo del panel: español base, inglés si general.lang = "en"
+    var LANG_EN = !!(window.__RPG_CONFIG__ &&
+        window.__RPG_CONFIG__.general &&
+        window.__RPG_CONFIG__.general.lang === "en");
+    function T(es, en) {
+        return (LANG_EN && en != null) ? en : es;
+    }
+
     var HOST = document.createElement("div");
     var shadow = HOST.attachShadow({ mode: "closed" });
 
@@ -46,7 +54,8 @@
         if (panel) {
             var s = panel.querySelector(".rpgc-status");
             if (s) {
-                s.textContent = ready ? "Conectado al juego" : "Esperando al juego...";
+                s.textContent = ready ? T("Conectado al juego", "Connected to game")
+                                      : T("Esperando al juego...", "Waiting for game...");
                 s.className = "rpgc-status " + (ready ? "rpgc-ok" : "rpgc-wait");
             }
         }
@@ -73,6 +82,28 @@
         partyBattlers().forEach(function (a) {
             a.recoverAll();
         });
+    }
+
+    // Volumen global del juego (BGM/BGS/ME/SE) en caliente y persistente
+    function cheatVolume(v) {
+        if (!ready || typeof ConfigManager === "undefined") { return; }
+        v = Math.max(0, Math.min(100, Math.floor(Number(v) || 0)));
+        ConfigManager.bgmVolume = v;
+        ConfigManager.bgsVolume = v;
+        ConfigManager.meVolume = v;
+        ConfigManager.seVolume = v;
+        try {
+            if (typeof AudioManager !== "undefined" &&
+                    typeof AudioManager.saveBgm === "function") {
+                var bgm = AudioManager.saveBgm();
+                if (bgm && bgm.name) { AudioManager.playBgm(bgm); }
+            }
+        } catch (e) { /* sin música activa */ }
+        if (typeof ConfigManager.save === "function") { ConfigManager.save(); }
+    }
+
+    function cheatMute(on) {
+        cheatVolume(on ? 0 : 100);
     }
 
     // Batidores del grupo actual (incluye reservas)
@@ -351,7 +382,7 @@
     // ---------- presets (cheats-presets.json del juego) ----------
     function applyAction(a) {
         var api = window.__rpg_cheats_api__;
-        if (!a || !a.type) { return "accion vacia"; }
+        if (!a || !a.type) { return T("accion vacia", "empty action"); }
         try {
             switch (a.type) {
                 case "gold": api.gold(a.value == null ? 0 : a.value); break;
@@ -368,7 +399,7 @@
                 case "variable": api.variable(a.id, a.value == null ? 0 : a.value); break;
                 case "switch": api.switch(a.id, !!a.on); break;
                 case "eval": return api.eval(a.code || "");
-                default: return "tipo desconocido: " + a.type;
+                default: return T("tipo desconocido: ", "unknown type: ") + a.type;
             }
             return null;
         } catch (e) {
@@ -385,8 +416,8 @@
         });
         refreshStateViews();
         refreshSkillViews();
-        return "OK (" + ok + " accion/es)" +
-            (errs.length ? " · errores: " + errs.join("; ") : "");
+        return T("OK (", "OK (") + ok + T(" accion/es)", " action(s)") +
+            (errs.length ? T(" · errores: ", " · errors: ") + errs.join("; ") : "");
     }
 
     // ---------- búsqueda por nombre (objetos, variables, switches) ----------
@@ -430,7 +461,7 @@
     function fillItemList(dl) {
         if (!dl || typeof dl === "string") { return; }
         while (dl.firstChild) { dl.removeChild(dl.firstChild); }
-        var labels = ["Objeto", "Arma", "Defensa"];
+        var labels = [T("Objeto", "Item"), T("Arma", "Weapon"), T("Defensa", "Armor")];
         gameDbs().forEach(function (db, d) {
             if (!db) { return; }
             for (var i = 1; i < db.length; i++) {
@@ -504,7 +535,7 @@
         var list = listActiveStates();
         if (!list.length) {
             container.appendChild(el("div", "rpgc-status rpgc-ok",
-                "Sin estados activos en el grupo."));
+                T("Sin estados activos en el grupo.", "No active states in the party.")));
             return;
         }
         list.forEach(function (s) {
@@ -514,10 +545,10 @@
             idLab.style.width = "36px";
             row.appendChild(idLab);
             var nm = el("span", "rpgc-stname",
-                s.name + (s.count > 1 ? " (en " + s.count + ")" : ""));
+                s.name + (s.count > 1 ? " (" + s.count + ")" : ""));
             row.appendChild(nm);
             var b = el("button", "rpgc-btn", "\u2212");
-            b.title = "Quitar este estado a todo el grupo";
+            b.title = T("Quitar este estado a todo el grupo", "Remove this state from the whole party");
             b.onclick = function () {
                 cheatSetState(s.id, false);
                 refreshStateViews();
@@ -554,18 +585,20 @@
     // Describe si un estado es temporal o persistente (para el tooltip)
     function describeState(st) {
         var bits = [];
-        if (st.removeAtBattleEnd) { bits.push("se quita al terminar la batalla"); }
-        if (st.removeByWalking) { bits.push("se quita al caminar"); }
-        if (st.removeByDamage) { bits.push("puede quitarse por daño"); }
+        if (st.removeAtBattleEnd) { bits.push(T("se quita al terminar la batalla", "removed when battle ends")); }
+        if (st.removeByWalking) { bits.push(T("se quita al caminar", "removed by walking")); }
+        if (st.removeByDamage) { bits.push(T("puede quitarse por daño", "can be removed by damage")); }
         if (st.maxTurns > 0) {
-            bits.push("dura " + (st.minTurns || 1) + "-" + st.maxTurns + " turnos");
+            bits.push(T("dura ", "lasts ") + (st.minTurns || 1) + "-" +
+                st.maxTurns + T(" turnos", " turns"));
         }
         if (st.autoReleaseByNotDamage && st.minTurns > 0) {
             bits.push("se suelta sin recibir daño en " + st.minTurns + "+" +
                 (st.maxTurns || "") + " turnos");
         }
         if (!bits.length) {
-            bits.push("persistente: solo se quita por condiciones/eventos del juego");
+            bits.push(T("persistente: solo se quita por condiciones/eventos del juego",
+                "persistent: only removed by game conditions/events"));
         }
         return "#" + st.id + " — " + bits.join("; ");
     }
@@ -598,14 +631,14 @@
             row.appendChild(nm);
             (function (stateId, cont, f) {
                 var bAdd = el("button", "rpgc-btn", "+");
-                bAdd.title = "Añadir este estado al grupo actual";
+                bAdd.title = T("Añadir este estado al grupo actual", "Add this state to current party");
                 bAdd.onclick = function () {
                     cheatSetState(stateId, true);
                     refreshStateViews();
                 };
                 row.appendChild(bAdd);
                 var bDel = el("button", "rpgc-btn", "\u2212");
-                bDel.title = "Quitar este estado";
+                bDel.title = T("Quitar este estado", "Remove this state");
                 bDel.onclick = function () {
                     cheatSetState(stateId, false);
                     refreshStateViews();
@@ -616,8 +649,10 @@
         }
         if (!shown) {
             container.appendChild(el("div", "rpgc-status rpgc-wait",
-                "Sin resultados. (Si buscas un indicador como 'Fe' y no está aquí, " +
-                "no es un estado del motor: mira la pestaña Variables/Switches.)"));
+                T("Sin resultados. (Si buscas un indicador como 'Fe' y no está aquí, " +
+                "no es un estado del motor: mira la pestaña Variables/Switches.)",
+                "No results. (If you are looking for an indicator like 'Faith' and " +
+                "it is not here, it is not an engine state: check Variables/Switches.)")));
         }
     }
 
@@ -645,24 +680,25 @@
             var cnt = counts[sk.id] ? " (" + counts[sk.id] + ")" : "";
             var nm = el("span", "rpgc-stname", sk.name + cnt);
             nm.title = "#" + sk.id + (counts[sk.id]
-                ? " — la conocen " + counts[sk.id] + " personaje(s)"
-                : " — nadie la conoce");
+                ? T(" — la conocen ", " — known by ") + counts[sk.id] +
+                  T(" personaje(s)", " character(s)")
+                : T(" — nadie la conoce", " — nobody knows it"));
             if (counts[sk.id]) { nm.style.color = "#7fd68f"; }
             row.appendChild(nm);
             (function (sid) {
                 var bAdd = el("button", "rpgc-btn", "+");
-                bAdd.title = "Aprender en todos los personajes";
+                bAdd.title = T("Aprender en todos los personajes", "Learn on all characters");
                 bAdd.onclick = function () { cheatLearnSkill(sid, true); refreshSkillViews(); };
                 row.appendChild(bAdd);
                 var bDel = el("button", "rpgc-btn", "\u2212");
-                bDel.title = "Olvidar en todos los personajes";
+                bDel.title = T("Olvidar en todos los personajes", "Unlearn on all characters");
                 bDel.onclick = function () { cheatLearnSkill(sid, false); refreshSkillViews(); };
                 row.appendChild(bDel);
             })(sk.id);
             container.appendChild(row);
         }
         if (!shown) {
-            container.appendChild(el("div", "rpgc-status rpgc-wait", "Sin resultados."));
+            container.appendChild(el("div", "rpgc-status rpgc-wait", T("Sin resultados.", "No results.")));
         }
     }
 
@@ -734,14 +770,14 @@
         shadow.appendChild(style);
 
         var btn = el("button", "rpgc-toggle", "T");
-        btn.title = "Abrir/cerrar trucos (" + configKey("trucos", "F8") + ")";
+        btn.title = T("Abrir/cerrar trucos (", "Toggle cheats (") + configKey("trucos", "F8") + ")";
         shadow.appendChild(btn);
 
         panel = el("div", "rpgc-panel");
 
         var head = el("div", "rpgc-head");
         var title = el("div", "rpgc-title");
-        title.appendChild(el("span", null, "TRUCOS"));
+        title.appendChild(el("span", null, T("TRUCOS", "CHEATS")));
         title.appendChild(el("span", "rpgc-badge", "JoyPlay"));
         head.appendChild(title);
         var x = el("button", "rpgc-x", "×");
@@ -753,11 +789,19 @@
         var presetsData = (window.__RPG_CHEATS_PRESETS__ &&
             window.__RPG_CHEATS_PRESETS__.presets) || [];
         var hasPresets = presetsData.length > 0;
-        var tabNames = ["General", "Objetos", "Grupo", "Variables"];
-        if (hasPresets) { tabNames.push("Presets"); }
-        tabNames.push("Código");
-        var tabBtns = tabNames.map(function (t) {
-            var b = el("button", "rpgc-tab", t);
+        var TABS = [
+            { key: "General",   label: T("General", "General") },
+            { key: "Objetos",   label: T("Objetos", "Items") },
+            { key: "Grupo",     label: T("Grupo", "Party") },
+            { key: "Variables", label: "Variables" }
+        ];
+        if (hasPresets) { TABS.push({ key: "Presets", label: "Presets" }); }
+        TABS.push({ key: "Código", label: T("Código", "Code") });
+        var tabNames = TABS.map(function (t) { return t.key; });
+        var tabLabels = {};
+        TABS.forEach(function (t) { tabLabels[t.key] = t.label; });
+        var tabBtns = tabNames.map(function (k) {
+            var b = el("button", "rpgc-tab", tabLabels[k]);
             tabs.appendChild(b);
             return b;
         });
@@ -780,50 +824,64 @@
         // --- General ---
         var g = sections["General"];
         var rowG = el("div", "rpgc-row");
-        rowG.appendChild(el("span", "rpgc-label", "Oro"));
-        var gGold = makeInput("cantidad", "999999");
+        rowG.appendChild(el("span", "rpgc-label", T("Oro", "Gold")));
+        var gGold = makeInput(T("cantidad", "amount"), "999999");
         rowG.appendChild(gGold);
-        var bGold = el("button", "rpgc-btn acc", "Añadir");
+        var bGold = el("button", "rpgc-btn acc", T("Añadir", "Add"));
         bGold.onclick = function () { cheatGold(gGold.value); };
         rowG.appendChild(bGold);
         var bGoldMax = el("button", "rpgc-btn", "MAX");
-        bGoldMax.title = "Deja el oro al máximo permitido por el juego";
+        bGoldMax.title = T("Deja el oro al máximo permitido por el juego",
+            "Sets gold to the maximum allowed by the game");
         bGoldMax.onclick = function () { cheatGoldSet(0); };
         rowG.appendChild(bGoldMax);
         g.appendChild(rowG);
 
         var rowTodo = el("div", "rpgc-row");
         var bTodo = el("button", "rpgc-btn acc wide",
-            "LO TODO: oro, objetos, nivel, stats y skills");
-        bTodo.title = "Oro máximo + 99 objetos + 10 armas/armaduras + nivel y stats al tope " +
-            "+ todas las habilidades. NO añade estados (para eso, pestaña Grupo).";
+            T("LO TODO: oro, objetos, nivel, stats y skills",
+              "EVERYTHING: gold, items, level, stats & skills"));
+        bTodo.title = T("Oro máximo + 99 objetos + 10 armas/armaduras + nivel y stats al tope " +
+            "+ todas las habilidades. NO añade estados (para eso, pestaña Grupo).",
+            "Max gold + 99 items + 10 weapons/armors + max level & stats " +
+            "+ all skills. Does NOT add states (see Party tab).");
         bTodo.onclick = cheatEverything;
         rowTodo.appendChild(bTodo);
         g.appendChild(rowTodo);
 
         var rowR = el("div", "rpgc-row");
         rowR.appendChild(el("span", "rpgc-label", ""));
-        var bRecover = el("button", "rpgc-btn", "HP/MP/TP al máximo");
+        var bRecover = el("button", "rpgc-btn", T("HP/MP/TP al máximo", "Full HP/MP/TP"));
         bRecover.onclick = cheatRecover;
         rowR.appendChild(bRecover);
         g.appendChild(rowR);
 
         var rowS = el("div", "rpgc-row");
         rowS.appendChild(el("span", "rpgc-label", ""));
-        var bStates = el("button", "rpgc-btn", "Quitar estados al grupo");
+        var bStates = el("button", "rpgc-btn", T("Quitar estados al grupo", "Clear party states"));
         bStates.onclick = cheatClearStates;
         rowS.appendChild(bStates);
         g.appendChild(rowS);
 
+        var rowVol = el("div", "rpgc-row");
+        rowVol.appendChild(el("span", "rpgc-label", T("Volumen", "Volume")));
+        [0, 25, 50, 75, 100].forEach(function (vv) {
+            var bv = el("button", "rpgc-btn",
+                vv === 0 ? T("Mute", "Mute") : vv + "%");
+            bv.onclick = function () { cheatVolume(vv); };
+            rowVol.appendChild(bv);
+        });
+        g.appendChild(rowVol);
+
         var rowT = el("div", "rpgc-row");
-        rowT.appendChild(el("span", "rpgc-label", "Teletransp."));
+        rowT.appendChild(el("span", "rpgc-label", T("Teletransp.", "Teleport")));
         var tMap = makeInput("mapa", "1");
         var tX = makeInput("X", "0");
         var tY = makeInput("Y", "0");
         rowT.appendChild(tMap);
         rowT.appendChild(tX);
         rowT.appendChild(tY);
-        var bTp = el("button", "rpgc-btn acc", "Ir");
+        var bTp = el("button", "rpgc-btn acc", T("Ir", "Go"));
         bTp.onclick = function () { cheatTeleport(tMap.value, tX.value, tY.value); };
         rowT.appendChild(bTp);
         g.appendChild(rowT);
@@ -835,13 +893,13 @@
         shadow.appendChild(dlItems);
 
         var rowO = el("div", "rpgc-row");
-        rowO.appendChild(el("span", "rpgc-label", "Objeto"));
-        var oId = makeInput("nombre o ID");
+        rowO.appendChild(el("span", "rpgc-label", T("Objeto", "Item")));
+        var oId = makeInput(T("nombre o ID", "name or ID"));
         oId.setAttribute("list", dlItems.id);
         rowO.appendChild(oId);
-        var oCount = makeInput("cant.", "99");
+        var oCount = makeInput(T("cant.", "qty"), "99");
         rowO.appendChild(oCount);
-        var bGive = el("button", "rpgc-btn acc", "Dar");
+        var bGive = el("button", "rpgc-btn acc", T("Dar", "Give"));
         bGive.onclick = function () { cheatGiveNamed(oId.value, oCount.value); };
         rowO.appendChild(bGive);
         o.appendChild(rowO);
@@ -863,31 +921,37 @@
             b.onclick = fn;
             return b;
         };
-        o.appendChild(mkWideBtn("Dar 99 de TODOS los objetos", cheatGiveAll.bind(null, "i", 99)));
-        o.appendChild(mkWideBtn("Dar 10 de todas las ARMAS", cheatGiveAll.bind(null, "w", 10)));
-        o.appendChild(mkWideBtn("Dar 10 de todas las DEFENSAS", cheatGiveAll.bind(null, "a", 10)));
-        o.appendChild(mkWideBtn("Dar TODO (objetos + armas + defensas)", cheatAllItems));
+        o.appendChild(mkWideBtn(T("Dar 99 de TODOS los objetos", "Give 99 of ALL items"),
+            cheatGiveAll.bind(null, "i", 99)));
+        o.appendChild(mkWideBtn(T("Dar 10 de todas las ARMAS", "Give 10 of ALL weapons"),
+            cheatGiveAll.bind(null, "w", 10)));
+        o.appendChild(mkWideBtn(T("Dar 10 de todas las DEFENSAS", "Give 10 of ALL armors"),
+            cheatGiveAll.bind(null, "a", 10)));
+        o.appendChild(mkWideBtn(T("Dar TODO (objetos + armas + defensas)",
+            "Give EVERYTHING (items + weapons + armors)"), cheatAllItems));
 
         // --- Grupo ---
         var gr = sections["Grupo"];
         var grNote = el("div", "rpgc-status rpgc-ok",
-            "Aplica a todos los personajes con nombre (incluye futuros reclutas).");
+            T("Aplica a todos los personajes con nombre (incluye futuros reclutas).",
+              "Applies to every named character (includes future recruits)."));
         grNote.style.textAlign = "left";
         gr.appendChild(grNote);
 
         var rowLv = el("div", "rpgc-row");
-        rowLv.appendChild(el("span", "rpgc-label", "Nivel"));
-        var bLv = el("button", "rpgc-btn acc", "Nivel MAX");
+        rowLv.appendChild(el("span", "rpgc-label", T("Nivel", "Level")));
+        var bLv = el("button", "rpgc-btn acc", T("Nivel MAX", "Level MAX"));
         bLv.onclick = cheatMaxLevel;
         rowLv.appendChild(bLv);
         gr.appendChild(rowLv);
 
         var rowSt = el("div", "rpgc-row");
-        rowSt.appendChild(el("span", "rpgc-label", "Stats"));
-        var stCap = makeInput("tope", String(STATS_CAP));
+        rowSt.appendChild(el("span", "rpgc-label", T("Stats", "Stats")));
+        var stCap = makeInput(T("tope", "cap"), String(STATS_CAP));
         rowSt.appendChild(stCap);
-        var bSt = el("button", "rpgc-btn acc", "Stats MAX");
-        bSt.title = "MHP, MMP, ATK, DEF, MAT, MDF, AGI y LUK al tope";
+        var bSt = el("button", "rpgc-btn acc", T("Stats MAX", "Stats MAX"));
+        bSt.title = T("MHP, MMP, ATK, DEF, MAT, MDF, AGI y LUK al tope",
+            "Maxes out MHP, MMP, ATK, DEF, MAT, MDF, AGI and LUK");
         bSt.onclick = function () { cheatMaxStats(stCap.value); };
         rowSt.appendChild(bSt);
         gr.appendChild(rowSt);
@@ -902,8 +966,8 @@
         // Catálogo de habilidades: aprender/olvidar cualquiera individualmente.
         // Aquí viven las pasivas tipo 'Fe' o 'Sentido del Peligro'.
         var rowSkC = el("div", "rpgc-row");
-        rowSkC.appendChild(el("span", "rpgc-label", "Habilidad"));
-        var skFilter = makeInput("buscar habilidad o ID...");
+        rowSkC.appendChild(el("span", "rpgc-label", T("Habilidad", "Skill")));
+        var skFilter = makeInput(T("buscar habilidad o ID...", "search skill or ID..."));
         skFilter.style.flex = "1";
         rowSkC.appendChild(skFilter);
         gr.appendChild(rowSkC);
@@ -921,41 +985,45 @@
 
         // --- Estados ---
         var stWarn = el("div", "rpgc-status rpgc-wait",
-            "\u26A0 Añadir TODOS incluye también los estados malos (veneno, " +
+            T("\u26A0 Añadir TODOS incluye también los estados malos (veneno, " +
             "maldiciones, muerte...). Si al quitarlos vuelven a aparecer, usa abajo " +
-            "'Deshacer skills del cheat + limpiar estados'.");
+            "'Deshacer skills del cheat + limpiar estados'.",
+            "\u26A0 Add ALL also includes bad states (poison, curses, death...). " +
+            "If they keep coming back, use 'Undo cheat skills + clear states' below."));
         stWarn.style.textAlign = "left";
         gr.appendChild(stWarn);
 
         var rowEst = el("div", "rpgc-row");
-        rowEst.appendChild(el("span", "rpgc-label", "Estados"));
-        var bEstOn = el("button", "rpgc-btn", "Añadir TODOS \u26A0");
-        bEstOn.title = "Añade al grupo todos los estados del juego, incluidos los negativos";
+        rowEst.appendChild(el("span", "rpgc-label", T("Estados", "States")));
+        var bEstOn = el("button", "rpgc-btn", T("Añadir TODOS \u26A0", "Add ALL \u26A0"));
+        bEstOn.title = T("Añade al grupo todos los estados del juego, incluidos los negativos",
+            "Adds every state in the game to the party, including negative ones");
         bEstOn.onclick = function () { cheatAllStates(true); refreshStateViews(); };
         rowEst.appendChild(bEstOn);
-        var bEstOff = el("button", "rpgc-btn acc", "Quitar TODOS");
-        bEstOff.title = "Quita todos los estados activos del grupo";
+        var bEstOff = el("button", "rpgc-btn acc", T("Quitar TODOS", "Remove ALL"));
+        bEstOff.title = T("Quita todos los estados activos del grupo",
+            "Removes all active states from the party");
         bEstOff.onclick = function () { cheatAllStates(false); refreshStateViews(); };
         rowEst.appendChild(bEstOff);
         gr.appendChild(rowEst);
 
         var rowEst1 = el("div", "rpgc-row");
-        rowEst1.appendChild(el("span", "rpgc-label", "Estado ID"));
+        rowEst1.appendChild(el("span", "rpgc-label", T("Estado ID", "State ID")));
         var estId = makeInput("ID");
         rowEst1.appendChild(estId);
         var bEst1On = el("button", "rpgc-btn", "+");
-        bEst1On.title = "Añadir este estado";
+        bEst1On.title = T("Añadir este estado", "Add this state");
         bEst1On.onclick = function () { cheatSetState(estId.value, true); refreshStateViews(); };
         rowEst1.appendChild(bEst1On);
         var bEst1Off = el("button", "rpgc-btn", "\u2212");
-        bEst1Off.title = "Quitar este estado";
+        bEst1Off.title = T("Quitar este estado", "Remove this state");
         bEst1Off.onclick = function () { cheatSetState(estId.value, false); refreshStateViews(); };
         rowEst1.appendChild(bEst1Off);
         gr.appendChild(rowEst1);
 
         var rowStLst = el("div", "rpgc-row");
-        rowStLst.appendChild(el("span", "rpgc-label", "Activos"));
-        var bRefL = el("button", "rpgc-btn", "Actualizar lista");
+        rowStLst.appendChild(el("span", "rpgc-label", T("Activos", "Active")));
+        var bRefL = el("button", "rpgc-btn", T("Actualizar lista", "Refresh list"));
         bRefL.onclick = function () { refreshStateViews(); };
         rowStLst.appendChild(bRefL);
         gr.appendChild(rowStLst);
@@ -969,8 +1037,8 @@
 
         // Catálogo completo: todos los estados del juego, activos o no
         var rowCat = el("div", "rpgc-row");
-        rowCat.appendChild(el("span", "rpgc-label", "Catálogo"));
-        var catFilter = makeInput("buscar estado o ID...");
+        rowCat.appendChild(el("span", "rpgc-label", T("Catálogo", "Catalog")));
+        var catFilter = makeInput(T("buscar estado o ID...", "search state or ID..."));
         catFilter.style.flex = "1";
         rowCat.appendChild(catFilter);
         gr.appendChild(rowCat);
@@ -987,12 +1055,17 @@
         renderStateCatalog(catList, "");
 
         var bUndoSk = el("button", "rpgc-btn wide",
-            "Deshacer skills del cheat + limpiar estados");
-        bUndoSk.title = "Deja cada personaje solo con sus habilidades legítimas " +
+            T("Deshacer skills del cheat + limpiar estados",
+              "Undo cheat skills + clear states"));
+        bUndoSk.title = T("Deja cada personaje solo con sus habilidades legítimas " +
             "(iniciales + las de su clase según el nivel actual) y limpia todos los estados. " +
             "Úsalo si los estados vuelven a aparecer: normalmente los re-aplica alguna " +
             "habilidad pasiva ganada con 'Aprender todas' o 'LO TODO', incluso en " +
-            "partidas guardadas anteriormente.";
+            "partidas guardadas anteriormente.",
+            "Leaves each character with only their legitimate skills (initial ones " +
+            "+ class learnings up to current level) and clears all states. Use it if " +
+            "states keep coming back: usually a passive learned via 'Learn all' or " +
+            "'EVERYTHING' re-applies them, even in previously saved games.");
         bUndoSk.onclick = function () {
             cheatRestoreSkills();
             cheatClearStates();
@@ -1013,13 +1086,13 @@
         fillItemList(dlItems);
 
         var rowV = el("div", "rpgc-row");
-        rowV.appendChild(el("span", "rpgc-label", "Variable"));
-        var vId = makeInput("nombre/ID");
+        rowV.appendChild(el("span", "rpgc-label", T("Variable", "Variable")));
+        var vId = makeInput(T("nombre/ID", "name/ID"));
         vId.setAttribute("list", dlVars.id);
         rowV.appendChild(vId);
-        var vVal = makeInput("valor");
+        var vVal = makeInput(T("valor", "value"));
         rowV.appendChild(vVal);
-        var bSetV = el("button", "rpgc-btn acc", "Poner");
+        var bSetV = el("button", "rpgc-btn acc", T("Poner", "Set"));
         bSetV.onclick = function () { cheatVariable(vId.value, vVal.value); };
         rowV.appendChild(bSetV);
         v.appendChild(rowV);
@@ -1038,7 +1111,7 @@
 
         var rowSw = el("div", "rpgc-row");
         rowSw.appendChild(el("span", "rpgc-label", "Switch"));
-        var sId = makeInput("nombre/ID");
+        var sId = makeInput(T("nombre/ID", "name/ID"));
         sId.setAttribute("list", dlSw.id);
         rowSw.appendChild(sId);
         var sOn = el("button", "rpgc-btn", "ON");
@@ -1065,14 +1138,16 @@
         if (hasPresets) {
             var pr = sections["Presets"];
             var prNote = el("div", "rpgc-status rpgc-ok",
-                "Presets definidos para este juego (cheats-presets.json).");
+                T("Presets definidos para este juego (cheats-presets.json).",
+                  "Presets defined for this game (cheats-presets.json)."));
             prNote.style.textAlign = "left";
             pr.appendChild(prNote);
             var prOut = el("div", "rpgc-out", "");
             presetsData.forEach(function (p, pi) {
                 var b = el("button", "rpgc-btn wide" + (pi % 2 ? "" : " acc"),
                     p.name || ("Preset " + (pi + 1)));
-                b.title = p.desc || "Aplica las acciones definidas para este juego";
+                b.title = p.desc || T("Aplica las acciones definidas para este juego",
+                    "Applies the actions defined for this game");
                 b.onclick = function () { prOut.textContent = applyPreset(p); };
                 pr.appendChild(b);
             });
@@ -1082,10 +1157,12 @@
         // --- Código ---
         var c = sections["Código"];
         var codeArea = el("textarea", "rpgc-code");
-        codeArea.placeholder = "Ej: $gameParty._gold = 999999\n    $gameActors.actor(1).recoverAll()";
+        codeArea.placeholder = T(
+            "Ej: $gameParty._gold = 999999\n    $gameActors.actor(1).recoverAll()",
+            "E.g.: $gameParty._gold = 999999\n    $gameActors.actor(1).recoverAll()");
         c.appendChild(codeArea);
         var out = el("div", "rpgc-out", "");
-        var bRun = el("button", "rpgc-btn acc wide", "Ejecutar");
+        var bRun = el("button", "rpgc-btn acc wide", T("Ejecutar", "Run"));
         bRun.onclick = function () {
             out.textContent = cheatEval(codeArea.value);
         };

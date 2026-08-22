@@ -151,6 +151,9 @@ class GameHandler(SimpleHTTPRequestHandler):
         if path == "/__presets.js":
             self._serve_presets_js()
             return
+        if path.startswith("/__mods/"):
+            self._serve_mod(path[len("/__mods/"):])
+            return
         if path == "/__cheats.js":
             self._serve_static_js("rpgmaker-cheats.js")
             return
@@ -193,6 +196,36 @@ class GameHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _game_root_from_referer(self):
+        """Carpeta del juego (donde vive index.html) según el Referer."""
+        ref = self.headers.get("Referer")
+        if not ref:
+            return None
+        try:
+            p = urllib.parse.urlparse(ref).path
+            if p.endswith("/index.html"):
+                return os.path.dirname(self.translate_path(p))
+        except Exception:
+            return None
+        return None
+
+    def _serve_mod(self, name):
+        """Sirve un mod JS del juego (carpeta mods/ junto a index.html)."""
+        name = os.path.basename(urllib.parse.unquote(name))
+        groot = self._game_root_from_referer()
+        fpath = os.path.join(groot or "", "mods", name)
+        if not (groot and os.path.isfile(fpath)):
+            self.send_error(404, "Not Found")
+            return
+        with open(fpath, "rb") as fh:
+            data = fh.read()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/javascript")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
     def _serve_presets_js(self):
         """Sirve los presets de trucos del juego (cheats-presets.json).
 
@@ -201,18 +234,15 @@ class GameHandler(SimpleHTTPRequestHandler):
         se responde null para que el panel oculte la pestaña.
         """
         presets = None
-        ref = self.headers.get("Referer")
-        if ref:
+        groot = self._game_root_from_referer()
+        if groot:
             try:
-                p = urllib.parse.urlparse(ref).path
-                if p.endswith("/index.html"):
-                    gdir = os.path.dirname(self.translate_path(p))
-                    with open(os.path.join(gdir, "cheats-presets.json"),
-                              "r", encoding="utf-8") as fh:
-                        data = json.load(fh)
-                    if isinstance(data, dict) and isinstance(data.get("presets"), list):
-                        presets = data
-            except (OSError, ValueError, AttributeError):
+                with open(os.path.join(groot, "cheats-presets.json"),
+                          "r", encoding="utf-8") as fh:
+                    data = json.load(fh)
+                if isinstance(data, dict) and isinstance(data.get("presets"), list):
+                    presets = data
+            except (OSError, ValueError):
                 presets = None
         payload = ("window.__RPG_CHEATS_PRESETS__ = %s;"
                    % json.dumps(presets, ensure_ascii=False)).encode("utf-8")
@@ -257,6 +287,14 @@ class GameHandler(SimpleHTTPRequestHandler):
         # Silencia el aviso de deprecación del meta antiguo de MV
         content = content.replace('name="apple-mobile-web-app-capable"',
                                   'name="mobile-web-app-capable"')
+        # mods del usuario: <juego>/mods/*.js se cargan tras los scripts base
+        try:
+            mods_dir = os.path.join(os.path.dirname(full), "mods")
+            for mf in sorted(f for f in os.listdir(mods_dir) if f.endswith(".js")):
+                tags.append('<script src="/__mods/%s"></script>'
+                            % urllib.parse.quote(mf))
+        except OSError:
+            pass
         for tag in tags:
             if tag not in content:
                 if "</head>" in content:
