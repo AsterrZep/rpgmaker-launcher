@@ -348,6 +348,47 @@
         }
     }
 
+    // ---------- presets (cheats-presets.json del juego) ----------
+    function applyAction(a) {
+        var api = window.__rpg_cheats_api__;
+        if (!a || !a.type) { return "accion vacia"; }
+        try {
+            switch (a.type) {
+                case "gold": api.gold(a.value == null ? 0 : a.value); break;
+                case "goldMax": api.goldSet(a.value); break;
+                case "item": api.item(a.id, a.count == null ? 1 : a.count); break;
+                case "items": api.items(); break;
+                case "level": api.maxLevel(); break;
+                case "stats": api.maxStats(a.cap); break;
+                case "skills": api.skills(); break;
+                case "heal": api.heal(); break;
+                case "clearStates": api.clearStates(); break;
+                case "allStates": api.allStates(true); break;
+                case "tp": api.tp(a.map, a.x, a.y); break;
+                case "variable": api.variable(a.id, a.value == null ? 0 : a.value); break;
+                case "switch": api.switch(a.id, !!a.on); break;
+                case "eval": return api.eval(a.code || "");
+                default: return "tipo desconocido: " + a.type;
+            }
+            return null;
+        } catch (e) {
+            return e && e.message ? e.message : String(e);
+        }
+    }
+
+    function applyPreset(p) {
+        var errs = [], ok = 0;
+        (p.actions || []).forEach(function (a) {
+            var err = applyAction(a);
+            if (err) { errs.push((a && a.type ? a.type : "?") + ": " + err); }
+            else { ok++; }
+        });
+        refreshStateViews();
+        refreshSkillViews();
+        return "OK (" + ok + " accion/es)" +
+            (errs.length ? " · errores: " + errs.join("; ") : "");
+    }
+
     // ---------- búsqueda por nombre (objetos, variables, switches) ----------
     function gameDbs() {
         return [$dataItems, $dataWeapons, $dataArmors];
@@ -709,7 +750,12 @@
         panel.appendChild(head);
 
         var tabs = el("div", "rpgc-tabs");
-        var tabNames = ["General", "Objetos", "Grupo", "Variables", "Código"];
+        var presetsData = (window.__RPG_CHEATS_PRESETS__ &&
+            window.__RPG_CHEATS_PRESETS__.presets) || [];
+        var hasPresets = presetsData.length > 0;
+        var tabNames = ["General", "Objetos", "Grupo", "Variables"];
+        if (hasPresets) { tabNames.push("Presets"); }
+        tabNames.push("Código");
         var tabBtns = tabNames.map(function (t) {
             var b = el("button", "rpgc-tab", t);
             tabs.appendChild(b);
@@ -1015,6 +1061,24 @@
             }
         });
 
+        // --- Presets (definidos en cheats-presets.json del juego) ---
+        if (hasPresets) {
+            var pr = sections["Presets"];
+            var prNote = el("div", "rpgc-status rpgc-ok",
+                "Presets definidos para este juego (cheats-presets.json).");
+            prNote.style.textAlign = "left";
+            pr.appendChild(prNote);
+            var prOut = el("div", "rpgc-out", "");
+            presetsData.forEach(function (p, pi) {
+                var b = el("button", "rpgc-btn wide" + (pi % 2 ? "" : " acc"),
+                    p.name || ("Preset " + (pi + 1)));
+                b.title = p.desc || "Aplica las acciones definidas para este juego";
+                b.onclick = function () { prOut.textContent = applyPreset(p); };
+                pr.appendChild(b);
+            });
+            pr.appendChild(prOut);
+        }
+
         // --- Código ---
         var c = sections["Código"];
         var codeArea = el("textarea", "rpgc-code");
@@ -1131,6 +1195,7 @@
     window.__rpg_cheats_api__ = {
         gold: cheatGold,
         goldSet: cheatGoldSet,
+        heal: cheatRecover,
         item: function (id, n) { var it = findItem(id); if (it) { $gameParty.gainItem(it, Math.floor(Number(n)) || 1); } },
         items: cheatAllItems,
         maxLevel: cheatMaxLevel,

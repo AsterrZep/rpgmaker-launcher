@@ -148,6 +148,9 @@ class GameHandler(SimpleHTTPRequestHandler):
         if path == "/__config.js":
             self._serve_config_js()
             return
+        if path == "/__presets.js":
+            self._serve_presets_js()
+            return
         if path == "/__cheats.js":
             self._serve_static_js("rpgmaker-cheats.js")
             return
@@ -190,6 +193,36 @@ class GameHandler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _serve_presets_js(self):
+        """Sirve los presets de trucos del juego (cheats-presets.json).
+
+        El juego se identifica por el Referer (…/index.html); el JSON se
+        busca como cheats-presets.json junto a index.html. Si no existe
+        se responde null para que el panel oculte la pestaña.
+        """
+        presets = None
+        ref = self.headers.get("Referer")
+        if ref:
+            try:
+                p = urllib.parse.urlparse(ref).path
+                if p.endswith("/index.html"):
+                    gdir = os.path.dirname(self.translate_path(p))
+                    with open(os.path.join(gdir, "cheats-presets.json"),
+                              "r", encoding="utf-8") as fh:
+                        data = json.load(fh)
+                    if isinstance(data, dict) and isinstance(data.get("presets"), list):
+                        presets = data
+            except (OSError, ValueError, AttributeError):
+                presets = None
+        payload = ("window.__RPG_CHEATS_PRESETS__ = %s;"
+                   % json.dumps(presets, ensure_ascii=False)).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/javascript")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+        self.wfile.write(payload)
+
     def do_POST(self):
         path = self.path.split("?")[0]
         if path.startswith("/__save/"):
@@ -217,6 +250,7 @@ class GameHandler(SimpleHTTPRequestHandler):
             return
         tags = ['<script src="/__config.js"></script>',
                 '<script src="/__savebridge.js"></script>',
+                '<script src="/__presets.js"></script>',
                 '<script src="/__cheats.js"></script>',
                 '<script src="/__gamepad.js"></script>',
                 '<script src="/__browserkeys.js"></script>']

@@ -31,6 +31,15 @@ EASYRPG = "easyrpg-player"
 MAX_DEPTH = 5
 MARKER = ".extracted"
 
+# Drag & drop de .zip (opcional; requiere tkinterdnd2 si está instalado)
+try:
+    from tkinterdnd2 import DND_FILES, TkinterDnD
+    HAS_DND = True
+except Exception:
+    DND_FILES = None
+    TkinterDnD = None
+    HAS_DND = False
+
 ENGINE_LABEL = {
     "MZ": "RPG Maker MZ",
     "MV": "RPG Maker MV",
@@ -202,6 +211,22 @@ I18N = {
     "Selecciona archivos para exportar.": "Select files to export.",
     "Exportadas %d partida(s) a %s": "Exported %d save(s) to %s",
     "¿Borrar %d archivo(s) de partida?": "Delete %d save file(s)?",
+
+    # favoritos / presets / drag & drop
+    "%s: favorito": "%s: favorite",
+    "%s: ya no es favorito": "%s: removed from favorites",
+    "Plantilla trucos": "Cheat presets",
+    "Ya existe cheats-presets.json en este juego.\n\n¿Sobrescribirlo con la plantilla?":
+        "cheats-presets.json already exists in this game.\n\nOverwrite it with the template?",
+    "Creados:\n%s\nLEEME-presets.txt\n\nEdita el JSON con tus trucos y "
+    "pulsa F5 dentro del juego:\naparecerán como botones en la pestaña "
+    "'Presets' del panel (F8).":
+        "Created:\n%s\nLEEME-presets.txt\n\nEdit the JSON with your cheats and "
+        "press F5 inside the game:\nthey will appear as buttons in the "
+        "'Presets' tab of the panel (F8).",
+    "Copiados %d .zip; extrayendo...": "Copied %d .zip file(s); extracting...",
+    "no se pudo copiar %s: %s": "could not copy %s: %s",
+    "Suelta archivos .zip para instalarlos": "Drop .zip files here to install them",
 }
 
 
@@ -412,6 +437,64 @@ def find_cover(game_top, root):
     return None
 
 
+# ---------- plantilla de presets de trucos ----------
+PRESET_TEMPLATE = {
+    "presets": [
+        {
+            "name": "Inicio comodo",
+            "desc": "Oro, objetos, nivel, stats y curacion",
+            "actions": [
+                {"type": "gold", "value": 99999},
+                {"type": "items"},
+                {"type": "level"},
+                {"type": "stats"},
+                {"type": "heal"}
+            ]
+        },
+        {
+            "name": "Solo oro",
+            "actions": [
+                {"type": "gold", "value": 500000}
+            ]
+        },
+        {
+            "name": "Ejemplo switch/variable/eval",
+            "actions": [
+                {"type": "switch", "id": 1, "on": True},
+                {"type": "variable", "id": 5, "value": 42},
+                {"type": "eval", "code": "$gameParty.gainItem($dataItems[1], 10)"}
+            ]
+        }
+    ]
+}
+
+PRESET_README = """cheats-presets.json - presets de trucos para este juego
+========================================================
+Cada preset aparece como boton en la pestana "Presets" del panel
+de trucos (tecla F8 dentro del juego). Tras editar este archivo,
+pulsa F5 en el visor para recargarlo.
+
+Tipos de accion disponibles:
+  {"type":"gold","value":N}            anade N de oro
+  {"type":"goldMax","value":N}         fija el oro (sin value = maximo)
+  {"type":"item","id":"X","count":N}   da N unidades (ID o nombre exacto;
+                                       busca objetos, armas y defensas)
+  {"type":"items"}                     da todos los objetos/armas/defensas
+  {"type":"level"}                     nivel MAX en todos los personajes
+  {"type":"stats","cap":N}             stats al tope (por defecto 999999)
+  {"type":"skills"}                    aprende todas las habilidades
+  {"type":"heal"}                      cura HP/MP/TP y quita estados
+  {"type":"clearStates"}               quita todos los estados
+  {"type":"variable","id":ID,"value":V}
+  {"type":"switch","id":ID,"on":true|false}
+  {"type":"tp","map":M,"x":X,"y":Y}    teletransporte
+  {"type":"eval","code":"..."}         codigo JS libre
+
+Ejemplo completo:
+{"presets":[{"name":"Dinero","actions":[{"type":"gold","value":100000}]}]}
+"""
+
+
 def _plugins_module():
     import importlib.util
     path = os.path.join(BASE_DIR, "rpgmaker-plugins.py")
@@ -560,7 +643,8 @@ class GameCard(tk.Frame):
     """Tarjeta de juego: portada, nombre y metadatos, con hover y seleccion."""
 
     def __init__(self, master, name, meta, last, photo,
-                 on_click=None, on_play=None):
+                 on_click=None, on_play=None,
+                 favorite=False, on_fav=None):
         super().__init__(master, bg=BORDER, bd=0, highlightthickness=0)
         self.config(width=CARD_W, height=CARD_H)
         self.pack_propagate(False)
@@ -597,6 +681,17 @@ class GameCard(tk.Frame):
         last_lbl.pack(padx=15, pady=(1, 0), anchor="w")
         self._paint.append(last_lbl)
 
+        self._star = None
+        if on_fav:
+            star = tk.Label(inner,
+                            text="★" if favorite else "☆",
+                            font=("DejaVu Sans", 15),
+                            fg="#f5c542" if favorite else "#5a6178",
+                            bg=CARD, cursor="hand2", padx=4)
+            star.place(relx=1.0, x=-10, y=8, anchor="ne")
+            star.bind("<Button-1>", lambda e: (on_fav(), "break")[1])
+            self._star = star
+
         for w in (self, inner, cover, lbl) + tuple(self._paint):
             w.bind("<Button-1>", lambda e: on_click and on_click(self))
             w.bind("<Double-Button-1>", lambda e: on_play and on_play())
@@ -618,6 +713,8 @@ class GameCard(tk.Frame):
         self.config(bg=ACCENT if self._sel else BORDER)
         for w in self._paint:
             w.config(bg=bg)
+        if getattr(self, "_star", None) is not None:
+            self._star.config(bg=bg)
 
 
 class App:
@@ -631,7 +728,7 @@ class App:
         self._session_start = None
         self._session_game = None
 
-        self.root = tk.Tk()
+        self.root = (TkinterDnD if HAS_DND else tk).Tk()
         self.root.title("RPG Maker Launcher")
         self.root.geometry("1020x660")
         self.root.minsize(760, 520)
@@ -980,6 +1077,13 @@ class App:
         self.canvas.bind("<MouseWheel>",
                          lambda e: self.canvas.yview_scroll(-1 * (e.delta // 120), "units"))
 
+        if HAS_DND:
+            try:
+                self.inner.drop_target_register(DND_FILES)
+                self.inner.dnd_bind("<<Drop>>", self._on_drop_files)
+            except Exception:
+                pass
+
         footer = tk.Frame(self.root, bg=SURFACE)
         footer.pack(fill="x")
         bar = tk.Frame(footer, bg=SURFACE)
@@ -990,6 +1094,9 @@ class App:
         self.plugins_btn.pack(side="left", padx=(8, 0))
         self.saves_btn = self._make_button(bar, _("Partidas"), self.saves_selected)
         self.saves_btn.pack(side="left", padx=(8, 0))
+        self.preset_btn = self._make_button(bar, _("Plantilla trucos"),
+                                            self.preset_selected)
+        self.preset_btn.pack(side="left", padx=(8, 0))
         self.decrypt_btn = self._make_button(bar, _("Descifrar"), self.decrypt_selected)
         self.decrypt_btn.pack(side="left", padx=(8, 0))
         self.stop_btn = self._make_button(bar, _("Detener servidor"), self.stop_server_action)
@@ -1063,6 +1170,8 @@ class App:
         for child in self.inner.winfo_children():
             child.destroy()
 
+        playable = []
+        broken = []
         for top in sorted(glob.glob(os.path.join(GAMES_DIR, "*"))):
             if not os.path.isdir(top):
                 continue
@@ -1072,24 +1181,42 @@ class App:
                 continue
             if eng in ("incomplete", "renpy-incomplete"):
                 label = "(!) " + _(ENGINE_LABEL.get(eng, eng))
-                card = GameCard(self.inner, name, label, _("No se puede lanzar"),
-                                None, on_click=self._select,
-                                on_play=self.play_selected)
-                self._cards.append((card, None))
-                self.games.append(None)
+                broken.append((name, root, label))
             else:
-                info = self.state.get("games", {}).get(name, {})
-                last = fmt_last(info.get("last_played"))
-                hours = info.get("seconds", 0)
-                meta = _(ENGINE_LABEL.get(eng, eng))
-                if hours:
-                    meta += " · " + fmt_hours(hours)
-                photo = self._cover_photo(top, root)
-                self._images[name] = photo
-                card = GameCard(self.inner, name, meta, last, photo,
-                                on_click=self._select, on_play=self.play_selected)
-                self._cards.append((card, (name, root, eng)))
-                self.games.append((name, root, eng))
+                playable.append((name, top, root, eng))
+
+        # Orden: favoritos primero; dentro de cada grupo, última partida
+        # más reciente y después alfabético.
+        def _fav_key(entry):
+            info = self.state.get("games", {}).get(entry[0], {})
+            return (0 if info.get("favorite") else 1,
+                    -(info.get("last_played") or 0),
+                    entry[0].lower())
+
+        playable.sort(key=_fav_key)
+
+        for name, top, root, eng in playable:
+            info = self.state.get("games", {}).get(name, {})
+            last = fmt_last(info.get("last_played"))
+            hours = info.get("seconds", 0)
+            meta = _(ENGINE_LABEL.get(eng, eng))
+            if hours:
+                meta += " · " + fmt_hours(hours)
+            photo = self._cover_photo(top, root)
+            self._images[name] = photo
+            card = GameCard(self.inner, name, meta, last, photo,
+                            favorite=bool(info.get("favorite")),
+                            on_fav=lambda n=name: self._toggle_favorite(n),
+                            on_click=self._select, on_play=self.play_selected)
+            self._cards.append((card, (name, root, eng)))
+            self.games.append((name, root, eng))
+
+        for name, root, label in broken:
+            card = GameCard(self.inner, name, label, _("No se puede lanzar"),
+                            None, on_click=self._select,
+                            on_play=self.play_selected)
+            self._cards.append((card, None))
+            self.games.append(None)
 
         if not self._cards:
             tk.Label(self.inner,
@@ -1115,6 +1242,7 @@ class App:
         self._style_btn(self.play_btn, has)
         self._style_btn(self.plugins_btn, has and eng in ("MZ", "MV", "web"))
         self._style_btn(self.saves_btn, has and eng in ("MZ", "MV", "web"))
+        self._style_btn(self.preset_btn, has and eng in ("MZ", "MV", "web"))
         self._style_btn(self.decrypt_btn, has and eng in ("XP", "VX", "VXAce"))
 
     def decrypt_selected(self):
@@ -1161,9 +1289,39 @@ class App:
             self._session_game = None
             save_state(self.state)
 
+    def _toggle_favorite(self, name):
+        g = self.state.setdefault("games", {}).setdefault(name, {})
+        g["favorite"] = not g.get("favorite")
+        save_state(self.state)
+        fav = bool(g["favorite"])
+        self.load_games()
+        self._update_status(("%s: favorito" if fav else "%s: ya no es favorito") % name)
+
     def rescan(self):
         self._update_status(_("Buscando nuevos .zip..."))
         threading.Thread(target=self._rescan_worker, daemon=True).start()
+
+    def _on_drop_files(self, event):
+        """Copia los .zip soltados en la ventana a la biblioteca y los extrae."""
+        try:
+            paths = self.root.tk.splitlist(event.data)
+        except Exception:
+            return
+        copied = 0
+        for p in paths:
+            if os.path.isfile(p) and p.lower().endswith(".zip"):
+                dest = os.path.join(DATA_DIR, os.path.basename(p))
+                try:
+                    shutil.copy2(p, dest)
+                    copied += 1
+                except OSError as e:
+                    self._update_status(_("no se pudo copiar %s: %s")
+                                        % (os.path.basename(p), e))
+        if copied:
+            self._update_status(_("Copiados %d .zip; extrayendo...") % copied)
+            self.rescan()
+        else:
+            self._update_status(_("Suelta archivos .zip para instalarlos"))
 
     def _rescan_worker(self):
         extracted, errors = extract_zips(callback=self._set_status,
@@ -1508,6 +1666,34 @@ class App:
         _fill()
 
     # --- gestor de partidas ---
+    def preset_selected(self):
+        sel = self.selected()
+        if not sel or not sel[1]:
+            return
+        name, root, engine = sel[1]
+        if engine not in ("MZ", "MV", "web"):
+            return
+        dest = os.path.join(root, "cheats-presets.json")
+        if os.path.isfile(dest):
+            if not self._ask(_("Plantilla trucos"),
+                             _("Ya existe cheats-presets.json en este juego.\n\n"
+                               "¿Sobrescribirlo con la plantilla?")):
+                return
+        try:
+            with open(dest, "w", encoding="utf-8") as fh:
+                json.dump(PRESET_TEMPLATE, fh, ensure_ascii=False, indent=2)
+            with open(os.path.join(root, "LEEME-presets.txt"), "w",
+                      encoding="utf-8") as fh:
+                fh.write(PRESET_README)
+        except OSError as e:
+            self._error(_("Plantilla trucos"), _("No se pudo guardar: %s") % e)
+            return
+        self._info(
+            _("Plantilla trucos"),
+            _("Creados:\n%s\nLEEME-presets.txt\n\nEdita el JSON con tus trucos y "
+              "pulsa F5 dentro del juego:\naparecerán como botones en la pestaña "
+              "'Presets' del panel (F8).") % dest)
+
     def saves_selected(self):
         sel = self.selected()
         if not sel or not sel[1]:
