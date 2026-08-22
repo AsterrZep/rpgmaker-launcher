@@ -30,7 +30,7 @@ MKXPZ = os.path.join(RUN_DIR, "mkxp-z")
 EASYRPG = "easyrpg-player"
 MAX_DEPTH = 5
 MARKER = ".extracted"
-APP_VERSION = "0.3.1"
+APP_VERSION = "0.3.2"
 REPO_LATEST_API = "https://api.github.com/repos/AsterrZep/rpgmaker-launcher/releases/latest"
 REPO_RELEASES_URL = "https://github.com/AsterrZep/rpgmaker-launcher/releases"
 
@@ -1562,7 +1562,7 @@ class App:
 
         def _begin_record(btn):
             win.recording = btn
-            for b, _ in keybtns.values():
+            for b, _st in keybtns.values():
                 b.config(bg=CARD, fg=ACCENT)
             btn.config(text=_("Pulsa la tecla..."), bg=ACCENT, fg="#ffffff")
             win.focus_force()
@@ -1589,7 +1589,7 @@ class App:
                 mods.append("Alt")
             keysym = e.keysym
             value = "+".join(mods + [keysym])
-            action = next((a for a, (b, _) in keybtns.items() if b is btn), None)
+            action = next((a for a, (b, _st) in keybtns.items() if b is btn), None)
             if action is not None:
                 try:
                     kv, _m = mod.parse_key(value)
@@ -1720,12 +1720,12 @@ class App:
             if not self._ask(_("Plugins"), _("¿Restaurar js/plugins.js al original?")):
                 return
             try:
-                p, _, _ = mod.load_plugins(root)
-                bak = p + ".bak"
+                pf, _praw, _plist = mod.load_plugins(root)
+                bak = pf + ".bak"
                 if not os.path.isfile(bak):
                     self._info(_("Plugins"), _("Aún no hay copia original (no se ha modificado nada)."))
                     return
-                shutil.copy2(bak, p)
+                shutil.copy2(bak, pf)
             except SystemExit as e:
                 self._error(_("Plugins"), str(e))
                 return
@@ -2064,9 +2064,9 @@ class App:
                 return str(int(v))
             return str(v)
 
-        def _fill(*_):
+        def _fill(*_args):
             cat = next(c for c in cats if c[0] == cat_var.get())
-            _, fn, cols = cat
+            cat_name, fn, cols = cat
             heads = [("nombre", _("Nombre"), 320, "w")] + \
                     [("v%d" % (i + 1), h, 92, "e")
                      for i, (_f, h) in enumerate(cols)]
@@ -2208,7 +2208,7 @@ class App:
         tk.Entry(rowe, textvariable=qty_var, width=8, bg=CARD, fg=TEXT,
                  insertbackground=TEXT, relief="flat").pack(side="left", padx=(6, 8))
 
-        def _it_fill(*_):
+        def _it_fill(*_args):
             filtro = q_it.get().strip().lower()
             tv_it.delete(*tv_it.get_children())
             for k in sorted(items, key=lambda x: int(x)):
