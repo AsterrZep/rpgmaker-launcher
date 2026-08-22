@@ -21,7 +21,7 @@ jobs:
       - name: Instalar tkinter y unzip (para los autotests)
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends python3-tk unzip
+          sudo apt-get install -y --no-install-recommends python3-tk unzip gir1.2-gtk-3.0
 
       - name: Autotests (compilación, motor, servidor, saves, atajos)
         run: python3 tests/selftest.py

@@ -68,7 +68,9 @@ $gameVariables = { setValue(id, v) { vars[id] = v; } };
 $gameSwitches = { setValue(id, v) { sws[id] = v; } };
 
 const fs = require("fs");
-eval(fs.readFileSync("/home/aster/Games/rpgmaker-cheats.js", "utf8"));
+const path = require("path");
+eval(fs.readFileSync(path.join(__dirname, "..", "rpgmaker-cheats.js"),
+                     "utf8"));
 
 tick();
 if (!window.__rpg_cheats_ready__()) throw new Error("el panel no detectó el juego");
