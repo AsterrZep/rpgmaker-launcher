@@ -18,9 +18,14 @@ A universal launcher for RPG Maker and Ren'Py games on **Linux** desktops. It wa
 - **Fast HTTP server** — web games are served by a multithreaded server that sends cache headers and the correct MIME for `.wasm`. Avoids stutter when loading many assets at once (the plain `python3 -m http.server` is single-threaded).
 - **Plugin manager (MZ/MV)** — `rpgmaker-plugins.py` tool and a **Plugins** button in the GUI to list, analyze WebKit compatibility (nw.js APIs) and enable/disable plugins. Disabling heavy plugins can cut the game loop time by up to 31%.
 - **Safe on-disk saves** — web game saves are stored as real files in each game's `save/` folder (with a fixed port per game), so you can copy, export or edit them. The GUI includes a **save manager** with backups, restore, export and delete.
-- **JoyPlay-style cheats** — floating cheat menu (F8) in MZ/MV games: gold, HP/MP, items, variables, switches, teleport and a code console.
+- **JoyPlay-style cheats** — floating cheat menu (F8) in MZ/MV games: gold, items/weapons/armors, level & stat maxing, skill/state catalogs with search, variables & switches with real names, teleport and a JS console. Bilingual ES/EN.
+- **Cheat presets per game** — `cheats-presets.json` next to `index.html` becomes one-click buttons in the panel (template generator included).
+- **User mods** — drop `.js` files in the game's `mods/` folder and they are injected automatically on launch.
+- **In-game volume control** — Mute/25/50/75/100 for BGM/BGS/ME/SE from the cheat menu, applied live and persisted.
 - **Gamepad support** — play MZ/MV with a controller (automatic mapping to the engine's keys).
-- **Visual library** — covers in the list, "last played" and total play time.
+- **Visual library** — covers, favorites (★), last played and total play time; drag & drop `.zip` files to install them.
+- **Data browser & save editor** — read-only viewer of the game database (items/weapons/armors/skills/enemies, encrypted DBs supported) and a visual editor for MV/MZ saves: gold, item counts, variables and switches with automatic backups.
+- **Update checker** — notifies when a new release is published and links to it.
 - **Built-in decrypter** — **Decrypt** button and script to open encrypted XP/VX/VX Ace/MV/MZ files (downloads RPGMakerDecrypter on the fly).
 - **Terminal version** — a classic menu for those who prefer the console.
 - **No overlapping servers** — if you launch a web game and then another, the previous server closes itself.

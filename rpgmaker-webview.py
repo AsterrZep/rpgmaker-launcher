@@ -138,9 +138,33 @@ def run_viewer(args):
 
     win.connect("destroy", Gtk.main_quit)
 
+    def _save_zoom():
+        """Guarda el nivel de zoom actual si se pasó --zoom-save."""
+        if not getattr(args, "zoom_save", None):
+            return
+        try:
+            d = os.path.dirname(args.zoom_save)
+            if d:
+                os.makedirs(d, exist_ok=True)
+            tmp = args.zoom_save + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as fh:
+                json.dump({"zoom": view.get_zoom_level()}, fh)
+            os.replace(tmp, args.zoom_save)
+        except Exception:
+            pass
+
+    win.connect("destroy", lambda *_: _save_zoom())
+
+    if args.zoom:
+        try:
+            view.set_zoom_level(max(0.2, min(5.0, float(args.zoom))))
+        except Exception:
+            pass
+
     def zoom(delta):
         try:
             view.set_zoom_level(view.get_zoom_level() + delta)
+            _save_zoom()
         except Exception:
             pass
 
@@ -160,7 +184,7 @@ def run_viewer(args):
     handlers = {
         "zoom_in": lambda: zoom(0.15),
         "zoom_out": lambda: zoom(-0.15),
-        "zoom_0": lambda: view.set_zoom_level(1.0),
+        "zoom_0": lambda: (view.set_zoom_level(1.0), _save_zoom()),
         "pantalla_completa": toggle_fullscreen,
         "salir_pantalla_completa": lambda: win.unfullscreen(),
         "recargar": lambda: view.reload(),
@@ -366,6 +390,10 @@ def main():
     ap.add_argument("--url", required=True)
     ap.add_argument("--title", default="")
     ap.add_argument("--fullscreen", action="store_true")
+    ap.add_argument("--zoom", type=float, default=None,
+                    help="nivel de zoom inicial (restaurado por juego)")
+    ap.add_argument("--zoom-save", default=None,
+                    help="archivo JSON donde persistir el zoom del visor")
     ap.add_argument("--test", action="store_true",
                     help="modo diagnóstico: carga la página, evalúa el estado y sale")
     ap.add_argument("--bench", action="store_true",

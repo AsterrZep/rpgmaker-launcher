@@ -30,7 +30,14 @@ MKXPZ = os.path.join(RUN_DIR, "mkxp-z")
 EASYRPG = "easyrpg-player"
 MAX_DEPTH = 5
 MARKER = ".extracted"
-APP_VERSION = "0.4.0"
+
+
+def zoom_file_for(name):
+    """Ruta del JSON donde el visor persiste el zoom de un juego."""
+    safe = "".join(c if c.isalnum() or c in "-_." else "_"
+                   for c in name)[:60] or "juego"
+    return os.path.join(DATA_DIR, "zooms", safe + ".json")
+APP_VERSION = "0.4.1"
 REPO_LATEST_API = "https://api.github.com/repos/AsterrZep/rpgmaker-launcher/releases/latest"
 REPO_RELEASES_URL = "https://github.com/AsterrZep/rpgmaker-launcher/releases"
 
@@ -687,9 +694,17 @@ class Launcher:
         url = "http://localhost:%d/index.html" % port
         if webkit:
             viewer = os.path.join(BASE_DIR, "rpgmaker-webview.py")
+            cmd = [sys.executable, "-u", viewer, "--url", url,
+                   "--title", name,
+                   "--zoom-save", zoom_file_for(name)]
+            try:
+                zprev = load_state().get("games", {}).get(name, {}).get("zoom")
+                if isinstance(zprev, (int, float)) and 0.2 <= zprev <= 5:
+                    cmd += ["--zoom", str(zprev)]
+            except Exception:
+                pass
             self.viewer_proc = subprocess.Popen(
-                [sys.executable, "-u", viewer, "--url", url, "--title", name],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
             self.viewer_proc = None
             subprocess.Popen(["xdg-open", url],
@@ -1412,6 +1427,15 @@ class App:
         if self._session_start and self._session_game:
             g = self.state.setdefault("games", {}).get(self._session_game, {})
             g["seconds"] = g.get("seconds", 0) + int(time.time() - self._session_start)
+            zf = zoom_file_for(self._session_game)
+            try:
+                if os.path.isfile(zf):
+                    with open(zf, "r", encoding="utf-8") as fh:
+                        z = json.load(fh).get("zoom")
+                    if isinstance(z, (int, float)) and 0.2 <= z <= 5:
+                        g["zoom"] = round(float(z), 3)
+            except (OSError, ValueError):
+                pass
             self._session_start = None
             self._session_game = None
             save_state(self.state)

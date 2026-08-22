@@ -18,9 +18,14 @@ Lanzador universal de juegos de RPG Maker y Ren'Py para **Linux** con escritorio
 - **Servidor HTTP rápido** — los juegos web se sirven con un servidor multihilo que envía cabeceras de caché y el MIME correcto para `.wasm`. Evita los tirones al cargar muchos assets de golpe (el `python3 -m http.server` normal es de un solo hilo).
 - **Gestor de plugins (MZ/MV)** — herramienta `rpgmaker-plugins.py` y botón **Plugins** en la GUI para listar, analizar la compatibilidad con WebKit (APIs nw.js) y activar/desactivar plugins. Desactivar plugins pesados reduce el tiempo del bucle del juego hasta un 31%.
 - **Partidas seguras en disco** — las partidas de los juegos web se guardan como archivos reales en la carpeta `save/` de cada juego (con un puerto fijo por juego), para poder copiarlas, exportarlas o editarlas. La GUI incluye **gestor de partidas** con copias de seguridad, restaurar, exportar y borrar.
-- **Trucos estilo JoyPlay** — menú de trucos flotante (F8) en juegos MZ/MV: oro, HP/MP, objetos, variables, switches, teletransporte y consola de código.
+- **Trucos estilo JoyPlay** — menú flotante (F8) en juegos MZ/MV: oro, objetos/armas/armaduras, nivel y stats al máximo, catálogos de habilidades y estados con buscador, variables y switches con nombres reales, teletransporte y consola JS. Bilingüe ES/EN.
+- **Presets de trucos por juego** — `cheats-presets.json` junto a `index.html` se convierte en botones de un clic dentro del panel (con generador de plantilla).
+- **Mods del usuario** — suelta archivos `.js` en la carpeta `mods/` del juego y se inyectan automáticamente al arrancar.
+- **Volumen en el juego** — Silencio/25/50/75/100 para BGM/BGS/ME/SE desde el menú de trucos, aplicado en caliente y persistente.
 - **Mando (gamepad)** — juega con mando en MZ/MV (mapeo automático a las teclas del motor).
-- **Librería visual** — portadas en la lista, "última vez jugado" y tiempo total de juego.
+- **Librería visual** — portadas, favoritos (★), última partida y tiempo total jugado; arrastra `.zip` a la ventana para instalarlos.
+- **Navegador de datos y editor de partidas** — visor de la base de datos del juego (objetos/armas/defensas/habilidades/enemigos, soporta BD cifradas) y editor visual de saves MV/MZ: oro, cantidades, variables y switches con backup automático.
+- **Comprobador de actualizaciones** — avisa cuando hay un release nuevo y enlaza a él.
 - **Descifrador integrado** — botón **Descifrar** y script para abrir archivos cifrados de XP/VX/VX Ace/MV/MZ (descarga RPGMakerDecrypter al vuelo).
 - **Versión de terminal** — menú clásico para quien prefiera la consola.
 - **Sin solapamientos** — si lanzas un juego web y luego otro, el servidor anterior se cierra solo.
