@@ -254,6 +254,9 @@ class GameHandler(SimpleHTTPRequestHandler):
                 '<script src="/__cheats.js"></script>',
                 '<script src="/__gamepad.js"></script>',
                 '<script src="/__browserkeys.js"></script>']
+        # Silencia el aviso de deprecación del meta antiguo de MV
+        content = content.replace('name="apple-mobile-web-app-capable"',
+                                  'name="mobile-web-app-capable"')
         for tag in tags:
             if tag not in content:
                 if "</head>" in content:

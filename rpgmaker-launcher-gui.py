@@ -30,7 +30,7 @@ MKXPZ = os.path.join(RUN_DIR, "mkxp-z")
 EASYRPG = "easyrpg-player"
 MAX_DEPTH = 5
 MARKER = ".extracted"
-APP_VERSION = "0.2.9"
+APP_VERSION = "0.3.0"
 REPO_LATEST_API = "https://api.github.com/repos/AsterrZep/rpgmaker-launcher/releases/latest"
 REPO_RELEASES_URL = "https://github.com/AsterrZep/rpgmaker-launcher/releases"
 
@@ -244,6 +244,8 @@ I18N = {
     "Precio": "Price",
     "Oro": "Gold",
     "%d elemento(s)": "%d item(s)",
+    "Sin datos legibles (¿cifrados o vacíos?)":
+        "No readable data (encrypted or empty?)",
 
     # editor de partidas
     "Editar contenido": "Edit content",
@@ -2014,12 +2016,31 @@ class App:
 
         cache = {}
 
+        def _read_db_bytes(p):
+            """Lee un archivo de BD soportando cifrado MV/MZ (cabecera 16B)."""
+            with open(p, "rb") as fh:
+                raw = fh.read()
+            if raw[:5] in (b"RPGMV", b"RGGO"):  # cabecera de cifrado
+                raw = raw[16:]
+            return raw
+
         def _db(fn):
             if fn not in cache:
-                try:
-                    with open(os.path.join(ddir, fn), "r", encoding="utf-8") as fh:
-                        cache[fn] = json.load(fh)
-                except (OSError, ValueError):
+                base = os.path.splitext(fn)[0]
+                for cand in (fn,
+                             base + ".rpgmdata",
+                             base + ".json_",
+                             base + ".rndata"):
+                    p = os.path.join(ddir, cand)
+                    if not os.path.isfile(p):
+                        continue
+                    try:
+                        cache[fn] = json.loads(
+                            _read_db_bytes(p).decode("utf-8", "replace"))
+                        break
+                    except ValueError:
+                        continue
+                else:
                     cache[fn] = []
             return cache[fn]
 
@@ -2043,17 +2064,27 @@ class App:
             tv.delete(*tv.get_children())
             db = _db(fn)
             n = 0
-            for it in (db[1:] if isinstance(db, list) else []):
-                if not it or not it.get("name"):
+            try:
+                rows = db[1:] if isinstance(db, list) else []
+            except TypeError:
+                rows = []
+            for it in rows:
+                try:
+                    if not isinstance(it, dict) or not it.get("name"):
+                        continue
+                    if filtro and filtro not in str(it["name"]).lower() \
+                            and filtro != str(it.get("id")):
+                        continue
+                    vals = [fmt_val(f(it)) for f, _h in cols]
+                except Exception:
                     continue
-                if filtro and filtro not in it["name"].lower() \
-                        and filtro != str(it.get("id")):
-                    continue
-                vals = [fmt_val(f(it)) for f, _h in cols]
                 tv.insert("", "end", text=str(it.get("id", "")),
                           values=[it["name"]] + vals)
                 n += 1
-            count_lbl.config(text=_("%d elemento(s)") % n)
+            if n == 0 and not rows:
+                count_lbl.config(text=_("Sin datos legibles (¿cifrados o vacíos?)"))
+            else:
+                count_lbl.config(text=_("%d elemento(s)") % n)
 
         cat_var.trace_add("write", _fill)
         q.trace_add("write", _fill)
