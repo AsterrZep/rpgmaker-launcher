@@ -37,7 +37,7 @@ def zoom_file_for(name):
     safe = "".join(c if c.isalnum() or c in "-_." else "_"
                    for c in name)[:60] or "juego"
     return os.path.join(DATA_DIR, "zooms", safe + ".json")
-APP_VERSION = "0.4.1"
+APP_VERSION = "0.6.0"
 REPO_LATEST_API = "https://api.github.com/repos/AsterrZep/rpgmaker-launcher/releases/latest"
 REPO_RELEASES_URL = "https://github.com/AsterrZep/rpgmaker-launcher/releases"
 
@@ -258,8 +258,36 @@ I18N = {
 
     # mods
     "Mods": "Mods",
+
+    # sync de partidas
+    "Sync": "Sync",
+    "Sync de partidas": "Save syncing",
+    "Copia las partidas a una carpeta tuya sincronizada por terceros "
+    "(Dropbox, Syncthing, Nextcloud, USB...) y vuelve a traerlas.":
+        "Copy your saves to any folder synced by third-party tools "
+        "(Dropbox, Syncthing, Nextcloud, USB...) and bring them back.",
+    "Carpeta de destino:": "Destination folder:",
+    "Sin carpeta configurada": "No folder configured",
+    "Carpeta de destino del sync": "Sync destination folder",
+    "Juego": "Game",
+    "Local": "Local",
+    "Destino": "Target",
+    "Enviar al destino →": "Push to destination →",
+    "Traer del destino ←": "Pull from destination ←",
+    "Abrir destino": "Open destination",
+    "Cambiar...": "Change...",
+    "Sincronizar automáticamente al cerrar una partida":
+        "Automatically sync when a game session ends",
+    "Primero elige la carpeta de destino.": "Choose the destination folder first.",
+    "Local: %d archivo(s) · Destino: %d archivo(s)":
+        "Local: %d file(s) · Target: %d file(s)",
+    "Sync: enviados %d archivo(s) de %d juego(s).":
+        "Sync: pushed %d file(s) from %d game(s).",
+    "Sync: traídos %d archivo(s) de %d juego(s) (con backup previo).":
+        "Sync: pulled %d file(s) from %d game(s) (backup made first).",
     "Carpeta de mods de '%s' abierta. Cada .js se inyecta al arrancar; recarga con F5.":
         "Opened mods folder of '%s'. Every .js is injected on launch; reload with F5.",
+
 
     # editor de partidas
     "Editar contenido": "Edit content",
@@ -612,6 +640,15 @@ def _config_module():
     import importlib.util
     path = os.path.join(BASE_DIR, "rpgmaker-config.py")
     spec = importlib.util.spec_from_file_location("rpgmaker_config", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _sync_module():
+    import importlib.util
+    path = os.path.join(BASE_DIR, "rpgmaker-sync.py")
+    spec = importlib.util.spec_from_file_location("rpgmaker_sync", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -1231,6 +1268,8 @@ class App:
         self.data_btn.pack(side="left", padx=(8, 0))
         self.mods_btn = self._make_button(bar, _("Mods"), self.mods_selected)
         self.mods_btn.pack(side="left", padx=(8, 0))
+        self.sync_btn = self._make_button(bar, _("Sync"), self.sync_selected)
+        self.sync_btn.pack(side="left", padx=(8, 0))
         self.decrypt_btn = self._make_button(bar, _("Descifrar"), self.decrypt_selected)
         self.decrypt_btn.pack(side="left", padx=(8, 0))
         self.stop_btn = self._make_button(bar, _("Detener servidor"), self.stop_server_action)
@@ -1376,7 +1415,8 @@ class App:
         # el propio diálogo avisa en lugar de no hacer nada.
         for btn in (self.play_btn, self.plugins_btn, self.saves_btn,
                     self.preset_btn, self.data_btn, self.mods_btn,
-                    self.decrypt_btn, self.stop_btn, self._btn_delzip):
+                    self.sync_btn, self.decrypt_btn, self.stop_btn,
+                    self._btn_delzip):
             self._style_btn(btn, has or btn in (self.stop_btn,))
 
     def _require_engine(self, engine, valid, what):
@@ -1425,9 +1465,10 @@ class App:
 
     def _end_session(self):
         if self._session_start and self._session_game:
-            g = self.state.setdefault("games", {}).get(self._session_game, {})
+            name = self._session_game
+            g = self.state.setdefault("games", {}).get(name, {})
             g["seconds"] = g.get("seconds", 0) + int(time.time() - self._session_start)
-            zf = zoom_file_for(self._session_game)
+            zf = zoom_file_for(name)
             try:
                 if os.path.isfile(zf):
                     with open(zf, "r", encoding="utf-8") as fh:
@@ -1439,6 +1480,8 @@ class App:
             self._session_start = None
             self._session_game = None
             save_state(self.state)
+            threading.Thread(target=self._auto_sync_session,
+                             args=(name,), daemon=True).start()
 
     def _toggle_favorite(self, name):
         g = self.state.setdefault("games", {}).setdefault(name, {})
@@ -2490,6 +2533,160 @@ class App:
 
         self._make_button(bar, _("Guardar cambios"), _save, accent=True).pack(side="right")
         self._make_button(bar, _("Cerrar"), command=win.destroy).pack(side="right", padx=(8, 0))
+
+    # --- sync de partidas hacia/desde carpeta elegida ---
+    def sync_games_list(self):
+        """[(nombre, saves_dir)] de los juegos web que tengan o puedan tener saves."""
+        out = []
+        for g in self.games:
+            if not g or g[2] not in ("MZ", "MV", "web"):
+                continue
+            out.append((g[0], os.path.join(g[1], "save")))
+        return out
+
+    def sync_selected(self):
+        cfgmod = _config_module()
+        cfg = cfgmod.load_config()
+        gen = cfg.setdefault("general", {})
+        se = _sync_module()
+
+        win = tk.Toplevel(self.root)
+        win.title(_("Sync de partidas"))
+        win.geometry("680x460")
+        win.configure(bg=BG)
+
+        header = tk.Frame(win, bg=SURFACE)
+        header.pack(fill="x")
+        tk.Label(header, text=_("Sync de partidas"),
+                 font=("DejaVu Sans", 13, "bold"), fg=TEXT, bg=SURFACE
+                 ).pack(padx=16, pady=(12, 2), anchor="w")
+        tk.Label(header, text=_(
+            "Copia las partidas a una carpeta tuya sincronizada por terceros "
+            "(Dropbox, Syncthing, Nextcloud, USB...) y vuelve a traerlas."),
+                 font=F_META, fg=MUTED, bg=SURFACE, justify="left"
+                 ).pack(padx=16, pady=(0, 10), anchor="w")
+
+        rowdir = tk.Frame(win, bg=SURFACE)
+        rowdir.pack(fill="x", padx=16)
+        tk.Label(rowdir, text=_("Carpeta de destino:"), font=F_META,
+                 fg=MUTED, bg=SURFACE).pack(side="left")
+        dir_lbl = tk.Label(rowdir, text="", font=F_META, fg=TEXT, bg=SURFACE)
+        dir_lbl.pack(side="left", padx=(8, 0))
+
+        body = tk.Frame(win, bg=BG)
+        body.pack(fill="both", expand=True, padx=16, pady=10)
+        tv = ttk.Treeview(body, columns=("local", "dest"),
+                          show="tree headings", selectmode="none")
+        tv.heading("#0", text=_("Juego"))
+        tv.column("#0", width=330, anchor="w")
+        tv.heading("local", text=_("Local"))
+        tv.column("local", width=90, anchor="center", stretch=False)
+        tv.heading("dest", text=_("Destino"))
+        tv.column("dest", width=90, anchor="center", stretch=False)
+        tv.pack(side="left", fill="both", expand=True)
+        vsb = tk.Scrollbar(body, orient="vertical", command=tv.yview,
+                           bg=SURFACE, troughcolor=BG, activebackground=BORDER,
+                           bd=0, highlightthickness=0, width=12)
+        tv.configure(yscrollcommand=vsb.set)
+        vsb.pack(side="left", fill="y", padx=(6, 0))
+
+        auto_var = tk.BooleanVar(value=bool(gen.get("sync_auto")))
+
+        def _save_cfg():
+            gen["sync_dir"] = sdir_get()[0]
+            gen["sync_auto"] = auto_var.get()
+            cfgmod.save_config(cfg)
+
+        def sdir_get():
+            return (gen.get("sync_dir") or "", )
+
+        def _refresh(*_):
+            d = gen.get("sync_dir") or ""
+            dir_lbl.config(text=d if d else _("Sin carpeta configurada"))
+            tv.delete(*tv.get_children())
+            total_local = total_dest = 0
+            for nm, sd in self.sync_games_list():
+                local = se.count_saves(sd)
+                dest = se.count_saves(os.path.join(d or "?", nm, "save")) \
+                    if d else -1
+                lt = "-" if local < 0 else str(local)
+                dt = "-" if dest < 0 else str(dest)
+                if local > 0:
+                    total_local += local
+                if dest > 0:
+                    total_dest += dest
+                tv.insert("", "end", text=nm, values=[lt, dt])
+            st.config(text=_("Local: %d archivo(s) · Destino: %d archivo(s)")
+                      % (total_local, total_dest))
+
+        def _change_dir():
+            d = self._ask_dir(_("Carpeta de destino del sync"))
+            if d:
+                gen["sync_dir"] = d
+                _save_cfg()
+                _refresh()
+
+        def _do(mode):
+            d = gen.get("sync_dir")
+            if not d:
+                self._info(_("Sync"), _("Primero elige la carpeta de destino."))
+                return
+            res = se.sync_all(self.sync_games_list(), d, mode)
+            moved = sum(n for _n, n in res if n)
+            games_n = sum(1 for _n, n in res if n)
+            _save_cfg()
+            _refresh()
+            if mode == "push":
+                self._update_status(_("Sync: enviados %d archivo(s) de %d juego(s).")
+                                    % (moved, games_n))
+            else:
+                self._update_status(_("Sync: traídos %d archivo(s) de %d juego(s) "
+                                      "(con backup previo).") % (moved, games_n))
+
+        st = tk.Label(win, text="", font=F_META, fg=MUTED, bg=SURFACE,
+                      anchor="w")
+        chk = tk.Checkbutton(win, text=_("Sincronizar automáticamente al "
+                                         "cerrar una partida"),
+                             variable=auto_var, command=_save_cfg,
+                             bg=SURFACE, fg=TEXT, selectcolor=CARD,
+                             activebackground=SURFACE, activeforeground=TEXT,
+                             relief="flat", highlightthickness=0, bd=0)
+        chk.pack(fill="x", padx=16, pady=(0, 4))
+        st.pack(fill="x", padx=16, pady=(0, 8))
+        st_lbl = st
+
+        bar = tk.Frame(win, bg=SURFACE)
+        bar.pack(fill="x", padx=16, pady=(0, 14))
+        self._make_button(bar, _("Cerrar"), command=win.destroy).pack(side="right")
+        self._make_button(bar, _("Abrir destino"), command=lambda: (
+            subprocess.Popen(["xdg-open", gen.get("sync_dir") or "."],
+                             stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL))).pack(side="right",
+                                                               padx=(8, 0))
+        self._make_button(bar, _("Cambiar..."), command=_change_dir).pack(
+            side="right", padx=(8, 0))
+        self._make_button(bar, _("Traer del destino ←"),
+                          command=lambda: (_do("pull"))).pack(side="left")
+        self._make_button(bar, _("Enviar al destino →"), accent=True,
+                          command=lambda: (_do("push"))).pack(side="left",
+                                                              padx=(8, 0))
+        _refresh()
+
+    def _auto_sync_session(self, name):
+        """Empuja los saves del juego recién cerrado si el auto-sync está on."""
+        try:
+            cfg = _config_module().load_config()
+            gen = cfg.get("general", {})
+            if not gen.get("sync_auto") or not gen.get("sync_dir"):
+                return
+            sel = next((g for g in self.games if g and g[0] == name), None)
+            if not sel:
+                return
+            se = _sync_module()
+            se.push(os.path.join(sel[1], "save"),
+                    os.path.join(gen["sync_dir"], name, "save"))
+        except Exception:
+            pass
 
     def on_close(self):
         self._end_session()

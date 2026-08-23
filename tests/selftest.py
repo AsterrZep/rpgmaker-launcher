@@ -192,6 +192,22 @@ def t_saveedit_roundtrip():
 
 
 # ---------- 5. atajos ----------
+def t_sync_push_pull():
+    se = load_mod("rpgmaker-sync.py")
+    with tempfile.TemporaryDirectory() as tmp:
+        saves = os.path.join(tmp, "game", "save")
+        os.makedirs(saves)
+        open(os.path.join(saves, "file1.rmmzsave"), "w").write("A")
+        dest = os.path.join(tmp, "sync", "game", "save")
+        assert se.push(saves, dest) == 1
+        assert se.count_saves(dest) == 1
+        open(os.path.join(dest, "file1.rmmzsave"), "w").write("B")
+        n, bak = se.pull(saves, dest)
+        assert n == 1 and bak and "pre-pull" in bak
+        assert open(os.path.join(saves, "file1.rmmzsave")).read() == "B"
+        assert open(os.path.join(bak, "file1.rmmzsave")).read() == "A"
+
+
 def t_config_parse_key():
     cfg = load_mod("rpgmaker-config.py")
     kv, mods = cfg.parse_key("Control+equal")
@@ -207,6 +223,7 @@ TESTS = [
     ("servidor http (inyección/presets/mods/traversal)", t_server_http),
     ("saveedit round-trip", t_saveedit_roundtrip),
     ("config.parse_key", t_config_parse_key),
+    ("sync push/pull", t_sync_push_pull),
 ]
 
 if __name__ == "__main__":

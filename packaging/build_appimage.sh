@@ -50,7 +50,7 @@ ln -s ../opt/python/bin/python3 "$APPDIR/usr/bin/python3"
 
 for f in rpgmaker-launcher.sh rpgmaker-launcher-gui.py rpgmaker-server.py \
          rpgmaker-webview.py rpgmaker-config.py rpgmaker-decrypter.py \
-         rpgmaker-plugins.py rpgmaker-savebridge.js rpgmaker-cheats.js rpgmaker-saveedit.py rpgmaker-rewind.js \
+         rpgmaker-plugins.py rpgmaker-savebridge.js rpgmaker-cheats.js rpgmaker-saveedit.py rpgmaker-rewind.js rpgmaker-sync.py \
          rpgmaker-gamepad.js rpgmaker-browser-keys.js rpgmaker-icon.png; do
     cp "$ROOT/$f" "$LIBDIR/"
 done
