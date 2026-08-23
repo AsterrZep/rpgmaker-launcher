@@ -873,6 +873,51 @@
         });
         g.appendChild(rowVol);
 
+        // --- Rewind / save-states ---
+        if (window.__rpg_rewind) {
+            var rw = window.__rpg_rewind;
+            var rowRw = el("div", "rpgc-row");
+            rowRw.appendChild(el("span", "rpgc-label", T("Rewind", "Rewind")));
+            var bRwS = el("button", "rpgc-btn acc",
+                T("\uD83D\uDCBE Guardar", "\uD83D\uDCBE Save"));
+            bRwS.title = T("Guarda un estado instantáneo (tecla F6)",
+                           "Instant save-state (key F6)");
+            bRwS.onclick = function () { rw.save(false); };
+            var bRwL = el("button", "rpgc-btn",
+                T("\u21A9 Restaurar", "\u21A9 Restore"));
+            bRwL.title = T("Restaura el último estado (tecla F7)",
+                           "Restores the latest state (key F7)");
+            bRwL.onclick = function () { rw.load(0); };
+            rowRw.appendChild(bRwS);
+            rowRw.appendChild(bRwL);
+            g.appendChild(rowRw);
+
+            var rowRw2 = el("div", "rpgc-row");
+            var wrapAuto = el("label", null, "");
+            wrapAuto.style.cssText =
+                "display:flex;align-items:center;gap:6px;font-size:11px;color:#9aa1b0;";
+            var autoChk = document.createElement("input");
+            autoChk.type = "checkbox";
+            autoChk.checked = rw.getAuto();
+            autoChk.style.accentColor = "#e0603a";
+            wrapAuto.appendChild(autoChk);
+            wrapAuto.appendChild(document.createTextNode(
+                T("Auto cada 45 s en mapa", "Auto every 45 s on map")));
+            rowRw2.appendChild(wrapAuto);
+            var stRw = el("span", "rpgc-status rpgc-ok", "");
+            stRw.style.marginTop = "0";
+            rowRw2.appendChild(stRw);
+            g.appendChild(rowRw2);
+
+            var rwRefresh = function () {
+                stRw.textContent = rw.count() + "/" + rw.max() +
+                    (rw.lastTime() ? " \u00b7 " + rw.lastTime() : "");
+            };
+            autoChk.onchange = function () { rw.setAuto(autoChk.checked); };
+            rw.onChange(rwRefresh);
+            rwRefresh();
+        }
+
         var rowT = el("div", "rpgc-row");
         rowT.appendChild(el("span", "rpgc-label", T("Teletransp.", "Teleport")));
         var tMap = makeInput("mapa", "1");
@@ -1267,6 +1312,7 @@
     // Expuesto para los atajos del navegador / diagnóstico
     window.__rpg_cheats_toggle__ = toggle;
     window.__rpg_cheats_ready__ = function () { return ready; };
+    window.__rpg_panel_typing__ = function () { return typingInPanel; };
 
     // API programática (útil desde consola o desde otros scripts)
     window.__rpg_cheats_api__ = {

@@ -157,7 +157,8 @@ def t_server_http():
                     return "HTTP%d" % e.code
 
             idx = get("/index.html")
-            assert "/__presets.js" in idx and "/__cheats.js" in idx \
+            assert "/__presets.js" in idx and "/__rewind.js" in idx \
+                and "/__cheats.js" in idx \
                 and "/__mods/mi-mod.js" in idx, "falta inyección"
             assert 'name="mobile-web-app-capable"' in idx, "meta no reescrita"
 

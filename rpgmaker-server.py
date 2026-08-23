@@ -154,6 +154,9 @@ class GameHandler(SimpleHTTPRequestHandler):
         if path.startswith("/__mods/"):
             self._serve_mod(path[len("/__mods/"):])
             return
+        if path == "/__rewind.js":
+            self._serve_static_js("rpgmaker-rewind.js")
+            return
         if path == "/__cheats.js":
             self._serve_static_js("rpgmaker-cheats.js")
             return
@@ -281,6 +284,7 @@ class GameHandler(SimpleHTTPRequestHandler):
         tags = ['<script src="/__config.js"></script>',
                 '<script src="/__savebridge.js"></script>',
                 '<script src="/__presets.js"></script>',
+                '<script src="/__rewind.js"></script>',
                 '<script src="/__cheats.js"></script>',
                 '<script src="/__gamepad.js"></script>',
                 '<script src="/__browserkeys.js"></script>']

@@ -29,7 +29,7 @@ mkdir -p "$PKGROOT/usr/share/doc/$PKG"
 # ---------- archivos de la app ----------
 for f in rpgmaker-launcher.sh rpgmaker-launcher-gui.py rpgmaker-server.py \
          rpgmaker-webview.py rpgmaker-config.py rpgmaker-decrypter.py \
-         rpgmaker-plugins.py rpgmaker-savebridge.js rpgmaker-cheats.js rpgmaker-saveedit.py \
+         rpgmaker-plugins.py rpgmaker-savebridge.js rpgmaker-cheats.js rpgmaker-saveedit.py rpgmaker-rewind.js \
          rpgmaker-gamepad.js rpgmaker-browser-keys.js rpgmaker-icon.png; do
     cp "$ROOT/$f" "$PKGROOT$LIBDIR/"
 done
