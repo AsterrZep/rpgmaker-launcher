@@ -223,11 +223,15 @@ def t_gtk_gui():
         "sys.path.insert(0, {root!r})\n"
         "spec = importlib.util.spec_from_file_location('g', {f!r})\n"
         "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)\n"
+        "import os\n"
         "app = m.GtkApp()\n"
+        "app.win.show_all()\n"
         "from gi.repository import GLib\n"
-        "GLib.timeout_add(600, lambda: (app.win.destroy(), True)[1])\n"
+        "def _done():\n"
+        "    print('GTK_SMOKE_OK', flush=True)\n"
+        "    os._exit(0)\n"
+        "GLib.timeout_add(700, _done)\n"
         "m.main()\n"
-        "print('GTK_SMOKE_OK')\n"
     ).format(root=ROOT, f=os.path.join(ROOT, "rpgmaker-launcher-gtk.py"))
     r = subprocess.run(["xvfb-run", "-a", sys.executable, "-u", "-c", code],
                        capture_output=True, text=True, timeout=90, env=env)
