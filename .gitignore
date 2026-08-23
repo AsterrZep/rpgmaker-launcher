@@ -31,3 +31,6 @@ packaging/.flatpak-src/
 packaging/flatpak-build/
 packaging/flatpak-repo/
 .flatpak-builder/
+# Backups de partidas (datos de usuario)
+backups/
+zooms/
