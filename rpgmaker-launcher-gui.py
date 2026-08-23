@@ -37,7 +37,7 @@ def zoom_file_for(name):
     safe = "".join(c if c.isalnum() or c in "-_." else "_"
                    for c in name)[:60] or "juego"
     return os.path.join(DATA_DIR, "zooms", safe + ".json")
-APP_VERSION = "0.6.0"
+APP_VERSION = "0.6.1"
 REPO_LATEST_API = "https://api.github.com/repos/AsterrZep/rpgmaker-launcher/releases/latest"
 REPO_RELEASES_URL = "https://github.com/AsterrZep/rpgmaker-launcher/releases"
 
@@ -237,6 +237,11 @@ I18N = {
     "Copiados %d .zip; extrayendo...": "Copied %d .zip file(s); extracting...",
     "no se pudo copiar %s: %s": "could not copy %s: %s",
     "Suelta archivos .zip para instalarlos": "Drop .zip files here to install them",
+
+    "⚠ Cierra el juego antes de editar: si está abierto, su autoguardado "
+    "puede sobrescribir tus cambios.":
+        "\u26A0 Close the game before editing: if it is running, its "
+        "autosave may overwrite your changes.",
 
     # actualizaciones
     "Nueva versión disponible: %s": "New version available: %s",
@@ -2287,9 +2292,14 @@ class App:
 
         head = tk.Frame(win, bg=SURFACE)
         head.pack(fill="x")
+        tk.Label(head, text=_("⚠ Cierra el juego antes de editar: si está "
+                              "abierto, su autoguardado puede sobrescribir "
+                              "tus cambios."),
+                 font=F_META, fg="#f5c542", bg=SURFACE, anchor="w",
+                 justify="left").pack(padx=16, pady=(10, 0), anchor="w")
         sum_lbl = tk.Label(head, text="", font=F_META, fg=TEXT, bg=SURFACE,
                            anchor="w", justify="left")
-        sum_lbl.pack(padx=16, pady=(10, 8), anchor="w")
+        sum_lbl.pack(padx=16, pady=(8, 8), anchor="w")
 
         nb = ttk.Notebook(win)
         nb.pack(fill="both", expand=True, padx=16, pady=(0, 10))
@@ -2600,7 +2610,7 @@ class App:
         def sdir_get():
             return (gen.get("sync_dir") or "", )
 
-        def _refresh(*_):
+        def _refresh():
             d = gen.get("sync_dir") or ""
             dir_lbl.config(text=d if d else _("Sin carpeta configurada"))
             tv.delete(*tv.get_children())
@@ -2658,11 +2668,19 @@ class App:
         bar = tk.Frame(win, bg=SURFACE)
         bar.pack(fill="x", padx=16, pady=(0, 14))
         self._make_button(bar, _("Cerrar"), command=win.destroy).pack(side="right")
-        self._make_button(bar, _("Abrir destino"), command=lambda: (
-            subprocess.Popen(["xdg-open", gen.get("sync_dir") or "."],
-                             stdout=subprocess.DEVNULL,
-                             stderr=subprocess.DEVNULL))).pack(side="right",
-                                                               padx=(8, 0))
+        def _open_dest():
+            d = gen.get("sync_dir")
+            if not d or not os.path.isdir(d):
+                self._info(_("Sync"), _("Primero elige la carpeta de destino."))
+                return
+            try:
+                subprocess.Popen(["xdg-open", d],
+                                 stdout=subprocess.DEVNULL,
+                                 stderr=subprocess.DEVNULL)
+            except OSError as e:
+                self._error(_("Sync"), str(e))
+        self._make_button(bar, _("Abrir destino"),
+                          command=_open_dest).pack(side="right", padx=(8, 0))
         self._make_button(bar, _("Cambiar..."), command=_change_dir).pack(
             side="right", padx=(8, 0))
         self._make_button(bar, _("Traer del destino ←"),
