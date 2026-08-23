@@ -48,7 +48,7 @@ tar -xzf "$CACHE/$PBS_ASSET" -C "$APPDIR/usr/opt"
 # python-build-standalone extrae en usr/opt/python
 ln -s ../opt/python/bin/python3 "$APPDIR/usr/bin/python3"
 
-for f in rpgmaker-launcher.sh rpgmaker-launcher-gui.py rpgmaker-server.py \
+for f in rpgmaker-launcher.sh rpgmaker-launcher-gtk.py rpgmaker-launcher-gui.py rpgmaker-server.py \
          rpgmaker-webview.py rpgmaker-config.py rpgmaker-decrypter.py \
          rpgmaker-plugins.py rpgmaker-savebridge.js rpgmaker-cheats.js rpgmaker-saveedit.py rpgmaker-rewind.js rpgmaker-sync.py \
          rpgmaker-gamepad.js rpgmaker-browser-keys.js rpgmaker-icon.png; do
@@ -65,6 +65,10 @@ HERE="\$(dirname "\$(readlink -f "\$0")")"
 export RPGMAKER_DATA_DIR="\${RPGMAKER_DATA_DIR:-\$HOME/Games}"
 export LD_LIBRARY_PATH="\$HERE/usr/opt/python/lib:\$LD_LIBRARY_PATH"
 export PATH="\$HERE/usr/bin:\$PATH"
+if [ -f "\$HERE/usr/lib/$PKG/rpgmaker-launcher-gtk.py" ] && \
+   "\$HERE/usr/opt/python/bin/python3" -c "import gi" >/dev/null 2>&1; then
+  exec "\$HERE/usr/opt/python/bin/python3" "\$HERE/usr/lib/$PKG/rpgmaker-launcher-gtk.py" "\$@"
+fi
 exec "\$HERE/usr/opt/python/bin/python3" "\$HERE/usr/lib/$PKG/rpgmaker-launcher-gui.py" "\$@"
 EOF
 chmod +x "$APPDIR/AppRun"

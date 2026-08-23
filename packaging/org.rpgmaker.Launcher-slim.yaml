@@ -1,0 +1,62 @@
+app-id: org.rpgmaker.Launcher
+runtime: org.gnome.Platform
+runtime-version: '48'
+sdk: org.gnome.Sdk
+command: rpgmaker-launcher
+separate-locales: false
+finish-args:
+  - --share=network
+  - --socket=x11
+  - --socket=wayland
+  - --share=ipc
+  - --device=dri
+  - --filesystem=home
+  - --talk-name=org.freedesktop.Notifications
+modules:
+  - name: python3
+    buildsystem: simple
+    build-commands:
+      - ./configure --prefix=/app --enable-shared
+      - make -j$FLATPAK_BUILDER_N_JOBS
+      - make install
+      - mkdir -p /app/lib/python3.12/site-packages
+      - chmod -R u+w /app
+    sources:
+      - type: archive
+        url: https://www.python.org/ftp/python/3.12.7/Python-3.12.7.tgz
+        sha256: 73ac8fe780227bf371add8373c3079f42a0dc62deff8d612cd15a618082ab623
+
+  - name: pygobject
+    buildsystem: meson
+    config-opts:
+      - -Dpython=/app/bin/python3
+      - -Dpycairo=enabled
+      - -Dtests=false
+    sources:
+      - type: archive
+        url: https://gitlab.gnome.org/GNOME/pygobject/-/archive/3.50.0/pygobject-3.50.0.tar.gz
+        sha256: 7ffce2399b25e743acf868c9eacd38800ad6fb78bf7409cee2ea87c20e5cc8ce
+
+  - name: launcher-files
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/lib/rpgmaker-launcher /app/share/applications /app/share/metainfo /app/share/icons/hicolor/256x256/apps
+      - cp launcher/*.py launcher/*.sh launcher/*.js launcher/rpgmaker-icon.png /app/lib/rpgmaker-launcher/
+      - cp -r launcher/runtimes /app/lib/rpgmaker-launcher/runtimes
+      - chmod +x /app/lib/rpgmaker-launcher/*.py /app/lib/rpgmaker-launcher/rpgmaker-launcher.sh
+      - install -m755 rpgmaker-launcher.flatpak /app/bin/rpgmaker-launcher
+      - install -m644 org.rpgmaker.Launcher.desktop /app/share/applications/
+      - install -m644 org.rpgmaker.Launcher.appdata.xml /app/share/metainfo/
+      - install -m644 rpgmaker-icon.png /app/share/icons/hicolor/256x256/apps/org.rpgmaker.Launcher.png
+    sources:
+      - type: dir
+        path: .flatpak-src
+        dest: launcher
+      - type: file
+        path: rpgmaker-launcher.flatpak
+      - type: file
+        path: org.rpgmaker.Launcher.desktop
+      - type: file
+        path: org.rpgmaker.Launcher.appdata.xml
+      - type: file
+        path: ../rpgmaker-icon.png

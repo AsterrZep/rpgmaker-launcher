@@ -208,6 +208,33 @@ def t_sync_push_pull():
         assert open(os.path.join(bak, "file1.rmmzsave")).read() == "A"
 
 
+def t_gtk_gui():
+    r = subprocess.run([sys.executable, "-m", "py_compile",
+                        os.path.join(ROOT, "rpgmaker-launcher-gtk.py")],
+                       capture_output=True)
+    assert r.returncode == 0, r.stderr.decode()[-400:]
+    if shutil.which("xvfb-run") is None:
+        print("    (xvfb-run no disponible; solo compila)")
+        return
+    env = dict(os.environ)
+    env["RPGMAKER_DATA_DIR"] = tempfile.mkdtemp()
+    code = (
+        "import sys, importlib.util\n"
+        "sys.path.insert(0, {root!r})\n"
+        "spec = importlib.util.spec_from_file_location('g', {f!r})\n"
+        "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)\n"
+        "app = m.GtkApp()\n"
+        "from gi.repository import GLib\n"
+        "GLib.timeout_add(600, lambda: (app.win.destroy(), True)[1])\n"
+        "m.main()\n"
+        "print('GTK_SMOKE_OK')\n"
+    ).format(root=ROOT, f=os.path.join(ROOT, "rpgmaker-launcher-gtk.py"))
+    r = subprocess.run(["xvfb-run", "-a", sys.executable, "-u", "-c", code],
+                       capture_output=True, text=True, timeout=90, env=env)
+    assert "GTK_SMOKE_OK" in (r.stdout + r.stderr), \
+        (r.stdout[-300:] + r.stderr[-500:])
+
+
 def t_config_parse_key():
     cfg = load_mod("rpgmaker-config.py")
     kv, mods = cfg.parse_key("Control+equal")
@@ -224,6 +251,7 @@ TESTS = [
     ("saveedit round-trip", t_saveedit_roundtrip),
     ("config.parse_key", t_config_parse_key),
     ("sync push/pull", t_sync_push_pull),
+    ("gui gtk (compila + smoke xvfb)", t_gtk_gui),
 ]
 
 if __name__ == "__main__":

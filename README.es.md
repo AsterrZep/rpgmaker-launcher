@@ -19,6 +19,7 @@ Lanzador universal de juegos de RPG Maker y Ren'Py para **Linux** con escritorio
 - **Gestor de plugins (MZ/MV)** — herramienta `rpgmaker-plugins.py` y botón **Plugins** en la GUI para listar, analizar la compatibilidad con WebKit (APIs nw.js) y activar/desactivar plugins. Desactivar plugins pesados reduce el tiempo del bucle del juego hasta un 31%.
 - **Partidas seguras en disco** — las partidas de los juegos web se guardan como archivos reales en la carpeta `save/` de cada juego (con un puerto fijo por juego), para poder copiarlas, exportarlas o editarlas. La GUI incluye **gestor de partidas** con copias de seguridad, restaurar, exportar y borrar.
 - **Trucos estilo JoyPlay** — menú flotante (F8) en juegos MZ/MV: oro, objetos/armas/armaduras, nivel y stats al máximo, catálogos de habilidades y estados con buscador, variables y switches con nombres reales, teletransporte y consola JS. Bilingüe ES/EN.
+- **Interfaz GTK3 opcional** — el mismo lanzador con interfaz nativa GTK3 (`rpgmaker-launcher-gtk.py`); el Flatpak la usa y ya no compila Tcl/Tk dentro del bundle.
 - **Presets de trucos por juego** — `cheats-presets.json` junto a `index.html` se convierte en botones de un clic dentro del panel (con generador de plantilla).
 - **Mods del usuario** — suelta archivos `.js` en la carpeta `mods/` del juego y se inyectan automáticamente al arrancar.
 - **Volumen en el juego** — Silencio/25/50/75/100 para BGM/BGS/ME/SE desde el menú de trucos, aplicado en caliente y persistente.

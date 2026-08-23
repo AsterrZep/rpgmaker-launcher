@@ -23,6 +23,7 @@ A universal launcher for RPG Maker and Ren'Py games on **Linux** desktops. It wa
 - **User mods** — drop `.js` files in the game's `mods/` folder and they are injected automatically on launch.
 - **In-game volume control** — Mute/25/50/75/100 for BGM/BGS/ME/SE from the cheat menu, applied live and persisted.
 - **Gamepad support** — play MZ/MV with a controller (automatic mapping to the engine's keys).
+- **Optional GTK3 interface** — same launcher with a native GTK3 UI (`rpgmaker-launcher-gtk.py`); the Flatpak build now uses it, dropping Tcl/Tk from the bundle.
 - **Visual library** — covers, favorites (★), last played and total play time; drag & drop `.zip` files to install them.
 - **Data browser & save editor** — read-only viewer of the game database (items/weapons/armors/skills/enemies, encrypted DBs supported) and a visual editor for MV/MZ saves: gold, item counts, variables and switches with automatic backups.
 - **Update checker** — notifies when a new release is published and links to it.

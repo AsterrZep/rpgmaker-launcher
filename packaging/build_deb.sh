@@ -27,7 +27,7 @@ mkdir -p "$PKGROOT/usr/share/icons/hicolor/256x256/apps"
 mkdir -p "$PKGROOT/usr/share/doc/$PKG"
 
 # ---------- archivos de la app ----------
-for f in rpgmaker-launcher.sh rpgmaker-launcher-gui.py rpgmaker-server.py \
+for f in rpgmaker-launcher.sh rpgmaker-launcher-gtk.py rpgmaker-launcher-gui.py rpgmaker-server.py \
          rpgmaker-webview.py rpgmaker-config.py rpgmaker-decrypter.py \
          rpgmaker-plugins.py rpgmaker-savebridge.js rpgmaker-cheats.js rpgmaker-saveedit.py rpgmaker-rewind.js rpgmaker-sync.py \
          rpgmaker-gamepad.js rpgmaker-browser-keys.js rpgmaker-icon.png; do
@@ -46,6 +46,10 @@ chmod +x "$PKGROOT$LIBDIR/rpgmaker-launcher.sh" \
 cat > "$PKGROOT/usr/bin/rpgmaker-launcher" <<EOF
 #!/bin/sh
 export RPGMAKER_DATA_DIR="\${RPGMAKER_DATA_DIR:-\$HOME/Games}"
+if /usr/bin/python3 -c "import gi" >/dev/null 2>&1 && \
+   [ -f "$LIBDIR/rpgmaker-launcher-gtk.py" ]; then
+  exec /usr/bin/python3 $LIBDIR/rpgmaker-launcher-gtk.py "\$@"
+fi
 exec /usr/bin/python3 $LIBDIR/rpgmaker-launcher-gui.py "\$@"
 EOF
 chmod +x "$PKGROOT/usr/bin/rpgmaker-launcher"

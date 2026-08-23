@@ -22,7 +22,7 @@ echo ">> Preparando staging de archivos de la app..."
 SRC="$ROOT/packaging/.flatpak-src"
 rm -rf "$SRC"
 mkdir -p "$SRC/runtimes"
-for f in rpgmaker-launcher.sh rpgmaker-launcher-gui.py rpgmaker-server.py \
+for f in rpgmaker-launcher.sh rpgmaker-launcher-gtk.py rpgmaker-launcher-gui.py rpgmaker-server.py \
          rpgmaker-webview.py rpgmaker-config.py rpgmaker-decrypter.py \
          rpgmaker-plugins.py rpgmaker-savebridge.js rpgmaker-cheats.js rpgmaker-saveedit.py rpgmaker-rewind.js rpgmaker-sync.py \
          rpgmaker-gamepad.js rpgmaker-browser-keys.js rpgmaker-icon.png; do
@@ -40,7 +40,7 @@ flatpak install -y --noninteractive --user flathub org.gnome.Platform//48 org.gn
 mkdir -p "$DIST"
 echo ">> Construyendo ($PKG)..."
 flatpak-builder --user --force-clean --disable-rofiles-fuse --repo="$DIST/flatpak-repo" \
-    "$DIST/flatpak-build" "$ROOT/packaging/org.rpgmaker.Launcher.yaml"
+    "$DIST/flatpak-build" "$ROOT/packaging/org.rpgmaker.Launcher-slim.yaml"
 
 echo ">> Generando bundle..."
 flatpak build-bundle "$DIST/flatpak-repo" "$DIST/rpgmaker-launcher-${VERSION}.flatpak" "$PKG" master

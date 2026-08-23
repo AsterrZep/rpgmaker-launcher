@@ -37,7 +37,7 @@ def zoom_file_for(name):
     safe = "".join(c if c.isalnum() or c in "-_." else "_"
                    for c in name)[:60] or "juego"
     return os.path.join(DATA_DIR, "zooms", safe + ".json")
-APP_VERSION = "0.6.1"
+APP_VERSION = "0.7.0"
 REPO_LATEST_API = "https://api.github.com/repos/AsterrZep/rpgmaker-launcher/releases/latest"
 REPO_RELEASES_URL = "https://github.com/AsterrZep/rpgmaker-launcher/releases"
 
@@ -2712,9 +2712,53 @@ class App:
         self.root.destroy()
 
 
+def _tool_mode(args):
+    """Modo --tool: abre UN diálogo concreto para un juego y sale al cerrar.
+
+    Uso: rpgmaker-launcher-gui.py --tool <plugins|saves|preset|datos|
+         mods|sync> --root CARPETA_JUEGO --name NOMBRE [--engine MZ]
+    Lo usa la GUI GTK para reutilizar estos diálogos como procesos.
+    """
+    global CLI_LANG
+
+    def val(flag):
+        return args[args.index(flag) + 1] if flag in args else None
+
+    tool = val("--tool")
+    root = val("--root") or ""
+    name = val("--name") or ""
+    engine = val("--engine") or "MZ"
+    if "--lang" in args:
+        i = args.index("--lang")
+        if i + 1 < len(args) and args[i + 1] in ("es", "en"):
+            CLI_LANG = args[i + 1]
+    if not os.path.isdir(GAMES_DIR):
+        os.makedirs(GAMES_DIR, exist_ok=True)
+    app = App()
+    app.root.withdraw()
+    app.games.append((name, root, engine))
+    app._sel = len(app.games) - 1
+    fn = {"plugins": "plugins_selected",
+          "saves": "saves_selected",
+          "editor": "saves_selected",
+          "preset": "preset_selected",
+          "datos": "datos_selected",
+          "mods": "mods_selected",
+          "sync": "sync_selected"}.get(tool)
+    if not fn:
+        print("tool desconocida:", tool)
+        app.root.destroy()
+        return
+    app.root.after(200, lambda: getattr(app, fn)())
+    app.root.mainloop()
+
+
 def main():
     global CLI_LANG
     args = sys.argv[1:]
+    if "--tool" in args:
+        _tool_mode(args)
+        return
     if "--lang" in args:
         i = args.index("--lang")
         if i + 1 < len(args) and args[i + 1] in ("es", "en"):

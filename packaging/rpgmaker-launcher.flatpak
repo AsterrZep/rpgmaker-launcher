@@ -2,4 +2,7 @@
 # Lanzador dentro del sandbox Flatpak: usa el python de /app.
 export RPGMAKER_DATA_DIR="${RPGMAKER_DATA_DIR:-$HOME/Games}"
 export GI_TYPELIB_PATH="/usr/lib/x86_64-linux-gnu/girepository-1.0:$GI_TYPELIB_PATH"
+if [ -f /app/lib/rpgmaker-launcher/rpgmaker-launcher-gtk.py ]; then
+  exec /app/bin/python3 /app/lib/rpgmaker-launcher/rpgmaker-launcher-gtk.py "$@"
+fi
 exec /app/bin/python3 /app/lib/rpgmaker-launcher/rpgmaker-launcher-gui.py "$@"
