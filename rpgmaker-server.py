@@ -328,11 +328,17 @@ class GameHandler(SimpleHTTPRequestHandler):
 
 def main():
     ap = argparse.ArgumentParser(description="Servidor HTTP rápido para juegos RPG Maker (MZ/MV)")
-    ap.add_argument("port", type=int, help="puerto (0 = elegir uno libre)")
+    ap.add_argument("port", type=int, nargs="?", default=0, help="puerto (0 = elegir uno libre)")
     ap.add_argument("--dir", default=".", help="carpeta del juego a servir")
+    ap.add_argument("--api", action="store_true", help="iniciar como servidor API REST/SSE")
     ap.add_argument("--verbose", action="store_true",
                     help="mostrar cada petición y las estadísticas al cerrar")
     args = ap.parse_args()
+
+    if args.api:
+        from rpgmaker_api import run_api_server
+        run_api_server(port=args.port)
+        return
 
     handler = functools.partial(GameHandler, directory=args.dir)
     httpd = ThreadingHTTPServer(("127.0.0.1", args.port), handler)

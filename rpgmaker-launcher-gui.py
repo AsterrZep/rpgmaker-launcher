@@ -1227,6 +1227,8 @@ class App:
         self._tog_del.pack(side="right", padx=(8, 0))
         self._tog_webkit = self._make_toggle(hinner, _("Visor WebKit"), self.use_webkit)
         self._tog_webkit.pack(side="right", padx=(8, 0))
+        self._btn_web_interface = self._make_button(hinner, _("Interfaz Web"), self._open_web_interface)
+        self._btn_web_interface.pack(side="right", padx=(8, 0))
 
         body = tk.Frame(self.root, bg=BG)
         body.pack(fill="both", expand=True)
@@ -1539,6 +1541,29 @@ class App:
 
     def _set_status(self, msg):
         self.root.after(0, lambda: self._update_status(msg))
+
+    def _open_web_interface(self):
+        """Abre la interfaz web diseñada por IA en el navegador."""
+        if not self.launcher.server_running:
+            self._update_status(_("Iniciando servidor para la interfaz web..."))
+            port = 18321
+            server = os.path.join(BASE_DIR, "rpgmaker-server.py")
+            self.launcher.server_proc = subprocess.Popen(
+                [sys.executable, server, str(port), "--dir", DATA_DIR],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self.launcher.server_info = ("Launcher", port)
+            time.sleep(1)
+        url = "http://127.0.0.1:%d/code-launcher.html" % self.launcher.server_info[1]
+        try:
+            subprocess.Popen(["xdg-open", url],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            self._update_status(_("Interfaz web abierta en el navegador"))
+        except Exception as e:
+            self._error("RPG Maker Launcher",
+                        _("No se pudo abrir la interfaz web: %s") % e)
+
+
+    # --- acciones ---
 
     def _update_status(self, msg):
         if self.launcher.server_running and self.launcher.server_info:

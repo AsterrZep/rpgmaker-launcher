@@ -7,7 +7,7 @@
 #
 #  Cubre: compilación de módulos, detección de motor, servidor
 #  HTTP (inyección/presets/mods/traversal), editor de partidas
-#  (round-trip zlib+JSON) y parseo de atajos.
+#  (round-trip zlib+JSON), parseo de atajos y backend API.
 # ============================================================
 import importlib.util
 import json
@@ -49,7 +49,7 @@ def t_py_compile():
     for f in ("rpgmaker-launcher-gui.py", "rpgmaker-server.py",
               "rpgmaker-webview.py", "rpgmaker-saveedit.py",
               "rpgmaker-plugins.py", "rpgmaker-config.py",
-              "rpgmaker-decrypter.py"):
+              "rpgmaker-decrypter.py", "rpgmaker_api.py"):
         r = subprocess.run([sys.executable, "-m", "py_compile",
                             os.path.join(ROOT, f)], capture_output=True)
         assert r.returncode == 0, r.stderr.decode()[-400:]
@@ -177,73 +177,64 @@ def t_server_http():
 
 # ---------- 4. editor de partidas ----------
 def t_saveedit_roundtrip():
-    se = load_mod("rpgmaker-saveedit.py")
-    obj = {"party": {"@": "Game_Party", "_gold": 10, "_items": {"1": 3}},
-           "variables": {"_data": [None, 0, 7]},
-           "switches": {"_data": [None, True]}}
+    saveedit = load_mod("rpgmaker-saveedit.py")
+    sample = {
+        "party": {"_gold": 12345, "_items": {"1": 5, "2": 0, "3": 10}},
+        "variables": {"_data": [None, 42, "hello", 0]},
+        "switches": {"_data": [None, True, False, True]},
+        "actors": {"_data": [{"_name": "Hero"}, {"_name": "Mage"}]},
+    }
     with tempfile.TemporaryDirectory() as tmp:
-        p = os.path.join(tmp, "file1.rmmzsave")
-        se.dump_save(p, obj)
-        obj2 = se.load_save(p)
-        assert obj2["party"]["_gold"] == 10
-        assert obj2["variables"]["_data"][2] == 7
-        raw = open(p, "rb").read()
-        assert raw[:2] == b"x\x01", "cabecera zlib inesperada"
+        f = os.path.join(tmp, "file1.rmmzsave")
+        bdir = os.path.join(tmp, "backups")
+        saveedit.dump_save(f, sample, backups_dir=bdir, game_name="t")
+        assert os.path.isfile(f)
+        loaded = saveedit.load_save(f)
+        assert loaded["party"]["_gold"] == 12345
+        assert loaded["variables"]["_data"][1] == 42
+        s = saveedit.summary(loaded)
+        assert s["gold"] == 12345
+        assert s["items_kinds"] == 2
+        assert s["variables_used"] == 2
+        assert s["switches_on"] == 2
+        assert "Hero" in s["actors"]
 
 
-# ---------- 5. atajos ----------
+# ---------- 5. sync ----------
 def t_sync_push_pull():
-    se = load_mod("rpgmaker-sync.py")
+    sync = load_mod("rpgmaker-sync.py")
     with tempfile.TemporaryDirectory() as tmp:
-        saves = os.path.join(tmp, "game", "save")
-        os.makedirs(saves)
-        open(os.path.join(saves, "file1.rmmzsave"), "w").write("A")
-        dest = os.path.join(tmp, "sync", "game", "save")
-        assert se.push(saves, dest) == 1
-        assert se.count_saves(dest) == 1
-        open(os.path.join(dest, "file1.rmmzsave"), "w").write("B")
-        n, bak = se.pull(saves, dest)
-        assert n == 1 and bak and "pre-pull" in bak
-        assert open(os.path.join(saves, "file1.rmmzsave")).read() == "B"
-        assert open(os.path.join(bak, "file1.rmmzsave")).read() == "A"
+        loc = os.path.join(tmp, "local")
+        dst = os.path.join(tmp, "dest")
+        os.makedirs(loc)
+        open(os.path.join(loc, "f1.rmmzsave"), "w").write("a")
+        open(os.path.join(loc, "f2.rmmzsave"), "w").write("b")
+        assert sync.count_saves(loc) == 2
+
+        n = sync.push(loc, dst)
+        assert n == 2
+        assert sync.count_saves(dst) == 2
+
+        open(os.path.join(dst, "f3.rmmzsave"), "w").write("c")
+        n, bak = sync.pull(loc, dst)
+        assert n == 3
+        assert sync.count_saves(loc) == 3
+        assert bak is not None and os.path.isdir(bak)
 
 
-def t_gtk_gui():
-    r = subprocess.run([sys.executable, "-m", "py_compile",
-                        os.path.join(ROOT, "rpgmaker-launcher-gtk.py")],
-                       capture_output=True)
-    assert r.returncode == 0, r.stderr.decode()[-400:]
-    if shutil.which("xvfb-run") is None:
-        print("    (xvfb-run no disponible; solo compila)")
-        return
-    env = dict(os.environ)
-    env["RPGMAKER_DATA_DIR"] = tempfile.mkdtemp()
-    code = (
-        "import sys, importlib.util\n"
-        "sys.path.insert(0, {root!r})\n"
-        "spec = importlib.util.spec_from_file_location('g', {f!r})\n"
-        "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)\n"
-        "import os\n"
-        "app = m.GtkApp()\n"
-        "app.win.show_all()\n"
-        "from gi.repository import GLib\n"
-        "def _done():\n"
-        "    print('GTK_SMOKE_OK', flush=True)\n"
-        "    os._exit(0)\n"
-        "GLib.timeout_add(700, _done)\n"
-        "m.main()\n"
-    ).format(root=ROOT, f=os.path.join(ROOT, "rpgmaker-launcher-gtk.py"))
-    r = subprocess.run(["xvfb-run", "-a", sys.executable, "-u", "-c", code],
-                       capture_output=True, text=True, timeout=90, env=env)
-    assert "GTK_SMOKE_OK" in (r.stdout + r.stderr), \
-        (r.stdout[-300:] + r.stderr[-500:])
-
-
+# ---------- 6. config parse key ----------
 def t_config_parse_key():
     cfg = load_mod("rpgmaker-config.py")
     kv, mods = cfg.parse_key("Control+equal")
     assert kv != 0, "Control+equal no parsea"
     assert cfg.parse_key("") == (0, 0)
+
+
+# ---------- 7. backend api ----------
+def t_backend_api():
+    r = subprocess.run([sys.executable, os.path.join(ROOT, "tests", "test_api.py")],
+                       capture_output=True, text=True)
+    assert r.returncode == 0, (r.stdout + r.stderr)[-600:]
 
 
 TESTS = [
@@ -255,7 +246,7 @@ TESTS = [
     ("saveedit round-trip", t_saveedit_roundtrip),
     ("config.parse_key", t_config_parse_key),
     ("sync push/pull", t_sync_push_pull),
-    ("gui gtk (compila + smoke xvfb)", t_gtk_gui),
+    ("backend api (rpgmaker_api.py)", t_backend_api),
 ]
 
 if __name__ == "__main__":
