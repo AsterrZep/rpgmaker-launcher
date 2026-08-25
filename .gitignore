@@ -28,9 +28,20 @@ launcher-state.json
 # Paquetes y staging de build
 dist/
 packaging/.flatpak-src/
+packaging/.flatpak-tauri-src/
 packaging/flatpak-build/
 packaging/flatpak-repo/
 .flatpak-builder/
+
 # Backups de partidas (datos de usuario)
 backups/
 zooms/
+
+# Tauri: dependencias, artefactos Rust y copias generadas en build
+node_modules/
+**/target/
+rpgmaker-launcher-tauri/backend/
+rpgmaker-launcher-tauri/gen/schemas/
+
+# Assets locales de diseño IA (la spec vive en docs/UI-SPEC.md)
+stitch_linux_rpg_ren_py_launcher/
