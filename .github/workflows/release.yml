@@ -14,54 +14,73 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # ubuntu-22.04: linuxdeploy (AppImage) requiere glibc antigua;
+    # en 24.04 falla la construcción del AppImage.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
-      - name: Instalar herramientas de empaquetado
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: rpgmaker-launcher-tauri/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rpgmaker-launcher-tauri
+
+      - name: Instalar dependencias de sistema
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends dpkg-dev wget flatpak flatpak-builder elfutils
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+            librsvg2-dev libxdo-dev patchelf elfutils \
+            flatpak flatpak-builder
           flatpak --user remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
-      # elfutils provee eu-strip, que flatpak-builder necesita al stripear binarios.
-      # La caché evita re-descargar el SDK de GNOME y re-compilar tcl/tk/python.
-      - name: Cachear runtime/SDK y builds de Flatpak
+      # Caché evita re-descargar el runtime/SDK de GNOME en cada release.
+      - name: Cachear runtime/SDK de Flatpak
         uses: actions/cache@v4
         with:
           path: |
             .flatpak-builder/
             ~/.local/share/flatpak/
-          key: flatpak-gnome48-v1
+          key: flatpak-gnome49-tauri-v1
           restore-keys: |
-            flatpak-gnome48-v1
+            flatpak-gnome49-tauri-v1
 
-      - name: Obtener versión desde el tag
+      - name: Versión desde el tag
         id: ver
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
-      - name: Compilar runtime mkxp-z (XP/VX/VX Ace)
+      - name: Dependencias npm y backend del bundle
+        working-directory: rpgmaker-launcher-tauri
         run: |
-          ./install.sh 2>&1 | tail -n 30
+          npm ci
+          bash scripts/sync-backend.sh
 
-      - name: Construir .deb
-        run: ./packaging/build_deb.sh "${{ steps.ver.outputs.version }}"
+      # Compila, crea la release en GitHub y sube .deb + .AppImage
+      - name: Compilar y publicar .deb + .AppImage (Tauri)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: rpgmaker-launcher-tauri
+          tagName: ${{ github.ref_name }}
+          releaseName: "RPG Maker Launcher ${{ github.ref_name }}"
+          releaseBody: "Lanzador de juegos RPG Maker y Ren'Py para Linux. Paquetes: .deb (Ubuntu/Debian), .AppImage (portable) y .flatpak."
+          releaseDraft: false
+          prerelease: false
+          args: --bundles deb appimage
 
-      - name: Construir AppImage
-        run: ./packaging/build_appimage.sh "${{ steps.ver.outputs.version }}"
+      - name: Construir Flatpak (binarios precompilados sobre GNOME runtime)
+        run: ./packaging/build_flatpak_tauri.sh "${{ steps.ver.outputs.version }}"
 
-      - name: Construir Flatpak
-        run: ./packaging/build_flatpak.sh "${{ steps.ver.outputs.version }}"
-
-      - name: Crear release y subir artefactos (.deb, AppImage, Flatpak)
+      - name: Subir Flatpak a la release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          FILES=(dist/rpgmaker-launcher_*.deb dist/rpgmaker-launcher-*.AppImage dist/rpgmaker-launcher-*.flatpak)
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" "${FILES[@]}" --clobber
-          else
-            gh release create "$GITHUB_REF_NAME" "${FILES[@]}" \
-              --title "RPG Maker Launcher ${GITHUB_REF_NAME}" \
-              --generate-notes
-          fi
+          gh release upload "$GITHUB_REF_NAME" dist/rpgmaker-launcher-*.flatpak --clobber

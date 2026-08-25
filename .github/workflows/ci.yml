@@ -25,3 +25,45 @@ jobs:
 
       - name: Autotests (compilación, motor, servidor, saves, atajos)
         run: python3 tests/selftest.py
+
+      - name: Tests de la API REST (backend Tauri)
+        run: python3 tests/test_api.py
+
+  tauri:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rpgmaker-launcher-tauri
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: rpgmaker-launcher-tauri/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rpgmaker-launcher-tauri
+
+      - name: Dependencias de sistema (Tauri Linux)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+            librsvg2-dev libxdo-dev
+
+      - name: Dependencias npm
+        run: npm ci
+
+      - name: Sincronizar backend Python (recursos del bundle)
+        run: bash scripts/sync-backend.sh
+
+      - name: Compilar frontend (tsc + vite)
+        run: npm run build
+
+      - name: cargo check (shell Rust)
+        run: cargo check --locked

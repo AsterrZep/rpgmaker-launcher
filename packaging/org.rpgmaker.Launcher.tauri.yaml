@@ -1,0 +1,33 @@
+app-id: org.rpgmaker.Launcher
+runtime: org.gnome.Platform
+runtime-version: "49"
+sdk: org.gnome.Sdk
+command: rpgmaker-launcher-tauri
+separate-locales: false
+finish-args:
+  # Ventana (WebKitGTK)
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+  - --device=dri
+  # Audio de los juegos
+  - --socket=pulseaudio
+  # Servidor HTTP local de juegos y check de updates
+  - --share=network
+  # Juegos, partidas y carpeta de sync del usuario
+  - --filesystem=home
+modules:
+  - name: launcher
+    buildsystem: simple
+    build-commands:
+      # Binario Tauri precompilado en CI; backend Python junto al binario
+      # (ruta que src/main.rs resuelve: exe_dir/backend/rpgmaker_api.py).
+      - install -Dm755 bin/rpgmaker-launcher-tauri /app/bin/rpgmaker-launcher-tauri
+      - mkdir -p /app/bin/backend
+      - cp -r backend/. /app/bin/backend/
+      - install -Dm644 icon.png /app/share/icons/hicolor/128x128/apps/org.rpgmaker.Launcher.png
+      - install -Dm644 launcher.desktop /app/share/applications/org.rpgmaker.Launcher.desktop
+      - install -Dm644 appdata.xml /app/share/metainfo/org.rpgmaker.Launcher.appdata.xml
+    sources:
+      - type: dir
+        path: .flatpak-tauri-src
