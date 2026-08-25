@@ -22,6 +22,9 @@ BACKEND="$ROOT/rpgmaker-launcher-tauri/backend"
 
 command -v flatpak-builder >/dev/null || {
     echo "Falta flatpak-builder: sudo apt-get install flatpak-builder" >&2; exit 1; }
+# En CI (contenedor de Flathub) llegan como artefacto vía env override.
+BIN="${BIN_FILE:-$ROOT/rpgmaker-launcher-tauri/target/release/rpgmaker-launcher-tauri}"
+BACKEND="${BACKEND_DIR:-$ROOT/rpgmaker-launcher-tauri/backend}"
 [ -x "$BIN" ] || { echo "No existe $BIN — compila antes con: npx tauri build" >&2; exit 1; }
 [ -d "$BACKEND" ] || { echo "No existe $BACKEND — ejecuta scripts/sync-backend.sh" >&2; exit 1; }
 

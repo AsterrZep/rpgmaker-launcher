@@ -13,6 +13,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ------------------------------------------------------------
+  # Compila la app y publica .deb + .AppImage en la release
+  # ------------------------------------------------------------
   build:
     # ubuntu-22.04: linuxdeploy (AppImage) requiere glibc antigua;
     # en 24.04 falla la construcción del AppImage.
@@ -37,20 +40,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
-            librsvg2-dev libxdo-dev patchelf elfutils \
-            flatpak flatpak-builder
-          flatpak --user remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-
-      # Caché evita re-descargar el runtime/SDK de GNOME en cada release.
-      - name: Cachear runtime/SDK de Flatpak
-        uses: actions/cache@v4
-        with:
-          path: |
-            .flatpak-builder/
-            ~/.local/share/flatpak/
-          key: flatpak-gnome49-tauri-v1
-          restore-keys: |
-            flatpak-gnome49-tauri-v1
+            librsvg2-dev libxdo-dev patchelf
 
       - name: Versión desde el tag
         id: ver
@@ -76,11 +66,71 @@ jobs:
           prerelease: false
           args: --bundles deb appimage
 
-      - name: Construir Flatpak (binarios precompilados sobre GNOME runtime)
-        run: ./packaging/build_flatpak_tauri.sh "${{ steps.ver.outputs.version }}"
+      # El Flatpak se construye en otro job (contenedor de Flathub):
+      # le pasamos el binario compilado + backend como artefacto.
+      - name: Empaquetar artefacto para Flatpak
+        run: |
+          mkdir -p stage
+          cp rpgmaker-launcher-tauri/target/release/rpgmaker-launcher-tauri stage/
+          cp -r rpgmaker-launcher-tauri/backend stage/backend
+          tar -C stage -czf app-linux-bin.tar.gz .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-bin
+          path: app-linux-bin.tar.gz
+          retention-days: 3
+
+  # ------------------------------------------------------------
+  # Flatpak: contenedor oficial de Flathub (flatpak-builder moderno,
+  # evita el fallo de appstream-compose con builders antiguos)
+  # ------------------------------------------------------------
+  flatpak:
+    runs-on: ubuntu-latest
+    needs: build
+    container:
+      image: ghcr.io/flathub-infra/builder:latest
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-bin
+          path: stage-dl/
+
+      - name: Preparar staging
+        run: |
+          mkdir -p stage && tar -C stage -xzf stage-dl/app-linux-bin.tar.gz
+          flatpak --user remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+      # Caché solo del directorio de builds (el runtime/SDK se gestiona
+      # dentro del contenedor y se descarga una vez por runner).
+      - name: Construir Flatpak
+        env:
+          BIN_FILE: ${{ github.workspace }}/stage/rpgmaker-launcher-tauri
+          BACKEND_DIR: ${{ github.workspace }}/stage/backend
+        run: ./packaging/build_flatpak_tauri.sh "${GITHUB_REF_NAME#v}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-bundle
+          path: dist/rpgmaker-launcher-*.flatpak
+          retention-days: 3
+
+  # ------------------------------------------------------------
+  # Publicación del .flatpak en la release creada por tauri-action
+  # ------------------------------------------------------------
+  publish-flatpak:
+    runs-on: ubuntu-latest
+    needs: [build, flatpak]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: flatpak-bundle
+          path: dist/
 
       - name: Subir Flatpak a la release
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release upload "$GITHUB_REF_NAME" dist/rpgmaker-launcher-*.flatpak --clobber
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$GITHUB_REF_NAME" dist/rpgmaker-launcher-*.flatpak --clobber
