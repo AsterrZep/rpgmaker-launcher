@@ -145,4 +145,4 @@ jobs:
       - name: Subir Flatpak a la release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "$GITHUB_REF_NAME" dist/rpgmaker-launcher-*.flatpak --clobber
+        run: gh release upload -R "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" dist/rpgmaker-launcher-*.flatpak --clobber
