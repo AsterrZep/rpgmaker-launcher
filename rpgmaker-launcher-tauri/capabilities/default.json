@@ -1,0 +1,9 @@
+{
+  "identifier": "default",
+  "description": "Permisos base de la ventana principal: núcleo + diálogos nativos (selector de carpetas).",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:default"
+  ]
+}

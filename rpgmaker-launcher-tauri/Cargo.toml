@@ -1,0 +1,13 @@
+[package]
+name = "rpgmaker-launcher-tauri"
+version = "0.8.0"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+tauri = { version = "2", features = ["devtools"] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
