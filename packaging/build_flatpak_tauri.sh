@@ -37,6 +37,12 @@ cp "$BIN" "$SRC/bin/"
 cp "$BACKEND"/*.py "$BACKEND"/*.js "$SRC/backend/"
 cp "$ROOT/rpgmaker-launcher-tauri/icons/icon.png" "$SRC/icon.png"
 
+# Copiar los runtimes (incluye mkxp-z para VX Ace/XP) para que el Flatpak
+# pueda lanzar juegos de RPG Maker XP / VX / VX Ace.
+if [ -d "$ROOT/runtimes" ]; then
+    cp -r "$ROOT/runtimes" "$SRC/backend/runtimes"
+fi
+
 cat > "$SRC/launcher.desktop" <<EOF
 [Desktop Entry]
 Categories=Game;
