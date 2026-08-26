@@ -154,11 +154,62 @@ EOF
   if [ ! -d mkxp-z/.git ]; then
     git clone --quiet https://github.com/mkxp-z/mkxp-z.git mkxp-z
   fi
+  # Parche: no vaciar el $LOAD_PATH de Ruby (sin esto falla require 'zlib'
+  # con el Ruby del sistema; el zlib.so vive en /usr/lib/<multiarch>/ruby).
+  if ! grep -q "defaultLpaths" mkxp-z/binding/binding-mri.cpp; then
+    python3 - mkxp-z/binding/binding-mri.cpp <<'PYEOF'
+import sys
+p = sys.argv[1]
+src = open(p).read()
+old = "    rb_ary_clear(lpaths);"
+new = """    /* Snapshot the default (system) load paths before clearing: distro
+     * rubies keep extensions like zlib.so in multiarch dirs that must
+     * stay reachable. */
+    VALUE defaultLpaths = rb_ary_dup(lpaths);
+    rb_ary_clear(lpaths);"""
+assert old in src, "ancla del parche no encontrada"
+src = src.replace(old, new, 1)
+old2 = """#ifndef WORKDIR_CURRENT
+    else {
+        rb_ary_push(lpaths, rb_utf8_str_new_cstr(mkxp_fs::getCurrentDirectory().c_str()));
+    }
+#endif"""
+new2 = old2 + """
+
+    /* Restore the default system paths (lowest priority). */
+    rb_ary_concat(lpaths, defaultLpaths);"""
+assert old2 in src, "ancla 2 del parche no encontrada"
+src = src.replace(old2, new2, 1)
+open(p, "w").write(src)
+print("parche loadpath aplicado")
+PYEOF
+  fi
+  # Parche 2: coerción de booleanos estilo RGSS oficial (RTEST). La
+  # comprobación estricta rompe scripts habituales (MOG_Anti_Lag, etc.)
+  # al asignar valores no-bool a propiedades como visible=.
+  if ! grep -q "RGSS-compatible" mkxp-z/binding/binding-util.h; then
+    python3 - mkxp-z/binding/binding-util.h <<'PYEOF'
+import sys
+p = sys.argv[1]
+src = open(p).read()
+old = """        default:
+            throw Exception(Exception::TypeError, "Argument %d: Expected bool", argPos);"""
+new = """        default:
+            /* Official RGSS coerced any value via RTEST; strict type
+             * checking breaks common scripts (MOG_Anti_Lag etc.). */
+            *out = RTEST(arg);
+            break;"""
+assert old in src, "ancla del parche bool no encontrada"
+src = src.replace(old, new, 1)
+open(p, "w").write(src)
+print("parche bool RGSS aplicado")
+PYEOF
+  fi
   cd mkxp-z
   MRI_VER="$(ruby -e 'print RUBY_VERSION' | cut -d. -f1-2)"
   c_log "Detected MRI ${MRI_VER} (uses the matching mruby version)." \
         "Detectada MRI ${MRI_VER} (usa la versión de mruby correspondiente)."
-  meson setup build -Dmri_version="$MRI_VER" -Dstatic_executable=false >/dev/null
+  meson setup build -Dmri_version="$MRI_VER" -Dstatic_executable=false -Dworkdir_current=true >/dev/null
   ninja -C build >/dev/null
   cp build/mkxp-z.x86_64 "$RUNTIMES/mkxp-z"
   cd "$BASEDIR"

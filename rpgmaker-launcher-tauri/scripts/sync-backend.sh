@@ -22,6 +22,7 @@ FILES=(
   rpgmaker-gamepad.js
   rpgmaker-browser-keys.js
   rpgmaker-savebridge.js
+  win32-shim.rb
 )
 
 for f in "${FILES[@]}"; do
@@ -32,4 +33,15 @@ for f in "${FILES[@]}"; do
   cp -f "$DIR/$f" "$DEST/"
 done
 
-echo ">> Backend sincronizado en $DEST (${#FILES[@]} archivos)"
+# Runtimes precompilados: sin ellos el .deb no puede lanzar XP/VX/VX Ace.
+# (mkxp-z se compila con install.sh o se descarga a runtimes/)
+mkdir -p "$DEST/runtimes"
+for bin in mkxp-z RPGMakerDecrypter-cli; do
+  if [ -f "$DIR/runtimes/$bin" ]; then
+    cp -f "$DIR/runtimes/$bin" "$DEST/runtimes/"
+  else
+    echo "AVISO: falta runtimes/$bin — XP/VX/VX Ace (o descifrado) no funcionará en el paquete." >&2
+  fi
+done
+
+echo ">> Backend sincronizado en $DEST (${#FILES[@]} archivos + runtimes)"

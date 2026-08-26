@@ -62,7 +62,12 @@ extract_zips() {
     local marker
     for zip in "$DATA_DIR"/*.zip; do
         [ -f "$zip" ] || continue
-        name="$(basename "$zip" .zip)"
+        # sin dobles extensiones: 'Game.zip.zip' -> 'Game'
+        name="$(basename "$zip")"
+        while [ "${name##*.}" = "zip" ]; do
+            name="${name%.*}"
+        done
+        name="${name:-juego}"
         marker="$GAMES_DIR/$name/.extracted"
         if [ -f "$marker" ]; then
             continue

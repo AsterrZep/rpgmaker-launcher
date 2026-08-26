@@ -167,19 +167,41 @@ export class App {
 
   private setupDragAndDrop(): void {
     const overlay = this.appRoot.querySelector('#drag-drop-overlay') as HTMLElement;
+    const showOverlay = (v: boolean) => overlay?.classList.toggle('hidden', !v);
+
+    // En Tauri (WebKitGTK) los eventos HTML5 de drag no entregan rutas
+    // reales: usamos onDragDropEvent, que sí las trae.
+    if ((window as any).__TAURI_INTERNALS__) {
+      import('@tauri-apps/api/webview').then(({ getCurrentWebview }) => {
+        getCurrentWebview().onDragDropEvent((event) => {
+          const payload = event.payload as any;
+          if (payload.type === 'enter' || payload.type === 'over') {
+            showOverlay(true);
+          } else if (payload.type === 'leave') {
+            showOverlay(false);
+          } else if (payload.type === 'drop') {
+            showOverlay(false);
+            void this.handleDroppedPaths(payload.paths ?? []);
+          }
+        });
+      });
+      return;
+    }
+
+    // Fallback navegador (sin rutas locales): solo refresca.
     let dragCounter = 0;
 
     window.addEventListener('dragenter', (e) => {
       e.preventDefault();
       dragCounter++;
-      if (overlay) overlay.classList.remove('hidden');
+      showOverlay(true);
     });
 
     window.addEventListener('dragleave', (e) => {
       e.preventDefault();
       dragCounter--;
-      if (dragCounter <= 0 && overlay) {
-        overlay.classList.add('hidden');
+      if (dragCounter <= 0) {
+        showOverlay(false);
         dragCounter = 0;
       }
     });
@@ -191,14 +213,36 @@ export class App {
     window.addEventListener('drop', async (e) => {
       e.preventDefault();
       dragCounter = 0;
-      if (overlay) overlay.classList.add('hidden');
-
-      const files = e.dataTransfer?.files;
-      if (files && files.length > 0) {
-        toasts.show(`Detectados ${files.length} archivo(s). Escaneando...`, 'info');
-        await this.handleRefresh();
-      }
+      showOverlay(false);
+      await this.handleRefresh();
     });
+  }
+
+  private async handleDroppedPaths(paths: string[]): Promise<void> {
+    const zips = paths.filter((p) => p.toLowerCase().endsWith('.zip'));
+    if (zips.length === 0) {
+      toasts.show(t('dragDropZip'), 'warning');
+      return;
+    }
+    try {
+      toasts.show(`Copiando ${zips.length} .zip y extrayendo...`, 'info');
+      const cfg = await api.getConfig();
+      const res = await api.installZips(zips, cfg.general.auto_delete_zip);
+      for (const name of res.extracted) {
+        toasts.show(`Extraído: ${name}`, 'success');
+      }
+      for (const err of res.skipped) {
+        toasts.show(err, 'error');
+      }
+      if (res.extracted.length === 0 && res.skipped.length === 0) {
+        toasts.show('Sin nuevos archivos .zip', 'info');
+      }
+      this.games = res.games;
+      this.renderGrid();
+      this.updateSubtitle();
+    } catch (err: any) {
+      toasts.show(`Error al instalar: ${err.message}`, 'error');
+    }
   }
 
   private async loadStatus(): Promise<void> {

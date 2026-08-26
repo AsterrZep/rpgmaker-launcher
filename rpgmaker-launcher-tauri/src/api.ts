@@ -149,6 +149,13 @@ class ApiClient {
     });
   }
 
+  public async installZips(paths: string[], autoDelete: boolean = false): Promise<{ copied: string[]; skipped: string[]; extracted: string[]; games: Game[] }> {
+    return this.request('/api/games/install', {
+      method: 'POST',
+      body: JSON.stringify({ paths, auto_delete: autoDelete }),
+    });
+  }
+
   public async toggleFavorite(name: string, favorite?: boolean): Promise<{ ok: boolean; name: string; favorite: boolean }> {
     return this.request('/api/games/favorite', {
       method: 'POST',

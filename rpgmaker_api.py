@@ -19,6 +19,7 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+from datetime import datetime
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -35,6 +36,54 @@ MARKER = ".extracted"
 APP_VERSION = "0.8.0"
 REPO_LATEST_API = "https://api.github.com/repos/AsterrZep/rpgmaker-launcher/releases/latest"
 REPO_RELEASES_URL = "https://github.com/AsterrZep/rpgmaker-launcher/releases"
+
+# ---------- Logging ----------
+LOG_FILE = os.path.join(DATA_DIR, "launcher.log")
+GAME_LOGS_DIR = os.path.join(DATA_DIR, "logs")
+SHIM_FILE = os.path.join(BASE_DIR, "win32-shim.rb")
+NATIVE_RGSS_ENGINES = {"VXAce", "VX", "XP"}
+
+
+def _log(msg):
+    """Log global de la app: DATA_DIR/launcher.log"""
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        with open(LOG_FILE, "a", encoding="utf-8") as fh:
+            fh.write("[%s] %s\n" % (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), msg))
+    except OSError:
+        pass
+
+
+def _safe_log_name(name):
+    safe = "".join(c if c.isalnum() or c in "-_." else "_" for c in name)[:60]
+    return safe or "juego"
+
+
+def _ensure_win32_shim(root):
+    """Garantiza que el juego RGSS precargue el shim Win32 vía mkxp.json.
+    Fusiona con cualquier mkxp.json existente; no toca nada más."""
+    if not os.path.isfile(SHIM_FILE):
+        _log("AVISO: falta win32-shim.rb en %s" % BASE_DIR)
+        return False
+    cfg_path = os.path.join(root, "mkxp.json")
+    cfg = {}
+    try:
+        with open(cfg_path, "r", encoding="utf-8") as fh:
+            cfg = json.load(fh)
+    except (OSError, ValueError):
+        cfg = {}
+    pre = [p for p in (cfg.get("preloadScript") or []) if isinstance(p, str)]
+    if not any(p.endswith("win32-shim.rb") for p in pre):
+        pre.append(SHIM_FILE)
+        cfg["preloadScript"] = pre
+        try:
+            with open(cfg_path, "w", encoding="utf-8") as fh:
+                json.dump(cfg, fh, indent=2)
+            _log("shim Win32 activado en %s" % root)
+        except OSError as e:
+            _log("no se pudo escribir mkxp.json en %s: %s" % (root, e))
+            return False
+    return True
 
 # ---------- SSE Event Bus ----------
 class EventBus:
@@ -473,8 +522,29 @@ class ActiveSession:
                 raise RuntimeError(f"No se encontró el lanzador .sh de Ren'Py en: {root}")
             cmd = [sh]
         else:
-            cmd = [MKXPZ]
-        subprocess.Popen(cmd, cwd=root, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            mk = find_mkxpz()
+            if not mk:
+                raise RuntimeError(
+                    "Runtime mkxp-z no encontrado (necesario para XP/VX/VX Ace). "
+                    "Compílalo con install.sh o colócalo en runtimes/mkxp-z.")
+            cmd = [mk]
+            if engine in NATIVE_RGSS_ENGINES:
+                _ensure_win32_shim(root)
+
+        # SRCDIR: los builds oficiales de mkxp-z buscan el juego ahí si no
+        # se compiló con workdir_current.
+        env = dict(os.environ, SRCDIR=root)
+        # Log de ejecución por juego: DATA_DIR/logs/<juego>.log
+        try:
+            os.makedirs(GAME_LOGS_DIR, exist_ok=True)
+            game_log = os.path.join(GAME_LOGS_DIR, _safe_log_name(name) + ".log")
+            gl = open(game_log, "ab")
+        except OSError:
+            gl = subprocess.DEVNULL
+            game_log = None
+        _log("launch %s [%s]: cmd=%s cwd=%s log=%s" % (name, engine, cmd, root, game_log))
+        subprocess.Popen(cmd, cwd=root, env=env, stdout=gl, stderr=gl)
+        EVENT_BUS.broadcast("game_launched", {"game": name, "engine": engine})
         EVENT_BUS.broadcast("game_launched", {"game": name, "engine": engine})
 
 ACTIVE_SESSION = ActiveSession()
@@ -548,13 +618,60 @@ def _extract_zip(zip_path, target):
         return 1
 
 
+def zip_game_name(zip_path):
+    """Nombre de juego a partir del .zip, sin dobles extensiones
+    ('Game.zip.zip' -> 'Game')."""
+    name = os.path.basename(zip_path)
+    while name.lower().endswith(".zip"):
+        name = name[:-4]
+    return name or "juego"
+
+
+def install_zip_paths(paths, auto_delete=False):
+    """Copia los .zip indicados (rutas locales, p. ej. soltados con
+    drag & drop) a DATA_DIR y los extrae. Devuelve (copiados, extraidos,
+    errores). Solo acepta ficheros .zip."""
+    copied, skipped = [], []
+    _log("install: paths=%s auto_delete=%s" % (paths, auto_delete))
+    for p in paths or []:
+        try:
+            if not os.path.isfile(p) or not p.lower().endswith(".zip"):
+                raise ValueError("no es un .zip")
+            dest = os.path.join(DATA_DIR, zip_game_name(p) + ".zip")
+            shutil.copy2(p, dest)
+            copied.append(dest)
+        except (OSError, ValueError) as e:
+            skipped.append("%s: %s" % (os.path.basename(p), e))
+    done, errors = ([], []) if not copied else extract_zips_api(auto_delete=auto_delete)
+    return copied, skipped + errors, done
+
+
+def find_mkxpz():
+    """Localiza el runtime mkxp-z (XP/VX/VX Ace) en las ubicaciones
+    habituales: RPGMAKER_RUNTIMES, junto al backend, junto al repo,
+    en DATA_DIR o en el PATH."""
+    cands = []
+    env_dir = os.path.expanduser(os.environ.get("RPGMAKER_RUNTIMES", ""))
+    if env_dir:
+        cands.append(os.path.join(env_dir, "mkxp-z"))
+    cands += [
+        os.path.join(RUN_DIR, "mkxp-z"),
+        os.path.join(BASE_DIR, os.pardir, "runtimes", "mkxp-z"),
+        os.path.join(DATA_DIR, "runtimes", "mkxp-z"),
+    ]
+    for c in cands:
+        if os.path.isfile(c) and os.access(c, os.X_OK):
+            return c
+    return shutil.which("mkxp-z")
+
+
 def extract_zips_api(auto_delete=False):
     done, errors = [], []
     zip_files = sorted(glob.glob(os.path.join(DATA_DIR, "*.zip")))
     total = len(zip_files)
     
     for idx, z in enumerate(zip_files):
-        name = os.path.splitext(os.path.basename(z))[0]
+        name = zip_game_name(z)
         target = os.path.join(GAMES_DIR, name)
         marker = os.path.join(target, MARKER)
         if os.path.isfile(marker):
@@ -582,6 +699,7 @@ def extract_zips_api(auto_delete=False):
             errors.append(name)
             
     EVENT_BUS.broadcast("extraction_complete", {"done": done, "errors": errors})
+    _log("extract: done=%s errors=%s" % (done, errors))
     return done, errors
 
 # ---------- API Request Handler ----------
@@ -924,6 +1042,19 @@ class ApiHandler(SimpleHTTPRequestHandler):
             done, errors = extract_zips_api(auto_delete=auto_delete)
             games = get_all_games()
             self._json({"extracted": done, "errors": errors, "games": games})
+            return
+
+        # 1b. Install .zips dropped on the window (local paths)
+        if path == "/api/games/install":
+            paths = body.get("paths") or []
+            if not isinstance(paths, list):
+                self._error("paths debe ser una lista")
+                return
+            auto_delete = body.get("auto_delete", False)
+            copied, skipped, done = install_zip_paths(paths, auto_delete=auto_delete)
+            games = get_all_games()
+            self._json({"copied": [os.path.basename(c) for c in copied],
+                        "skipped": skipped, "extracted": done, "games": games})
             return
 
         # 2. Favorite toggle

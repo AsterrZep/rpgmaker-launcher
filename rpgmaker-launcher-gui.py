@@ -669,10 +669,18 @@ def _saveedit_module():
 
 
 # ---------- extracción ----------
+def zip_game_name(zip_path):
+    """Nombre de juego sin dobles extensiones ('Game.zip.zip' -> 'Game')."""
+    name = os.path.basename(zip_path)
+    while name.lower().endswith(".zip"):
+        name = name[:-4]
+    return name or "juego"
+
+
 def extract_zips(callback=None, auto_delete=False):
     done, errors = [], []
     for z in sorted(glob.glob(os.path.join(DATA_DIR, "*.zip"))):
-        name = os.path.splitext(os.path.basename(z))[0]
+        name = zip_game_name(z)
         target = os.path.join(GAMES_DIR, name)
         marker = os.path.join(target, MARKER)
         if os.path.isfile(marker):
