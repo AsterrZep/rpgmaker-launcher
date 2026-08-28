@@ -30,6 +30,7 @@ DEFAULT_CONFIG = {
     "general": {
         "webkit": False,           # visor WebKit por defecto
         "auto_delete_zip": False,  # borrar el .zip tras extraer
+        "games_dir": "",           # carpeta de juegos (vacío = DATA_DIR/games)
     },
 }
 
@@ -49,6 +50,7 @@ KEY_ACTIONS = [
 GENERAL_OPTIONS = [
     ("webkit", "Usar el visor WebKit (más ligero) por defecto"),
     ("auto_delete_zip", "Eliminar el .zip tras extraer (por defecto)"),
+    ("games_dir", "Carpeta donde guardar juegos y archivos .zip"),
 ]
 
 

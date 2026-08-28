@@ -220,7 +220,6 @@ fi
 # ------------------------------------------------------ acceso directo de la app
 c_log "Generating the app shortcut..." \
       "Generando acceso directo..."
-chmod +x "$BASEDIR/rpgmaker-launcher.sh" "$BASEDIR/rpgmaker-launcher-gui.py" "$BASEDIR/rpgmaker-webview.py" "$BASEDIR/rpgmaker-server.py" "$BASEDIR/rpgmaker-plugins.py"
 mkdir -p "$HOME/.local/share/applications"
 sed "s|__BASEDIR__|$BASEDIR|g" "$RUNTIMES/rpgmaker-launcher.desktop" \
   > "$HOME/.local/share/applications/rpgmaker-launcher.desktop"
@@ -238,27 +237,25 @@ cat <<EOF
 
   EN:
   - Add your games as .zip (or folders) inside:
-        $BASEDIR
+        $HOME/Games
   - Open the "RPG Maker Launcher" app from your Linux desktop's
     application menu.
   - From the terminal:
-        $BASEDIR/rpgmaker-launcher.sh
-  - Web games (MZ/MV) can open in the browser or in the lightweight
-    WebKit viewer (rpgmaker-webview.py), which uses less memory.
-    In the GUI, tick "WebKit viewer (lighter)".
+        rpgmaker-launcher
+  - Web games (MZ/MV) open in the lightweight WebKit viewer
+    (uses less memory than a full browser).
   - On Chrome OS the shortcut appears in chrome://apps
     (if it does not, restart the Linux container or log out/in).
 
   ES:
   - Añade tus juegos como .zip (o carpetas) dentro de:
-        $BASEDIR
+        $HOME/Games
   - Abre la app "RPG Maker Launcher" desde el menú de aplicaciones
     de tu escritorio Linux.
   - Desde terminal:
-        $BASEDIR/rpgmaker-launcher.sh
-  - Los juegos web (MZ/MV) pueden abrirse con el navegador o con
-    el visor WebKit ligero (rpgmaker-webview.py), que consume
-    menos memoria. En la GUI, marca "Visor WebKit (más ligero)".
+        rpgmaker-launcher
+  - Los juegos web (MZ/MV) usan el visor WebKit ligero,
+    que consume menos memoria.
   - En Chrome OS, el acceso directo aparece en chrome://apps
     (si no sale, reinicia el contenedor Linux o cierra sesión).
 

@@ -11,6 +11,7 @@ import { DataBrowserModal } from './components/DataBrowserModal';
 import { SyncModal } from './components/SyncModal';
 import { DecryptModal } from './components/DecryptModal';
 import { ShortcutsModal } from './components/ShortcutsModal';
+import { SettingsModal } from './components/SettingsModal';
 import { toasts } from './components/Toasts';
 
 export class App {
@@ -59,6 +60,7 @@ export class App {
         onToggleWebKit: (v) => this.persistGeneralConfig({ webkit: v }),
         onToggleDelZip: (v) => this.persistGeneralConfig({ auto_delete_zip: v }),
         onUpdateClick: () => this.handleOpenReleases(),
+        onSettingsClick: () => this.handleOpenSettings(),
       },
       webkit,
       autoDeleteZip,
@@ -514,6 +516,11 @@ export class App {
 
   private handleOpenShortcuts(): void {
     const modal = new ShortcutsModal();
+    modal.open();
+  }
+
+  private handleOpenSettings(): void {
+    const modal = new SettingsModal();
     modal.open();
   }
 }

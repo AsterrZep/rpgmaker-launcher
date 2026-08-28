@@ -46,7 +46,7 @@ def load_mod(filename, as_name=None):
 
 # ---------- 1. compilación ----------
 def t_py_compile():
-    for f in ("rpgmaker-launcher-gui.py", "rpgmaker-server.py",
+    for f in ("rpgmaker-server.py",
               "rpgmaker-webview.py", "rpgmaker-saveedit.py",
               "rpgmaker-plugins.py", "rpgmaker-config.py",
               "rpgmaker-decrypter.py", "rpgmaker_api.py"):
@@ -77,29 +77,29 @@ def t_cheats_smoke():
 
 # ---------- 2. detección de motor ----------
 def t_detect_engine():
-    gui = load_mod("rpgmaker-launcher-gui.py")
+    api = load_mod("rpgmaker_api.py")
     with tempfile.TemporaryDirectory() as tmp:
         mz = os.path.join(tmp, "mz")
         os.makedirs(os.path.join(mz, "js"))
         open(os.path.join(mz, "index.html"), "w").close()
         open(os.path.join(mz, "js", "rmmz_core.js"), "w").close()
-        assert gui.detect_engine(mz)[1] == "MZ"
+        assert api.detect_engine(mz)[1] == "MZ"
 
         mv = os.path.join(tmp, "mv")
         os.makedirs(os.path.join(mv, "js"))
         open(os.path.join(mv, "index.html"), "w").close()
         open(os.path.join(mv, "js", "rpg_core.js"), "w").close()
-        assert gui.detect_engine(mv)[1] == "MV"
+        assert api.detect_engine(mv)[1] == "MV"
 
         vx = os.path.join(tmp, "vxace")
         os.makedirs(vx)
         open(os.path.join(vx, "Game.rgss3a"), "w").close()
-        assert gui.detect_engine(vx)[1] == "VXAce"
+        assert api.detect_engine(vx)[1] == "VXAce"
 
         old = os.path.join(tmp, "2000")
         os.makedirs(old)
         open(os.path.join(old, "RPG_RT.exe"), "w").close()
-        assert gui.detect_engine(old)[1] == "2000-2003"
+        assert api.detect_engine(old)[1] == "2000-2003"
 
 
 # ---------- 3. servidor HTTP ----------

@@ -24,7 +24,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.expanduser(os.environ.get("RPGMAKER_DATA_DIR", "")) or BASE_DIR
-GAMES_DIR = os.path.join(DATA_DIR, "games")
+DEFAULT_GAMES_DIR = os.path.join(DATA_DIR, "games")
 RUN_DIR = os.path.join(BASE_DIR, "runtimes")
 BACKUPS_DIR = os.path.join(DATA_DIR, "backups")
 STATE_FILE = os.path.join(DATA_DIR, "launcher-state.json")
@@ -33,7 +33,7 @@ MKXPZ = os.path.join(RUN_DIR, "mkxp-z")
 EASYRPG = "easyrpg-player"
 MAX_DEPTH = 5
 MARKER = ".extracted"
-APP_VERSION = "0.8.0"
+APP_VERSION = "0.9.1"
 REPO_LATEST_API = "https://api.github.com/repos/AsterrZep/rpgmaker-launcher/releases/latest"
 REPO_RELEASES_URL = "https://github.com/AsterrZep/rpgmaker-launcher/releases"
 
@@ -191,6 +191,16 @@ def _sync_settings(cfg):
     folder = sync.get("folder") or gen.get("sync_dir") or ""
     auto = bool(sync.get("auto", gen.get("sync_auto", False)))
     return folder, auto
+
+
+def _games_dir(cfg):
+    """Devuelve la carpeta de juegos configurada.
+    Si está vacía, usa DATA_DIR/games (compatibilidad hacia atrás)."""
+    gen = cfg.get("general") or {}
+    custom = (gen.get("games_dir") or "").strip()
+    if custom:
+        return os.path.expanduser(custom)
+    return os.path.join(DATA_DIR, "games")
 
 
 # ---------- Helper imports from modules ----------
@@ -461,8 +471,9 @@ class ActiveSession:
                 # Auto-sync check (acepta config legacy general.sync_dir/sync_auto)
                 cfg = mod_config.load_config() if mod_config else {}
                 sync_folder, sync_auto = _sync_settings(cfg)
+                games_dir = _games_dir(cfg)
                 if sync_auto and sync_folder and mod_sync:
-                    saves_dir = os.path.join(GAMES_DIR, game_name, "save")
+                    saves_dir = os.path.join(games_dir, game_name, "save")
                     dest_dir = os.path.join(sync_folder, game_name, "save")
                     if os.path.isdir(saves_dir):
                         try:
@@ -550,14 +561,17 @@ class ActiveSession:
 ACTIVE_SESSION = ActiveSession()
 
 # ---------- Escaneo de juegos y extracción ----------
-def get_all_games():
-    os.makedirs(GAMES_DIR, exist_ok=True)
+def get_all_games(cfg=None):
+    if cfg is None:
+        cfg = mod_config.load_config() if mod_config else {}
+    games_dir = _games_dir(cfg)
+    os.makedirs(games_dir, exist_ok=True)
     state = load_state().get("games", {})
     games = []
     
-    if os.path.isdir(GAMES_DIR):
-        for name in sorted(os.listdir(GAMES_DIR)):
-            game_top = os.path.join(GAMES_DIR, name)
+    if os.path.isdir(games_dir):
+        for name in sorted(os.listdir(games_dir)):
+            game_top = os.path.join(games_dir, name)
             if not os.path.isdir(game_top):
                 continue
             root, engine = detect_engine(game_top)
@@ -627,22 +641,25 @@ def zip_game_name(zip_path):
     return name or "juego"
 
 
-def install_zip_paths(paths, auto_delete=False):
+def install_zip_paths(paths, auto_delete=False, cfg=None):
     """Copia los .zip indicados (rutas locales, p. ej. soltados con
-    drag & drop) a DATA_DIR y los extrae. Devuelve (copiados, extraidos,
+    drag & drop) a la carpeta de juegos y los extrae. Devuelve (copiados, extraidos,
     errores). Solo acepta ficheros .zip."""
+    if cfg is None:
+        cfg = mod_config.load_config() if mod_config else {}
+    games_dir = _games_dir(cfg)
     copied, skipped = [], []
-    _log("install: paths=%s auto_delete=%s" % (paths, auto_delete))
+    _log("install: paths=%s auto_delete=%s games_dir=%s" % (paths, auto_delete, games_dir))
     for p in paths or []:
         try:
             if not os.path.isfile(p) or not p.lower().endswith(".zip"):
                 raise ValueError("no es un .zip")
-            dest = os.path.join(DATA_DIR, zip_game_name(p) + ".zip")
+            dest = os.path.join(games_dir, zip_game_name(p) + ".zip")
             shutil.copy2(p, dest)
             copied.append(dest)
         except (OSError, ValueError) as e:
             skipped.append("%s: %s" % (os.path.basename(p), e))
-    done, errors = ([], []) if not copied else extract_zips_api(auto_delete=auto_delete)
+    done, errors = ([], []) if not copied else extract_zips_api(auto_delete=auto_delete, cfg=cfg)
     return copied, skipped + errors, done
 
 
@@ -665,14 +682,17 @@ def find_mkxpz():
     return shutil.which("mkxp-z")
 
 
-def extract_zips_api(auto_delete=False):
+def extract_zips_api(auto_delete=False, cfg=None):
+    if cfg is None:
+        cfg = mod_config.load_config() if mod_config else {}
+    games_dir = _games_dir(cfg)
     done, errors = [], []
-    zip_files = sorted(glob.glob(os.path.join(DATA_DIR, "*.zip")))
+    zip_files = sorted(glob.glob(os.path.join(games_dir, "*.zip")))
     total = len(zip_files)
     
     for idx, z in enumerate(zip_files):
         name = zip_game_name(z)
-        target = os.path.join(GAMES_DIR, name)
+        target = os.path.join(games_dir, name)
         marker = os.path.join(target, MARKER)
         if os.path.isfile(marker):
             continue
@@ -765,14 +785,17 @@ class ApiHandler(SimpleHTTPRequestHandler):
 
         # 3. Games List
         if path == "/api/games":
-            games = get_all_games()
+            cfg = mod_config.load_config() if mod_config else {}
+            games = get_all_games(cfg)
             self._json({"games": games, "total": len(games)})
             return
 
         # 4. Cover Image serving
         if path.startswith("/api/covers/"):
+            cfg = mod_config.load_config() if mod_config else {}
+            games_dir = _games_dir(cfg)
             game_name = urllib.parse.unquote(path[len("/api/covers/"):])
-            game_top = os.path.join(GAMES_DIR, game_name)
+            game_top = os.path.join(games_dir, game_name)
             root, _ = detect_engine(game_top)
             cover_path = find_cover(game_top, root or game_top) if os.path.isdir(game_top) else None
             if cover_path and os.path.isfile(cover_path):
@@ -798,11 +821,13 @@ class ApiHandler(SimpleHTTPRequestHandler):
 
         # 6. Plugins
         if path == "/api/plugins":
+            cfg = mod_config.load_config() if mod_config else {}
+            games_dir = _games_dir(cfg)
             game = query.get("game", [""])[0]
             if not game:
                 self._error("Missing game query param")
                 return
-            game_top = os.path.join(GAMES_DIR, game)
+            game_top = os.path.join(games_dir, game)
             root, _ = detect_engine(game_top)
             if not root or not mod_plugins:
                 self._error("Game root or plugin module not found")
@@ -828,11 +853,13 @@ class ApiHandler(SimpleHTTPRequestHandler):
 
         # 7. Saves list
         if path == "/api/saves":
+            cfg = mod_config.load_config() if mod_config else {}
+            games_dir = _games_dir(cfg)
             game = query.get("game", [""])[0]
             if not game:
                 self._error("Missing game query param")
                 return
-            game_top = os.path.join(GAMES_DIR, game)
+            game_top = os.path.join(games_dir, game)
             root, _ = detect_engine(game_top)
             saves_dir = os.path.join(root or game_top, "save")
             saves = []
@@ -853,12 +880,14 @@ class ApiHandler(SimpleHTTPRequestHandler):
 
         # 8. Save Content (Save Editor)
         if path == "/api/saves/content":
+            cfg = mod_config.load_config() if mod_config else {}
+            games_dir = _games_dir(cfg)
             game = query.get("game", [""])[0]
             filename = query.get("file", [""])[0]
             if not game or not filename:
                 self._error("Missing game or file param")
                 return
-            game_top = os.path.join(GAMES_DIR, game)
+            game_top = os.path.join(games_dir, game)
             root, _ = detect_engine(game_top)
             save_path = os.path.join(root or game_top, "save", filename)
             if not os.path.isfile(save_path) or not mod_saveedit:
@@ -910,12 +939,14 @@ class ApiHandler(SimpleHTTPRequestHandler):
 
         # 9. Database Browser (Data)
         if path == "/api/data":
+            cfg = mod_config.load_config() if mod_config else {}
+            games_dir = _games_dir(cfg)
             game = query.get("game", [""])[0]
             cat = query.get("cat", ["Items"])[0]
             if not game:
                 self._error("Missing game param")
                 return
-            game_top = os.path.join(GAMES_DIR, game)
+            game_top = os.path.join(games_dir, game)
             root, _ = detect_engine(game_top)
             data_dir = os.path.join(root or game_top, "data")
             
@@ -981,7 +1012,7 @@ class ApiHandler(SimpleHTTPRequestHandler):
             cfg = mod_config.load_config() if mod_config else {}
             dest_dir, _auto = _sync_settings(cfg)
             games_summary = []
-            for g in get_all_games():
+            for g in get_all_games(cfg):
                 name = g["name"]
                 local_save_dir = os.path.join(g["path"], "save")
                 local_count = mod_sync.count_saves(local_save_dir) if mod_sync else -1
@@ -1038,21 +1069,23 @@ class ApiHandler(SimpleHTTPRequestHandler):
 
         # 1. Rescan and extract .zips
         if path == "/api/games/rescan":
+            cfg = mod_config.load_config() if mod_config else {}
             auto_delete = body.get("auto_delete", False)
-            done, errors = extract_zips_api(auto_delete=auto_delete)
-            games = get_all_games()
+            done, errors = extract_zips_api(auto_delete=auto_delete, cfg=cfg)
+            games = get_all_games(cfg)
             self._json({"extracted": done, "errors": errors, "games": games})
             return
 
         # 1b. Install .zips dropped on the window (local paths)
         if path == "/api/games/install":
+            cfg = mod_config.load_config() if mod_config else {}
             paths = body.get("paths") or []
             if not isinstance(paths, list):
                 self._error("paths debe ser una lista")
                 return
             auto_delete = body.get("auto_delete", False)
-            copied, skipped, done = install_zip_paths(paths, auto_delete=auto_delete)
-            games = get_all_games()
+            copied, skipped, done = install_zip_paths(paths, auto_delete=auto_delete, cfg=cfg)
+            games = get_all_games(cfg)
             self._json({"copied": [os.path.basename(c) for c in copied],
                         "skipped": skipped, "extracted": done, "games": games})
             return
@@ -1074,12 +1107,14 @@ class ApiHandler(SimpleHTTPRequestHandler):
 
         # 3. Launch game
         if path == "/api/games/launch":
+            cfg = mod_config.load_config() if mod_config else {}
+            games_dir = _games_dir(cfg)
             name = body.get("name")
             viewer = body.get("viewer", "webkit")  # "webkit" or "browser"
             if not name:
                 self._error("Missing game name")
                 return
-            game_top = os.path.join(GAMES_DIR, name)
+            game_top = os.path.join(games_dir, name)
             root, engine = detect_engine(game_top)
             if not engine or engine in ("incomplete", "renpy-incomplete"):
                 self._error(f"Cannot launch incomplete game '{name}'")
@@ -1111,12 +1146,14 @@ class ApiHandler(SimpleHTTPRequestHandler):
 
         # 6. Plugins Toggle / Restore
         if path == "/api/plugins/toggle":
+            cfg = mod_config.load_config() if mod_config else {}
+            games_dir = _games_dir(cfg)
             game = body.get("game")
             action = body.get("action")
             if not game or not mod_plugins:
                 self._error("Missing game or plugin module")
                 return
-            game_top = os.path.join(GAMES_DIR, game)
+            game_top = os.path.join(games_dir, game)
             root, _ = detect_engine(game_top)
             p_path, raw, plugins = mod_plugins.load_plugins(root)
 
@@ -1139,12 +1176,14 @@ class ApiHandler(SimpleHTTPRequestHandler):
 
         # 7. Save Editor Update
         if path == "/api/saves/content":
+            cfg = mod_config.load_config() if mod_config else {}
+            games_dir = _games_dir(cfg)
             game = body.get("game")
             filename = body.get("file")
             if not game or not filename or not mod_saveedit:
                 self._error("Missing params or saveedit module")
                 return
-            game_top = os.path.join(GAMES_DIR, game)
+            game_top = os.path.join(games_dir, game)
             root, _ = detect_engine(game_top)
             save_path = os.path.join(root or game_top, "save", filename)
             if not os.path.isfile(save_path):
@@ -1188,11 +1227,13 @@ class ApiHandler(SimpleHTTPRequestHandler):
 
         # 8. Saves Backup
         if path == "/api/saves/backup":
+            cfg = mod_config.load_config() if mod_config else {}
+            games_dir = _games_dir(cfg)
             game = body.get("game")
             if not game:
                 self._error("Missing game name")
                 return
-            game_top = os.path.join(GAMES_DIR, game)
+            game_top = os.path.join(games_dir, game)
             root, _ = detect_engine(game_top)
             saves_dir = os.path.join(root or game_top, "save")
             if not os.path.isdir(saves_dir) or not os.listdir(saves_dir):
@@ -1229,7 +1270,7 @@ class ApiHandler(SimpleHTTPRequestHandler):
                 self._error("Destination folder not configured" if not dest_folder else "Sync module not available")
                 return
             
-            games = get_all_games()
+            games = get_all_games(cfg)
             sync_targets = [(g["name"], os.path.join(g["path"], "save")) for g in games]
             results = mod_sync.sync_all(sync_targets, dest_folder, mode)
             self._json({"ok": True, "mode": mode, "results": results})
@@ -1237,14 +1278,16 @@ class ApiHandler(SimpleHTTPRequestHandler):
 
         # 10. Decrypt Tool
         if path == "/api/decrypt":
+            cfg = mod_config.load_config() if mod_config else {}
+            games_dir = _games_dir(cfg)
             game = body.get("game")
             if not game:
                 self._error("Missing game name")
                 return
-            game_top = os.path.join(GAMES_DIR, game)
+            game_top = os.path.join(games_dir, game)
             root, engine = detect_engine(game_top)
             decrypter_py = os.path.join(BASE_DIR, "rpgmaker-decrypter.py")
-            out_dir = os.path.join(DATA_DIR, f"{game}_descifrado")
+            out_dir = os.path.join(games_dir, f"{game}_descifrado")
             
             cmd = [sys.executable, decrypter_py, root or game_top, "--output", out_dir]
             if body.get("recreate"):
@@ -1258,11 +1301,13 @@ class ApiHandler(SimpleHTTPRequestHandler):
 
         # 11. Mods: crear carpeta + plantilla y devolver ruta
         if path == "/api/tools/mods":
+            cfg = mod_config.load_config() if mod_config else {}
+            games_dir = _games_dir(cfg)
             game = body.get("game")
             if not game:
                 self._error("Missing game name")
                 return
-            game_top = os.path.join(GAMES_DIR, game)
+            game_top = os.path.join(games_dir, game)
             root, engine = detect_engine(game_top)
             if not root or engine not in ("MZ", "MV", "web"):
                 self._error("Mods solo está disponible para juegos MZ/MV/web", 400)

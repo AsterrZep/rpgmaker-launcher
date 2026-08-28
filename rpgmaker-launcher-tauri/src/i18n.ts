@@ -22,6 +22,7 @@ export const translations = {
     navDecrypt: "Descifrar",
     navShortcuts: "Atajos",
     navQuit: "Salir",
+    navSettings: "Configuración",
 
     btnPlay: "Jugar",
     btnStopServer: "Detener servidor",
@@ -38,6 +39,7 @@ export const translations = {
     btnPush: "Enviar al destino →",
     btnPull: "← Traer del destino",
     btnChangeFolder: "Cambiar...",
+    btnOpenFolder: "Abrir carpeta",
 
     // Header toggles & update
     toggleWebKit: "WebKit",
@@ -47,6 +49,12 @@ export const translations = {
     updateChipTip: "Nueva versión disponible. Clic para ver las releases.",
     modsReadyToast: "Carpeta de mods lista y abierta. Cada .js se inyecta al arrancar; recarga con F5.",
     quitTip: "Cerrar el lanzador",
+
+    // Settings
+    settingsTitle: "Configuración",
+    settingsDesc: "Elige la carpeta donde se guardarán los juegos y archivos .zip.",
+    settingsGamesFolder: "Carpeta de juegos:",
+    settingsDefaultFolder: "Por defecto: %s",
 
     // Cards
     playedHours: "jugado",
@@ -112,6 +120,7 @@ export const translations = {
     navDecrypt: "Decrypt",
     navShortcuts: "Shortcuts",
     navQuit: "Quit",
+    navSettings: "Settings",
 
     btnPlay: "Play",
     btnStopServer: "Stop Server",
@@ -128,6 +137,7 @@ export const translations = {
     btnPush: "Push to Destination →",
     btnPull: "← Pull from Destination",
     btnChangeFolder: "Change...",
+    btnOpenFolder: "Open Folder",
 
     // Header toggles & update
     toggleWebKit: "WebKit",
@@ -137,6 +147,12 @@ export const translations = {
     updateChipTip: "New version available. Click to view releases.",
     modsReadyToast: "Mods folder ready and opened. Every .js is injected on launch; reload with F5.",
     quitTip: "Close the launcher",
+
+    // Settings
+    settingsTitle: "Settings",
+    settingsDesc: "Choose the folder where games and .zip files will be stored.",
+    settingsGamesFolder: "Games folder:",
+    settingsDefaultFolder: "Default: %s",
 
     // Cards
     playedHours: "played",

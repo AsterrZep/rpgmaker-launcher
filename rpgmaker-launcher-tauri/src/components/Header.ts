@@ -7,6 +7,7 @@ export interface HeaderCallbacks {
   onToggleWebKit: (value: boolean) => void;
   onToggleDelZip: (value: boolean) => void;
   onUpdateClick: () => void;
+  onSettingsClick: () => void;
 }
 
 export class Header {
@@ -78,6 +79,11 @@ export class Header {
           <span>${t('btnRefresh')}</span>
         </button>
 
+        <button id="btn-settings" class="flex items-center gap-1.5 bg-surface-container hover:bg-surface-container-high px-2.5 py-1.5 rounded-lg border border-border text-on-surface text-label-md font-semibold transition-colors cursor-pointer" title="${t('navSettings')}">
+          <span class="material-symbols-outlined text-[16px] text-text-muted">settings</span>
+          <span>${t('navSettings')}</span>
+        </button>
+
         <button id="btn-lang" class="flex items-center gap-1.5 bg-surface-container hover:bg-surface-container-high px-2.5 py-1.5 rounded-lg border border-border text-on-surface text-label-md font-semibold transition-colors cursor-pointer" title="ES / EN">
           <span class="material-symbols-outlined text-[16px] text-text-muted">translate</span>
           <span>${currentLang.toUpperCase()}</span>
@@ -106,6 +112,11 @@ export class Header {
       const nextLang = getLang() === 'es' ? 'en' : 'es';
       setLang(nextLang);
       this.callbacks.onLanguageChange(nextLang);
+    });
+
+    // Settings button
+    header.querySelector('#btn-settings')?.addEventListener('click', () => {
+      this.callbacks.onSettingsClick();
     });
 
     // Config toggles

@@ -81,6 +81,7 @@ export interface AppConfig {
     webkit: boolean;
     auto_delete_zip: boolean;
     lang?: string;
+    games_dir?: string;
   };
   sync?: {
     folder?: string;

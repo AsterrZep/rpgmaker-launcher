@@ -1,6 +1,6 @@
 {
   "productName": "RPG Maker Launcher",
-  "version": "0.8.0",
+  "version": "0.9.1",
   "identifier": "com.rpgmaker.launcher",
   "build": {
     "frontendDist": "dist",
