@@ -80,13 +80,41 @@ Ren'Py             → Bundled Linux engine
 
 ## 📸 Screenshots
 
+### Main Library
 <p align="center">
-  <img src="https://raw.githubusercontent.com/AsterrZep/rpgmaker-launcher/main/docs/itchio-assets/banner-960x300.png" alt="Launcher UI" width="800"/>
+  <img src="https://raw.githubusercontent.com/AsterrZep/rpgmaker-launcher/main/Fotos-Github/Home-Page.png" alt="Main Library - Game grid with covers, favorites, play time" width="900"/>
 </p>
+<em>Visual library with game covers, favorites (★), last played, and total play time. Drag & drop .zip files to install.</em>
 
-> **Left:** Visual library with covers, favorites, play time  
-> **Center:** WebKit viewer running an MZ game  
-> **Right:** Cheat menu with JoyPlay-style features
+### Plugin Manager
+<p align="center">
+  <img src="https://raw.githubusercontent.com/AsterrZep/rpgmaker-launcher/main/Fotos-Github/Plugins.png" alt="Plugin Manager - Analyze and toggle MZ/MV plugins" width="900"/>
+</p>
+<em>Analyze WebKit compatibility (nw.js APIs), enable/disable plugins, see compatibility categories (OK, NW Protected, Broken, No File).</em>
+
+### Save Manager
+<p align="center">
+  <img src="https://raw.githubusercontent.com/AsterrZep/rpgmaker-launcher/main/Fotos-Github/Save-Manager.png" alt="Save Manager - Backup, restore, export, delete saves" width="900"/>
+</p>
+<em>Real on-disk saves (.rpgsave/.rmmzsave). Backup, restore, export, delete, open save folder. Auto-backup on every edit.</em>
+
+### Save Editor
+<p align="center">
+  <img src="https://raw.githubusercontent.com/AsterrZep/rpgmaker-launcher/main/Fotos-Github/Save-Editor.png" alt="Save Editor - Visual editor for gold, items, variables, switches" width="900"/>
+</p>
+<em>Visual editor for gold, item counts, variables, switches, actors. Automatic backups before saving.</em>
+
+### Save Sync
+<p align="center">
+  <img src="https://raw.githubusercontent.com/AsterrZep/rpgmaker-launcher/main/Fotos-Github/Save-Sync.png" alt="Save Sync - Push/pull to Dropbox, Syncthing, Nextcloud, USB" width="900"/>
+</p>
+<em>Push saves to any folder synced by third-party tools (Dropbox, Syncthing, Nextcloud, USB). Auto-sync on game close.</em>
+
+### Data Browser
+<p align="center">
+  <img src="https://raw.githubusercontent.com/AsterrZep/rpgmaker-launcher/main/Fotos-Github/Data.png" alt="Data Browser - Browse Items, Weapons, Armors, Skills, Enemies" width="900"/>
+</p>
+<em>Read-only viewer of game database: Items, Weapons, Armors, Skills, Enemies. Supports encrypted databases.</em>
 
 ---
 

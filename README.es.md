@@ -80,13 +80,41 @@ Ren'Py             → Motor Linux incluido
 
 ## 📸 Capturas
 
+### Biblioteca Principal
 <p align="center">
-  <img src="https://raw.githubusercontent.com/AsterrZep/rpgmaker-launcher/main/docs/itchio-assets/banner-960x300.png" alt="UI del Launcher" width="800"/>
+  <img src="https://raw.githubusercontent.com/AsterrZep/rpgmaker-launcher/main/Fotos-Github/Home-Page.png" alt="Biblioteca Principal - Grid de juegos con portadas, favoritos, tiempo de juego" width="900"/>
 </p>
+<em>Biblioteca visual con portadas de juegos, favoritos (★), última partida y tiempo total jugado. Arrastra .zip para instalar.</em>
 
-> **Izquierda:** Biblioteca visual con portadas, favoritos, tiempo de juego  
-> **Centro:** Visor WebKit ejecutando un juego MZ  
-> **Derecha:** Menú de trucos con características estilo JoyPlay
+### Gestor de Plugins
+<p align="center">
+  <img src="https://raw.githubusercontent.com/AsterrZep/rpgmaker-launcher/main/Fotos-Github/Plugins.png" alt="Gestor de Plugins - Analiza y activa/desactiva plugins MZ/MV" width="900"/>
+</p>
+<em>Analiza compatibilidad WebKit (APIs nw.js), activa/desactiva plugins, ve categorías de compatibilidad (OK, NW Protegido, Roto, Sin Archivo).</em>
+
+### Gestor de Partidas
+<p align="center">
+  <img src="https://raw.githubusercontent.com/AsterrZep/rpgmaker-launcher/main/Fotos-Github/Save-Manager.png" alt="Gestor de Partidas - Backup, restaurar, exportar, borrar partidas" width="900"/>
+</p>
+<em>Partidas reales en disco (.rpgsave/.rmmzsave). Backup, restaurar, exportar, borrar, abrir carpeta save. Auto-backup en cada edición.</em>
+
+### Editor de Partidas
+<p align="center">
+  <img src="https://raw.githubusercontent.com/AsterrZep/rpgmaker-launcher/main/Fotos-Github/Save-Editor.png" alt="Editor de Partidas - Editor visual de oro, objetos, variables, switches" width="900"/>
+</p>
+<em>Editor visual de oro, cantidad de objetos, variables, switches, actores. Backups automáticos antes de guardar.</em>
+
+### Sincronización de Partidas
+<p align="center">
+  <img src="https://raw.githubusercontent.com/AsterrZep/rpgmaker-launcher/main/Fotos-Github/Save-Sync.png" alt="Sincronización de Partidas - Push/pull a Dropbox, Syncthing, Nextcloud, USB" width="900"/>
+</p>
+<em>Envía partidas a cualquier carpeta sincronizada por terceros (Dropbox, Syncthing, Nextcloud, USB). Auto-sync al cerrar juego.</em>
+
+### Navegador de Datos
+<p align="center">
+  <img src="https://raw.githubusercontent.com/AsterrZep/rpgmaker-launcher/main/Fotos-Github/Data.png" alt="Navegador de Datos - Explora Objetos, Armas, Defensas, Habilidades, Enemigos" width="900"/>
+</p>
+<em>Visor de solo lectura de la base de datos del juego: Objetos, Armas, Defensas, Habilidades, Enemigos. Soporta BDs cifradas.</em>
 
 ---
 
