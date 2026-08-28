@@ -70,7 +70,7 @@ export const translations = {
     serverActive: "Servidor activo:",
     serverPort: "Puerto",
     serverStopped: "Servidor detenido",
-    runtimeReady: "RPG Maker Engine Runtime v0.8.0",
+    runtimeReady: "RPG Maker Engine Runtime v{version}",
 
     // Modals
     pluginsTitle: "Plugins",
@@ -168,7 +168,7 @@ export const translations = {
     serverActive: "Active Server:",
     serverPort: "Port",
     serverStopped: "Server stopped",
-    runtimeReady: "RPG Maker Engine Runtime v0.8.0",
+    runtimeReady: "RPG Maker Engine Runtime v{version}",
 
     // Modals
     pluginsTitle: "Plugins",

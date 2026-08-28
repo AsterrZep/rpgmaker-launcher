@@ -139,6 +139,11 @@ class ApiClient {
     return this.request('/api/status');
   }
 
+  public async getVersion(): Promise<string> {
+    const status = await this.getStatus();
+    return status.version || '0.0.0';
+  }
+
   public async getGames(): Promise<{ games: Game[]; total: number }> {
     return this.request('/api/games');
   }

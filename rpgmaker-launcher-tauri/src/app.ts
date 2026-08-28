@@ -81,6 +81,13 @@ export class App {
 
     this.statusBar = new StatusBar();
 
+    // Fetch and set version for Header and StatusBar
+    try {
+      const version = await api.getVersion();
+      this.header.setVersion?.(version);
+      this.statusBar.setVersion(version);
+    } catch (_) {}
+
     // 2. Build Layout Structure
     this.appRoot.innerHTML = `
       <div id="sidebar-slot"></div>

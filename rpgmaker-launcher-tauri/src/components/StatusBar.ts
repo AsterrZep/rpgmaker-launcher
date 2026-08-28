@@ -3,6 +3,12 @@ import { t } from '../i18n';
 export class StatusBar {
   private activeGame: string | null = null;
   private activePort: number | null = null;
+  private version: string = '0.0.0';
+
+  public setVersion(version: string) {
+    this.version = version;
+    this.render();
+  }
 
   public update(activeGame: string | null, activePort: number | null) {
     this.activeGame = activeGame;
@@ -27,7 +33,7 @@ export class StatusBar {
         </span>
       </div>
       <div class="text-text-faint font-medium">
-        ${t('runtimeReady')}
+        ${t('runtimeReady').replace('{version}', this.version)}
       </div>
     `;
 

@@ -1,4 +1,5 @@
 import { getLang, setLang, t } from '../i18n';
+import { api } from '../api';
 
 export interface HeaderCallbacks {
   onSearch: (query: string) => void;
@@ -14,11 +15,35 @@ export class Header {
   private callbacks: HeaderCallbacks;
   private webkit: boolean = true;
   private autoDeleteZip: boolean = false;
+  private version: string = '0.0.0';
 
   constructor(callbacks: HeaderCallbacks, webkit: boolean, autoDeleteZip: boolean) {
     this.callbacks = callbacks;
     this.webkit = webkit;
     this.autoDeleteZip = autoDeleteZip;
+    this.loadVersion();
+  }
+
+  private async loadVersion(): Promise<void> {
+    try {
+      this.version = await api.getVersion();
+      this.updateVersionDisplay();
+    } catch {
+      this.version = '0.0.0';
+      this.updateVersionDisplay();
+    }
+  }
+
+  private updateVersionDisplay(): void {
+    const versionEl = document.querySelector('#app-version');
+    if (versionEl) {
+      versionEl.textContent = `v${this.version}`;
+    }
+  }
+
+  public setVersion(version: string): void {
+    this.version = version;
+    this.updateVersionDisplay();
   }
 
   public setUpdateTag(tag: string): void {
@@ -49,8 +74,8 @@ export class Header {
     header.innerHTML = `
       <div class="flex items-center gap-3 shrink-0">
         <span class="font-bold text-headline-md text-primary tracking-tight">RPG Maker Launcher</span>
-        <div class="bg-primary/10 border border-primary/20 px-2 py-0.5 rounded text-primary text-label-sm font-semibold">
-          v0.8.0
+        <div class="bg-primary/10 border border-primary/20 px-2 py-0.5 rounded text-primary text-label-sm font-semibold" id="app-version">
+          v${this.version}
         </div>
         <button id="update-chip" class="hidden items-center gap-1 bg-primary hover:bg-accent-hover text-on-primary px-2.5 py-1 rounded-lg text-label-md font-bold shadow-md transition-colors">
           <span class="material-symbols-outlined text-[16px]">download</span>
