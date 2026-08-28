@@ -16,7 +16,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PKGDIR="$ROOT/packaging"
 DIST="$ROOT/dist"
 APP_ID="org.rpgmaker.Launcher"
-VERSION="${1:-0.9.1}"
+VERSION="${1:-0.9.2}"
 BIN="$ROOT/rpgmaker-launcher-tauri/target/release/rpgmaker-launcher-tauri"
 BACKEND="$ROOT/rpgmaker-launcher-tauri/backend"
 

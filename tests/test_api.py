@@ -38,7 +38,7 @@ def run_tests():
 
         # Test 1: Status
         status, data = req("/api/status")
-        assert status == 200 and data.get("version") == "0.9.1"
+        assert status == 200 and data.get("version") == "0.9.2"
         print("  ✓ /api/status")
 
         # Test 2: Games List

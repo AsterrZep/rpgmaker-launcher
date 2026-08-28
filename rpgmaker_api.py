@@ -33,7 +33,7 @@ MKXPZ = os.path.join(RUN_DIR, "mkxp-z")
 EASYRPG = "easyrpg-player"
 MAX_DEPTH = 5
 MARKER = ".extracted"
-APP_VERSION = "0.9.1"
+APP_VERSION = "0.9.2"
 REPO_LATEST_API = "https://api.github.com/repos/AsterrZep/rpgmaker-launcher/releases/latest"
 REPO_RELEASES_URL = "https://github.com/AsterrZep/rpgmaker-launcher/releases"
 
