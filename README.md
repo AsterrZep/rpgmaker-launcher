@@ -324,6 +324,9 @@ Distributed under **GNU GPL v3**. See [`LICENSE`](LICENSE) for details.
 - ⭐ **Star the repo** if you find it useful!
 
 ---
+##Project Activity
+
+![Alt]( https://repobeats.axiom.co/api/embed/24e987e264aa76a2fb0d36acf792779a2d7b217a.svg "Imagen de análisis de Repobeats")
 
 <p align="center">
   <b>Made with ❤️ for playing RPGs on Linux</b><br>
@@ -335,4 +338,3 @@ Distributed under **GNU GPL v3**. See [`LICENSE`](LICENSE) for details.
   <a href="https://github.com/AsterrZep/rpgmaker-launcher/forks"><img src="https://img.shields.io/github/forks/AsterrZep/rpgmaker-launcher?style=social" alt="Forks"></a>
   <a href="https://github.com/AsterrZep/rpgmaker-launcher/watchers"><img src="https://img.shields.io/github/watchers/AsterrZep/rpgmaker-launcher?style=social" alt="Watchers"></a>
 </p>
-![Alt](https://repobeats.axiom.co/api/embed/24e987e264aa76a2fb0d36acf792779a2d7b217a.svg "Repobeats analytics image")
