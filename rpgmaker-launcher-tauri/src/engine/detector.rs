@@ -21,7 +21,7 @@ use tokio::sync::RwLock;
 use walkdir::WalkDir;
 
 use crate::core::error::AppResult;
-use crate::core::state::GameInfo;
+use crate::core::models::game::GameInfo;
 
 /// Profundidad máxima de búsqueda en directorios
 const MAX_DEPTH: usize = 5;

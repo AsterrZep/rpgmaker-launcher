@@ -12,40 +12,8 @@ use tokio::sync::RwLock;
 
 use super::config::ConfigManager;
 use super::error::AppResult;
-
-/// Información de un juego detectado
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct GameInfo {
-    pub name: String,
-    pub path: PathBuf,
-    pub engine: String,
-    pub engine_label: String,
-    pub is_web: bool,
-    pub is_incomplete: bool,
-    pub has_cover: bool,
-    pub cover_url: Option<String>,
-    pub favorite: bool,
-    pub seconds: u64,
-    pub last_played: Option<u64>,
-    pub has_saves: bool,
-}
-
-/// Estado de una sesión activa de juego
-#[derive(Debug, Clone, Default)]
-pub struct ActiveSession {
-    pub game_name: Option<String>,
-    pub port: Option<u16>,
-    pub start_time: Option<u64>,
-    pub running: bool,
-}
-
-/// Estado del servidor HTTP activo (para juegos web)
-#[derive(Debug, Clone)]
-pub struct ActiveServer {
-    pub game_name: String,
-    pub port: u16,
-    pub start_time: u64,
-}
+use super::models::game::GameInfo;
+use super::models::session::{ActiveSession, ActiveServer};
 
 /// Estado global de la aplicación
 pub struct AppState {

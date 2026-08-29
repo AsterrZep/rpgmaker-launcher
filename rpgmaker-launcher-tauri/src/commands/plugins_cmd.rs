@@ -9,8 +9,9 @@
 use std::path::PathBuf;
 use tauri::command;
 
+use crate::core::models::plugin::PluginInfo;
 use crate::core::state::AppState;
-use crate::engine::plugins::{self, PluginInfo};
+use crate::engine::plugins;
 
 /// Resultado de obtener plugins
 #[derive(serde::Serialize)]

@@ -12,6 +12,7 @@ use std::time::Instant;
 use tokio::sync::Mutex;
 
 use crate::core::error::{AppError, AppResult};
+use crate::core::models::session::ProcessStatus;
 
 /// Gestor de procesos de juegos
 pub struct ProcessManager {
@@ -232,14 +233,6 @@ impl ProcessManager {
 
         total
     }
-}
-
-/// Estado del proceso
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct ProcessStatus {
-    pub game_name: Option<String>,
-    pub running: bool,
-    pub elapsed_seconds: Option<u64>,
 }
 
 impl Default for ProcessManager {

@@ -8,15 +8,9 @@
 use std::path::{Path, PathBuf};
 use tauri::command;
 
-use crate::core::state::{AppState, GameInfo};
+use crate::core::models::game::{DetectResult, GameInfo, ScanResult};
+use crate::core::state::AppState;
 use crate::engine::detector::GameDetector;
-
-/// Resultado del escaneo de juegos
-#[derive(serde::Serialize)]
-pub struct ScanResult {
-    pub games: Vec<GameInfo>,
-    pub total: usize,
-}
 
 /// Escanea y retorna la lista de juegos instalados
 ///
@@ -95,7 +89,7 @@ pub async fn launch_game(
                     .as_secs();
                 
                 // Guardar referencia al servidor activo
-                let active_server = crate::core::state::ActiveServer {
+                let active_server = crate::core::models::session::ActiveServer {
                     game_name: game_name.clone(),
                     port: actual_port,
                     start_time: now,
@@ -103,7 +97,7 @@ pub async fn launch_game(
                 state.set_server(Some(active_server)).await;
                 
                 // Actualizar sesión activa
-                let session = crate::core::state::ActiveSession {
+                let session = crate::core::models::session::ActiveSession {
                     game_name: Some(game_name.clone()),
                     port: Some(actual_port),
                     start_time: Some(now),
@@ -132,7 +126,7 @@ pub async fn launch_game(
         {
             Ok(()) => {
                 // Actualizar sesión activa
-                let session = crate::core::state::ActiveSession {
+                let session = crate::core::models::session::ActiveSession {
                     game_name: Some(game_name.clone()),
                     port: None,
                     start_time: Some(
@@ -193,7 +187,7 @@ pub async fn stop_game(
     state.set_server(None).await;
 
     // Limpiar sesión
-    let new_session = crate::core::state::ActiveSession::default();
+    let new_session = crate::core::models::session::ActiveSession::default();
     state.set_session(new_session).await;
 
     Ok(StopResult {
@@ -377,17 +371,6 @@ pub struct FavoriteResult {
 pub struct ExtractResult {
     pub extracted: Vec<String>,
     pub errors: Vec<String>,
-}
-
-/// Resultado de detección de motor
-#[derive(serde::Serialize)]
-pub struct DetectResult {
-    pub ok: bool,
-    pub root: String,
-    pub engine: String,
-    pub engine_label: String,
-    pub is_web: bool,
-    pub is_incomplete: bool,
 }
 
 /// Resultado de rescan

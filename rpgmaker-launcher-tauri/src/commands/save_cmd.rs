@@ -9,8 +9,9 @@ use std::path::PathBuf;
 use tauri::command;
 
 use crate::core::config::ConfigManager;
+use crate::core::models::save::{SaveFileInfo, SaveInfo};
 use crate::core::state::AppState;
-use crate::engine::save_editor::{SaveEditor, SaveInfo, SaveFileInfo};
+use crate::engine::save_editor::SaveEditor;
 
 /// Lista de saves de un juego
 #[derive(serde::Serialize)]
