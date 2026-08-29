@@ -11,9 +11,11 @@ pub mod save_cmd;
 pub mod game_cmd;
 pub mod config_cmd;
 pub mod sync_cmd;
+pub mod event_cmd;
 
 pub use decrypter_cmd::*;
 pub use save_cmd::*;
 pub use game_cmd::*;
 pub use config_cmd::*;
 pub use sync_cmd::*;
+pub use event_cmd::*;

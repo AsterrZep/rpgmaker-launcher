@@ -15,6 +15,7 @@ use std::sync::Arc;
 use tauri::Manager;
 
 use crate::core::state::AppState;
+use crate::services::events::EventsService;
 
 fn main() {
     // Inicializar logger
@@ -24,12 +25,16 @@ fn main() {
 
     // Crear estado de la aplicación
     let app_state = AppState::new();
+    
+    // Crear servicio de eventos
+    let events_service = Arc::new(EventsService::new());
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .manage(app_state)
+        .manage(events_service)
         .invoke_handler(tauri::generate_handler![
             // Comandos de descifrado
             commands::decrypt_game_assets,
@@ -56,6 +61,10 @@ fn main() {
             commands::get_sync_status,
             commands::execute_sync,
             commands::backup_saves,
+            // Comandos de eventos
+            commands::emit_event,
+            commands::get_event_history,
+            commands::clear_event_history,
         ])
         .setup(|app| {
             // Crear ventana principal
