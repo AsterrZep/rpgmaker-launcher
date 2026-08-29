@@ -7,9 +7,9 @@
 
 use std::path::PathBuf;
 use tauri::command;
+use reqwest;
 
 use crate::core::state::AppState;
-use crate::engine::injector::InjectionEngine;
 
 /// Categorías de datos RPG Maker soportadas
 const DATA_FILE_MAP: &[(&str, &str)] = &[
@@ -292,35 +292,59 @@ pub async fn setup_mods(
         return Err("El directorio del juego no existe".to_string());
     }
 
-    let result = tokio::task::spawn_blocking(move || {
-        let mods_dir = path.join("mods");
-        let created = !mods_dir.exists();
+    let mods_dir = path.join("mods");
+    let created = !mods_dir.exists();
 
-        // Crear directorio
-        std::fs::create_dir_all(&mods_dir)
-            .map_err(|e| format!("Error creando directorio mods: {}", e))?;
+    std::fs::create_dir_all(&mods_dir)
+        .map_err(|e| format!("Error creando directorio mods: {}", e))?;
 
-        // Crear ejemplo si está vacío o recién creado
-        if created || has_no_mods(&mods_dir) {
-            InjectionEngine::create_example_mod(&path)
+    if created || has_no_mods(&mods_dir) {
+        let example_path = mods_dir.join("ejemplo.js");
+        if !example_path.exists() {
+            let example_content = r#"(function () {
+    "use strict";
+    document.addEventListener("keydown", function (ev) {
+        if (ev.key === "F10") {
+            ev.preventDefault();
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else {
+                document.documentElement.requestFullscreen();
+            }
+        }
+    });
+})();"#;
+            std::fs::write(&example_path, example_content)
                 .map_err(|e| format!("Error creando mod ejemplo: {}", e))?;
         }
+    }
 
-        // Listar mods disponibles
-        let mods = InjectionEngine::list_available_mods(&path)
-            .map_err(|e| format!("Error listando mods: {}", e))?;
-
-        Ok::<_, String>(ModsResult {
-            ok: true,
-            mods_dir: mods_dir.to_string_lossy().to_string(),
-            created,
-            mods,
-        })
+    let mods: Vec<String> = tokio::task::spawn_blocking({
+        let mods_dir_path = mods_dir.clone();
+        move || {
+            let mut files = Vec::new();
+            if let Ok(entries) = std::fs::read_dir(&mods_dir_path) {
+                for entry in entries.flatten() {
+                    if let Some(name) = entry.file_name().to_str() {
+                        if name.ends_with(".js") {
+                            files.push(name.to_string());
+                        }
+                    }
+                }
+            }
+            files.sort();
+            files
+        }
     })
     .await
-    .map_err(|_| "Error en el thread pool".to_string())?;
+    .map_err(|e| format!("Error listando mods: {}", e))?;
 
-    result
+    Ok::<_, String>(ModsResult {
+        ok: true,
+        mods_dir: mods_dir.to_string_lossy().to_string(),
+        created,
+        mods,
+    })
 }
 
 /// Verifica si un directorio de mods está vacío
@@ -448,15 +472,42 @@ pub async fn get_status(
 /// Información sobre actualizaciones disponibles
 #[command]
 pub async fn check_update() -> Result<UpdateResult, String> {
-    let service = crate::services::update::UpdateService::new(env!("CARGO_PKG_VERSION"));
+    let client = reqwest::Client::new();
+    let result = client
+        .get("https://api.github.com/repos/AsterrZep/rpgmaker-launcher/releases/latest")
+        .header("Accept", "application/vnd.github+json")
+        .header("User-Agent", "rpgmaker-launcher")
+        .timeout(std::time::Duration::from_secs(8))
+        .send()
+        .await;
 
-    match service.check_update().await {
-        Ok(info) => Ok(UpdateResult {
-            update_available: info.update_available,
-            tag_name: info.tag_name,
-            current_version: info.current_version,
-            url: info.url,
-        }),
+    match result {
+        Ok(response) => {
+            match response.json::<serde_json::Value>().await {
+                Ok(data) => {
+                    let tag = data.get("tag_name").and_then(|t| t.as_str()).unwrap_or("");
+                    let current = env!("CARGO_PKG_VERSION");
+                    let update_available = if tag.is_empty() {
+                        false
+                    } else {
+                        let parse_version = |s: &str| -> Vec<u32> {
+                            s.trim_start_matches('v')
+                                .split('.')
+                                .filter_map(|p| p.parse().ok())
+                                .collect()
+                        };
+                        parse_version(tag) > parse_version(current)
+                    };
+                    Ok(UpdateResult {
+                        update_available,
+                        tag_name: tag.to_string(),
+                        current_version: current.to_string(),
+                        url: "https://github.com/AsterrZep/rpgmaker-launcher/releases".to_string(),
+                    })
+                }
+                Err(_) => Err("Error parseando respuesta de actualización".to_string()),
+            }
+        }
         Err(_) => Ok(UpdateResult {
             update_available: false,
             tag_name: String::new(),
