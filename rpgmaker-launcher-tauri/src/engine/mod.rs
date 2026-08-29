@@ -6,14 +6,17 @@
 // - save_editor: Edición de partidas guardadas
 // - injector: Inyección de código en juegos NW.js
 // - process: Gestión de procesos de juegos
+// - detector: Detección de motores de juegos
 // ============================================================
 
 pub mod decrypter;
 pub mod save_editor;
 pub mod injector;
 pub mod process;
+pub mod detector;
 
 pub use decrypter::Decrypter;
 pub use save_editor::SaveEditor;
 pub use injector::InjectionEngine;
 pub use process::ProcessManager;
+pub use detector::GameDetector;

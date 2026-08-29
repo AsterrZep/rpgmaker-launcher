@@ -422,6 +422,15 @@ class ApiClient {
     return status.version || '0.0.0';
   }
 
+  // Game Detection
+  public async detectGameEngine(gamePath: string): Promise<{ ok: boolean; root: string; engine: string; engineLabel: string; isWeb: boolean; isIncomplete: boolean }> {
+    if (this.useTauri && invoke) {
+      return this.invokeTauri<{ ok: boolean; root: string; engine: string; engineLabel: string; isWeb: boolean; isIncomplete: boolean }>('detect_game_engine', { gamePath });
+    }
+    // Fallback: no detection in HTTP mode
+    return { ok: false, root: gamePath, engine: '', engineLabel: '', isWeb: false, isIncomplete: false };
+  }
+
   // SSE Events (HTTP only - Tauri uses different mechanism)
   public listenEvents(callbacks: {
     onProgress?: (data: any) => void;

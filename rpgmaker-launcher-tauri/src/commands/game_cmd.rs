@@ -2,12 +2,15 @@
 //  RPG Maker Launcher - Game Commands
 // ============================================================
 // Comandos IPC para lanzamiento y gestión de juegos.
+// Utiliza el motor de detección nativo en Rust.
 // ============================================================
 
 use std::path::PathBuf;
 use tauri::command;
 
+use crate::core::config::ConfigManager;
 use crate::core::state::{AppState, GameInfo};
+use crate::engine::detector::GameDetector;
 
 /// Resultado del escaneo de juegos
 #[derive(serde::Serialize)]
@@ -27,7 +30,10 @@ pub struct ScanResult {
 pub async fn get_games(
     state: tauri::State<'_, AppState>,
 ) -> Result<ScanResult, String> {
-    let result = state.scan_games().await;
+    let games_dir = state.config.get_games_dir().await;
+    let detector = GameDetector::new();
+    
+    let result = detector.scan_games(&games_dir).await;
 
     match result {
         Ok(games) => {
@@ -62,7 +68,7 @@ pub async fn launch_game(
     }
 
     // Verificar si es un juego web
-    let is_web = matches!(engine.as_str(), "MZ" | "MV" | "web");
+    let is_web = crate::engine::detector::GameDetector::is_web_engine(&engine);
 
     if is_web {
         // Para juegos web, necesitamos iniciar un servidor HTTP
@@ -234,6 +240,51 @@ pub async fn extract_zips(
     })
 }
 
+/// Detecta el motor de un juego específico
+///
+/// # Arguments
+/// * `game_path` - Ruta al directorio del juego
+///
+/// # Returns
+/// Información del motor detectado
+#[command]
+pub async fn detect_game_engine(
+    game_path: String,
+) -> Result<DetectResult, String> {
+    let path = PathBuf::from(&game_path);
+
+    if !path.exists() {
+        return Err("El directorio del juego no existe".to_string());
+    }
+
+    let detector = GameDetector::new();
+    
+    match detector.detect_engine(&path).await {
+        Some((root, engine)) => {
+            let engine_label = GameDetector::engine_label(&engine);
+            let is_web = GameDetector::is_web_engine(&engine);
+            let is_incomplete = GameDetector::is_incomplete(&engine);
+            
+            Ok(DetectResult {
+                ok: true,
+                root: root.to_string_lossy().to_string(),
+                engine,
+                engine_label,
+                is_web,
+                is_incomplete,
+            })
+        }
+        None => Ok(DetectResult {
+            ok: false,
+            root: game_path,
+            engine: String::new(),
+            engine_label: String::new(),
+            is_web: false,
+            is_incomplete: false,
+        }),
+    }
+}
+
 /// Resultado del lanzamiento de un juego
 #[derive(serde::Serialize)]
 pub struct LaunchResult {
@@ -264,4 +315,15 @@ pub struct FavoriteResult {
 pub struct ExtractResult {
     pub extracted: Vec<String>,
     pub errors: Vec<String>,
+}
+
+/// Resultado de detección de motor
+#[derive(serde::Serialize)]
+pub struct DetectResult {
+    pub ok: bool,
+    pub root: String,
+    pub engine: String,
+    pub engine_label: String,
+    pub is_web: bool,
+    pub is_incomplete: bool,
 }

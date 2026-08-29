@@ -51,6 +51,7 @@ fn main() {
             commands::stop_game,
             commands::toggle_favorite,
             commands::extract_zips,
+            commands::detect_game_engine,
             // Comandos de configuración
             commands::get_config,
             commands::update_config,
