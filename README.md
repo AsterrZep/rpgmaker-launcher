@@ -324,7 +324,7 @@ Distributed under **GNU GPL v3**. See [`LICENSE`](LICENSE) for details.
 - ⭐ **Star the repo** if you find it useful!
 
 ---
-##Project Activity
+## Project Activity
 
 ![Alt]( https://repobeats.axiom.co/api/embed/24e987e264aa76a2fb0d36acf792779a2d7b217a.svg "Imagen de análisis de Repobeats")
 
