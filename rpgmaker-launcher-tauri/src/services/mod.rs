@@ -6,14 +6,17 @@
 // - update: Verificación de actualizaciones
 // - http: Cliente HTTP asíncrono
 // - events: Sistema de eventos nativo
+// - game_server: Servidor HTTP para juegos web
 // ============================================================
 
 pub mod sync;
 pub mod update;
 pub mod http;
 pub mod events;
+pub mod game_server;
 
 pub use sync::SyncService;
 pub use update::UpdateService;
 pub use http::HttpClient;
 pub use events::EventsService;
+pub use game_server::GameServer;
