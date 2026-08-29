@@ -4,7 +4,7 @@
 // Servicio de verificación de actualizaciones desde GitHub.
 // ============================================================
 
-use crate::core::error::{AppError, AppResult};
+use crate::core::error::AppResult;
 
 const REPO_LATEST_API: &str = "https://api.github.com/repos/AsterrZep/rpgmaker-launcher/releases/latest";
 const REPO_RELEASES_URL: &str = "https://github.com/AsterrZep/rpgmaker-launcher/releases";

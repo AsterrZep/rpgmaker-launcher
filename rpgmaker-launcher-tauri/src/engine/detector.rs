@@ -20,7 +20,7 @@ use std::time::{Duration, Instant};
 use tokio::sync::RwLock;
 use walkdir::WalkDir;
 
-use crate::core::error::{AppError, AppResult};
+use crate::core::error::AppResult;
 use crate::core::state::GameInfo;
 
 /// Profundidad máxima de búsqueda en directorios
@@ -116,6 +116,7 @@ impl GameDetector {
 
     /// Detección síncrona (para usar en thread pool)
     fn detect_engine_sync(path: &Path) -> Option<(PathBuf, String)> {
+        let path_buf = path.to_path_buf();
         // 1. Buscar index.html (MV/MZ/Web)
         if let Some(root) = Self::find_file(path, "index.html", MAX_DEPTH) {
             if root.join("js").join("rmmz_core.js").exists() {
@@ -152,13 +153,13 @@ impl GameDetector {
         }
 
         // 4. Ren'Py
-        if let Some(_py) = Self::find_glob(path, "*.py", MAX_DEPTH) {
-            let renpy_dir = path.join("renpy");
-            let game_dir = path.join("game");
+        if let Some(_py) = Self::find_glob(&path_buf, "*.py", MAX_DEPTH) {
+            let renpy_dir = path_buf.join("renpy");
+            let game_dir = path_buf.join("game");
             if renpy_dir.exists() && game_dir.exists() {
                 // Verificar librerías de Ren'Py
-                if Self::renpy_lib_ok(&path) {
-                    return Some((path, "renpy".to_string()));
+                if Self::renpy_lib_ok(&path_buf) {
+                    return Some((path_buf, "renpy".to_string()));
                 }
             }
         }
@@ -175,13 +176,13 @@ impl GameDetector {
         }
 
         // 6. Incompletos
-        if Self::find_file(path, "System.json", MAX_DEPTH).is_some() ||
-           Self::find_file(path, "Map001.json", MAX_DEPTH).is_some() {
-            return Some((path, "incomplete".to_string()));
+        if Self::find_file(&path_buf, "System.json", MAX_DEPTH).is_some() ||
+           Self::find_file(&path_buf, "Map001.json", MAX_DEPTH).is_some() {
+            return Some((path_buf.clone(), "incomplete".to_string()));
         }
 
-        if Self::find_dir(path, "renpy", MAX_DEPTH).is_some() {
-            return Some((path, "renpy-incomplete".to_string()));
+        if Self::find_dir(&path_buf, "renpy", MAX_DEPTH).is_some() {
+            return Some((path_buf, "renpy-incomplete".to_string()));
         }
 
         None
@@ -194,10 +195,8 @@ impl GameDetector {
             .into_iter()
             .filter_map(|e| e.ok())
         {
-            if entry.file_type().is_file() {
-                if entry.file_name() == name {
-                    return Some(entry.path().parent()?.to_path_buf());
-                }
+            if entry.file_type().is_file() && entry.file_name() == name {
+                return Some(entry.path().parent()?.to_path_buf());
             }
         }
         None
@@ -236,10 +235,8 @@ impl GameDetector {
             .into_iter()
             .filter_map(|e| e.ok())
         {
-            if entry.file_type().is_dir() {
-                if entry.file_name() == name {
-                    return Some(entry.path().to_path_buf());
-                }
+            if entry.file_type().is_dir() && entry.file_name() == name {
+                return Some(entry.path().to_path_buf());
             }
         }
         None
@@ -390,6 +387,20 @@ impl GameDetector {
         let mut cache = self.cache.write().await;
         cache.clear();
     }
+
+    /// Calcula un puerto estable (determinista) para un juego
+    /// basado en el hash MD5 de su nombre.
+    /// Esto garantiza que el mismo juego siempre use el mismo puerto,
+    /// preservando los saves entre sesiones.
+    pub fn stable_port(game_name: &str) -> u16 {
+        use sha2::{Sha256, Digest};
+        let mut hasher = Sha256::new();
+        hasher.update(game_name.as_bytes());
+        let result = hasher.finalize();
+        // Usar los primeros 2 bytes como puerto (rango 1024-65535)
+        let hash_val = u16::from_be_bytes([result[0], result[1]]);
+        (hash_val % 64000) + 1024
+    }
 }
 
 impl Default for GameDetector {
@@ -468,5 +479,20 @@ mod tests {
         let detector = GameDetector::new();
         let games = detector.scan_games(dir.path()).await.unwrap();
         assert!(games.is_empty());
+    }
+
+    #[test]
+    fn test_stable_port() {
+        // El mismo nombre siempre produce el mismo puerto
+        let port1 = GameDetector::stable_port("MyGame");
+        let port2 = GameDetector::stable_port("MyGame");
+        assert_eq!(port1, port2);
+        
+        // Diferentes nombres producen diferentes puertos (probablemente)
+        let port3 = GameDetector::stable_port("OtherGame");
+        // No hay garantía de que sean diferentes, pero es muy probable
+        // Solo verificamos que el rango sea válido
+        assert!(port1 >= 1024 && port1 <= 65023);
+        assert!(port3 >= 1024 && port3 <= 65023);
     }
 }

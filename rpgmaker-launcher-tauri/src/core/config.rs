@@ -8,11 +8,11 @@
 
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use super::error::{AppError, AppResult};
+use super::error::AppResult;
 
 /// Configuración por defecto de la aplicación
 fn default_config() -> AppConfig {
@@ -90,7 +90,7 @@ pub struct ConfigManager {
 
 impl ConfigManager {
     /// Crea un nuevo gestor de configuración
-    pub fn new(data_dir: &PathBuf) -> Self {
+    pub fn new(data_dir: &Path) -> Self {
         let config_path = data_dir.join("launcher-config.json");
         let config = Self::load_from_file(&config_path).unwrap_or_else(|_| default_config());
 
@@ -109,7 +109,7 @@ impl ConfigManager {
 
     /// Guarda configuración a archivo de forma atómica
     pub async fn save(&self) -> AppResult<()> {
-        let config = self.config.read().await;
+        let config = self.config.read().await.clone();
         let content = serde_json::to_string_pretty(&config)?;
 
         // Guardar en archivo temporal y renombrar (atómico)

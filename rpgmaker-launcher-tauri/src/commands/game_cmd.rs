@@ -5,10 +5,9 @@
 // Utiliza el motor de detección nativo en Rust.
 // ============================================================
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::command;
 
-use crate::core::config::ConfigManager;
 use crate::core::state::{AppState, GameInfo};
 use crate::engine::detector::GameDetector;
 
@@ -71,24 +70,89 @@ pub async fn launch_game(
     let is_web = crate::engine::detector::GameDetector::is_web_engine(&engine);
 
     if is_web {
-        // Para juegos web, necesitamos iniciar un servidor HTTP
-        // Por ahora, usar el servidor Python existente
-        return Err("Lanzamiento de juegos web aún no implementado en Rust".to_string());
-    }
+        // Detener servidor anterior si existe
+        let prev_server = state.get_server().await;
+        if let Some(prev) = prev_server {
+            log::info!("Deteniendo servidor anterior para '{}'", prev.game_name);
+            state.set_server(None).await;
+        }
 
-    // Lanzar juego nativo
-    let process_manager = crate::engine::process::ProcessManager::new();
-    
-    match process_manager
-        .launch_native_game(&game_name, &path, &engine)
-        .await
-    {
-        Ok(()) => Ok(LaunchResult {
-            ok: true,
-            game: game_name,
-            engine: Some(engine),
-        }),
-        Err(e) => Err(format!("Error al lanzar juego: {}", e)),
+        // Lanzar juego web con servidor HTTP Axum nativo
+        let port = crate::engine::detector::GameDetector::stable_port(&game_name);
+        
+        let mut server = crate::services::game_server::GameServer::new(path.clone(), port);
+        match server.start(&game_name).await {
+            Ok(actual_port) => {
+                log::info!(
+                    "Servidor HTTP nativo iniciado para '{}' en puerto {}",
+                    game_name,
+                    actual_port
+                );
+                
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+                
+                // Guardar referencia al servidor activo
+                let active_server = crate::core::state::ActiveServer {
+                    game_name: game_name.clone(),
+                    port: actual_port,
+                    start_time: now,
+                };
+                state.set_server(Some(active_server)).await;
+                
+                // Actualizar sesión activa
+                let session = crate::core::state::ActiveSession {
+                    game_name: Some(game_name.clone()),
+                    port: Some(actual_port),
+                    start_time: Some(now),
+                    running: true,
+                };
+                state.set_session(session).await;
+                
+                Ok(LaunchResult {
+                    ok: true,
+                    game: game_name,
+                    engine: Some(engine),
+                })
+            }
+            Err(e) => {
+                log::error!("Error iniciando servidor HTTP: {}", e);
+                Err(format!("Error al iniciar servidor HTTP: {}", e))
+            }
+        }
+    } else {
+        // Lanzar juego nativo
+        let process_manager = crate::engine::process::ProcessManager::new();
+        
+        match process_manager
+            .launch_native_game(&game_name, &path, &engine)
+            .await
+        {
+            Ok(()) => {
+                // Actualizar sesión activa
+                let session = crate::core::state::ActiveSession {
+                    game_name: Some(game_name.clone()),
+                    port: None,
+                    start_time: Some(
+                        std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_secs(),
+                    ),
+                    running: true,
+                };
+                state.set_session(session).await;
+                
+                Ok(LaunchResult {
+                    ok: true,
+                    game: game_name,
+                    engine: Some(engine),
+                })
+            }
+            Err(e) => Err(format!("Error al lanzar juego: {}", e)),
+        }
     }
 }
 
@@ -125,6 +189,9 @@ pub async fn stop_game(
         }
     }
 
+    // Limpiar servidor activo
+    state.set_server(None).await;
+
     // Limpiar sesión
     let new_session = crate::core::state::ActiveSession::default();
     state.set_session(new_session).await;
@@ -160,7 +227,7 @@ pub async fn toggle_favorite(
     }
 }
 
-/// Extrae archivos ZIP en la carpeta de juegos
+/// Extrae archivos ZIP en la carpeta de juegos (100% nativo en Rust)
 ///
 /// # Arguments
 /// * `paths` - Lista de rutas a archivos ZIP
@@ -206,30 +273,25 @@ pub async fn extract_zips(
             continue;
         }
 
-        // Extraer ZIP
-        let output = std::process::Command::new("unzip")
-            .arg("-o")
-            .arg("-q")
-            .arg(&path)
-            .arg("-d")
-            .arg(&game_dir)
-            .output();
+        // Extraer ZIP usando librería nativa zip de Rust
+        let zip_path = path.clone();
+        let extract_result = tokio::task::spawn_blocking(move || {
+            extract_zip_native(&zip_path, &game_dir)
+        })
+        .await;
 
-        match output {
-            Ok(out) => {
-                if out.status.success() {
-                    extracted.push(game_name);
-                    
-                    // Eliminar ZIP si se pidió
-                    if auto_delete {
-                        let _ = std::fs::remove_file(&path);
-                    }
-                } else {
-                    errors.push(format!("Error extrayendo {}", path_str));
+        match extract_result {
+            Ok(Ok(())) => {
+                extracted.push(game_name);
+                if auto_delete {
+                    let _ = std::fs::remove_file(&path);
                 }
             }
+            Ok(Err(e)) => {
+                errors.push(format!("Error extrayendo {}: {}", path_str, e));
+            }
             Err(e) => {
-                errors.push(format!("Error ejecutando unzip: {}", e));
+                errors.push(format!("Error en thread pool: {}", e));
             }
         }
     }
@@ -326,4 +388,255 @@ pub struct DetectResult {
     pub engine_label: String,
     pub is_web: bool,
     pub is_incomplete: bool,
+}
+
+/// Resultado de rescan
+#[derive(serde::Serialize)]
+pub struct RescanResult {
+    pub extracted: Vec<String>,
+    pub errors: Vec<String>,
+    pub games: Vec<GameInfo>,
+}
+
+/// Resultado de instalar ZIPs
+#[derive(serde::Serialize)]
+pub struct InstallResult {
+    pub copied: Vec<String>,
+    pub skipped: Vec<String>,
+    pub extracted: Vec<String>,
+    pub games: Vec<GameInfo>,
+}
+
+/// Reescanea la carpeta de juegos y extrae ZIPs pendientes
+///
+/// # Arguments
+/// * `auto_delete` - Eliminar ZIPs después de extraer
+/// * `state` - Estado de la aplicación
+///
+/// # Returns
+/// ZIPs extraídos, errores y lista actualizada de juegos
+#[command]
+pub async fn rescan_games(
+    auto_delete: bool,
+    state: tauri::State<'_, AppState>,
+) -> Result<RescanResult, String> {
+    let games_dir = state.config.get_games_dir().await;
+    let mut extracted = Vec::new();
+    let mut errors = Vec::new();
+
+    // Buscar ZIPs en la carpeta de juegos
+    if games_dir.exists() {
+        let zip_files: Vec<PathBuf> = std::fs::read_dir(&games_dir)
+            .map_err(|e| format!("Error leyendo directorio: {}", e))?
+            .filter_map(|e| e.ok())
+            .filter(|e| {
+                e.path().is_file()
+                    && e.path()
+                        .extension()
+                        .map(|ext| ext.to_string_lossy().to_lowercase() == "zip")
+                        .unwrap_or(false)
+            })
+            .map(|e| e.path())
+            .collect();
+
+        for zip_path in &zip_files {
+            let game_name = zip_path
+                .file_stem()
+                .and_then(|n| n.to_str())
+                .unwrap_or("juego")
+                .to_string();
+
+            let game_dir = games_dir.join(&game_name);
+
+            // Crear directorio del juego
+            if let Err(e) = std::fs::create_dir_all(&game_dir) {
+                errors.push(format!("Error creando directorio {}: {}", game_name, e));
+                continue;
+            }
+
+            // Extraer ZIP
+            let zip_clone = zip_path.clone();
+            let game_dir_clone = game_dir.clone();
+            let extract_result = tokio::task::spawn_blocking(move || {
+                extract_zip_native(&zip_clone, &game_dir_clone)
+            })
+            .await;
+
+            match extract_result {
+                Ok(Ok(())) => {
+                    extracted.push(game_name);
+                    if auto_delete {
+                        let _ = std::fs::remove_file(zip_path);
+                    }
+                }
+                Ok(Err(e)) => {
+                    errors.push(format!("Error extrayendo {}: {}", zip_path.display(), e));
+                }
+                Err(e) => {
+                    errors.push(format!("Error en thread pool: {}", e));
+                }
+            }
+        }
+    }
+
+    // Obtener lista actualizada de juegos
+    let games = state.scan_games().await.map_err(|e| e.to_string())?;
+
+    Ok(RescanResult {
+        extracted,
+        errors,
+        games,
+    })
+}
+
+/// Copia y extrae ZIPs desde rutas locales a la carpeta de juegos
+///
+/// # Arguments
+/// * `paths` - Lista de rutas a archivos ZIP
+/// * `auto_delete` - Eliminar ZIPs después de extraer
+/// * `state` - Estado de la aplicación
+///
+/// # Returns
+/// ZIPs copiados, saltados, extraídos y lista de juegos
+#[command]
+pub async fn install_zips(
+    paths: Vec<String>,
+    auto_delete: bool,
+    state: tauri::State<'_, AppState>,
+) -> Result<InstallResult, String> {
+    let games_dir = state.config.get_games_dir().await;
+    let mut copied = Vec::new();
+    let mut skipped = Vec::new();
+    let mut extracted = Vec::new();
+    let mut errors = Vec::new();
+
+    // Copiar ZIPs a la carpeta de juegos
+    for path_str in &paths {
+        let path = PathBuf::from(path_str);
+
+        if !path.exists() {
+            skipped.push(format!("{}: no existe", path_str));
+            continue;
+        }
+
+        if !path
+            .extension()
+            .map(|e| e.to_string_lossy().to_lowercase() == "zip")
+            .unwrap_or(false)
+        {
+            skipped.push(format!("{}: no es un ZIP", path_str));
+            continue;
+        }
+
+        let game_name = path
+            .file_stem()
+            .and_then(|n| n.to_str())
+            .unwrap_or("juego")
+            .to_string();
+
+        let dest = games_dir.join(format!("{}.zip", game_name));
+
+        if let Err(e) = std::fs::create_dir_all(&games_dir) {
+            skipped.push(format!("{}: error creando directorio: {}", path_str, e));
+            continue;
+        }
+
+        match std::fs::copy(&path, &dest) {
+            Ok(_) => {
+                copied.push(dest.to_string_lossy().to_string());
+            }
+            Err(e) => {
+                skipped.push(format!("{}: error copiando: {}", path_str, e));
+            }
+        }
+    }
+
+    // Extraer ZIPs copiados directamente
+    for zip_path_str in &copied {
+        let zip_path = PathBuf::from(zip_path_str);
+        let game_name = zip_path
+            .file_stem()
+            .and_then(|n| n.to_str())
+            .unwrap_or("juego")
+            .to_string();
+
+        let game_dir = games_dir.join(&game_name);
+        if let Err(e) = std::fs::create_dir_all(&game_dir) {
+            errors.push(format!("Error creando directorio {}: {}", game_name, e));
+            continue;
+        }
+
+        let zip_clone = zip_path.clone();
+        let game_dir_clone = game_dir.clone();
+        let result = tokio::task::spawn_blocking(move || {
+            extract_zip_native(&zip_clone, &game_dir_clone)
+        })
+        .await;
+
+        match result {
+            Ok(Ok(())) => {
+                extracted.push(game_name);
+                if auto_delete {
+                    let _ = std::fs::remove_file(&zip_path);
+                }
+            }
+            Ok(Err(e)) => {
+                errors.push(format!("Error extrayendo {}: {}", zip_path.display(), e));
+            }
+            Err(e) => {
+                errors.push(format!("Error en thread pool: {}", e));
+            }
+        }
+    }
+
+    // Obtener lista actualizada de juegos
+    let games = state.scan_games().await.map_err(|e| e.to_string())?;
+
+    Ok(InstallResult {
+        copied,
+        skipped,
+        extracted,
+        games,
+    })
+}
+
+/// Extrae un archivo ZIP de forma nativa usando la librería `zip`
+fn extract_zip_native(zip_path: &Path, dest_dir: &Path) -> Result<(), String> {
+    use zip::ZipArchive;
+    use std::io::Read;
+
+    let file = std::fs::File::open(zip_path)
+        .map_err(|e| format!("No se pudo abrir el ZIP: {}", e))?;
+
+    let mut archive = ZipArchive::new(file)
+        .map_err(|e| format!("ZIP inválido: {}", e))?;
+
+    for i in 0..archive.len() {
+        let mut entry = archive
+            .by_index(i)
+            .map_err(|e| format!("Error leyendo entrada {}: {}", i, e))?;
+
+        let out_path = dest_dir.join(entry.mangled_name());
+
+        if entry.is_dir() {
+            let _ = std::fs::create_dir_all(&out_path);
+        } else {
+            if let Some(parent) = out_path.parent() {
+                let _ = std::fs::create_dir_all(parent);
+            }
+
+            let mut out_file = std::fs::File::create(&out_path)
+                .map_err(|e| format!("Error creando {}: {}", out_path.display(), e))?;
+
+            let mut buf = Vec::new();
+            entry
+                .read_to_end(&mut buf)
+                .map_err(|e| format!("Error leyendo {}: {}", entry.name(), e))?;
+
+            std::io::Write::write_all(&mut out_file, &buf)
+                .map_err(|e| format!("Error escribiendo {}: {}", out_path.display(), e))?;
+        }
+    }
+
+    Ok(())
 }

@@ -260,7 +260,8 @@ fn pull_saves(src: &PathBuf, dst: &PathBuf) -> usize {
         ));
 
         if std::fs::create_dir_all(&backup_dir).is_ok() {
-            for entry in std::fs::read_dir(dst).flatten() {
+            if let Ok(entries) = std::fs::read_dir(dst) {
+            for entry in entries.flatten() {
                 let src_path = entry.path();
                 if src_path.is_file() {
                     let dst_path = backup_dir.join(src_path.file_name().unwrap_or_default());
@@ -268,6 +269,7 @@ fn pull_saves(src: &PathBuf, dst: &PathBuf) -> usize {
                 }
             }
             log::info!("Backup pre-pull creado: {:?}", backup_dir);
+            }
         }
     }
 

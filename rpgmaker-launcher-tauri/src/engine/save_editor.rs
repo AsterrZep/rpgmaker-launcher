@@ -322,11 +322,16 @@ impl SaveEditor {
 
         // Aplicar oro
         if let Some(gold) = updates.get("gold") {
-            data.entry("party")
-                .or_insert_with(|| serde_json::json!({}))
-                .as_object_mut()
-                .unwrap()
-                .insert("_gold".to_string(), gold.clone());
+            if let Some(party) = data.get_mut("party") {
+                if let Some(obj) = party.as_object_mut() {
+                    obj.insert("_gold".to_string(), gold.clone());
+                }
+            } else {
+                // Crear party si no existe
+                if let Some(obj) = data.as_object_mut() {
+                    obj.insert("party".to_string(), serde_json::json!({"_gold": gold}));
+                }
+            }
         }
 
         // Aplicar items
@@ -469,7 +474,7 @@ impl SaveEditor {
         }
 
         // Ordenar por última modificación (más reciente primero)
-        saves.sort_by(|a, b| b.last_modified.unwrap_or(0).cmp(&a.last_modified.unwrap_or(0)));
+        saves.sort_by_key(|s| std::cmp::Reverse(s.last_modified.unwrap_or(0)));
 
         Ok(saves)
     }
@@ -561,7 +566,8 @@ mod tests {
 
     #[test]
     fn test_detect_format() {
-        let mut temp = tempfile::tempfile().unwrap();
+        use tempfile::NamedTempFile;
+        let mut temp = NamedTempFile::new().unwrap();
         let data = create_test_mv_save();
         temp.write_all(&data).unwrap();
 
@@ -572,7 +578,8 @@ mod tests {
 
     #[test]
     fn test_load_mv_mz_save() {
-        let mut temp = tempfile::tempfile().unwrap();
+        use tempfile::NamedTempFile;
+        let mut temp = NamedTempFile::new().unwrap();
         let data = create_test_mv_save();
         temp.write_all(&data).unwrap();
 
@@ -585,7 +592,8 @@ mod tests {
 
     #[test]
     fn test_get_save_info() {
-        let mut temp = tempfile::tempfile().unwrap();
+        use tempfile::NamedTempFile;
+        let mut temp = NamedTempFile::new().unwrap();
         let data = create_test_mv_save();
         temp.write_all(&data).unwrap();
 

@@ -32,9 +32,7 @@ impl HttpClient {
         let response = self.client.get(url).send().await?;
         
         if !response.status().is_success() {
-            return Err(AppError::Network(
-                reqwest::Error::from(response.error_for_status().unwrap_err())
-            ));
+            return Err(AppError::Network(response.error_for_status().unwrap_err()));
         }
 
         let text = response.text().await?;
@@ -46,9 +44,7 @@ impl HttpClient {
         let response = self.client.get(url).send().await?;
         
         if !response.status().is_success() {
-            return Err(AppError::Network(
-                reqwest::Error::from(response.error_for_status().unwrap_err())
-            ));
+            return Err(AppError::Network(response.error_for_status().unwrap_err()));
         }
 
         let json = response.json().await?;
@@ -68,9 +64,7 @@ impl HttpClient {
             .await?;
 
         if !response.status().is_success() {
-            return Err(AppError::Network(
-                reqwest::Error::from(response.error_for_status().unwrap_err())
-            ));
+            return Err(AppError::Network(response.error_for_status().unwrap_err()));
         }
 
         let json = response.json().await?;
@@ -82,9 +76,7 @@ impl HttpClient {
         let response = self.client.get(url).send().await?;
 
         if !response.status().is_success() {
-            return Err(AppError::Network(
-                reqwest::Error::from(response.error_for_status().unwrap_err())
-            ));
+            return Err(AppError::Network(response.error_for_status().unwrap_err()));
         }
 
         let mut file = std::fs::File::create(dest)?;

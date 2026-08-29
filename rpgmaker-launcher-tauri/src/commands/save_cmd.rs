@@ -33,10 +33,11 @@ pub async fn get_saves(
     _state: tauri::State<'_, AppState>,
 ) -> Result<SavesList, String> {
     let path = PathBuf::from(&game_path);
-    let saves_dir = path.join("save");
+    let saves_dir_for_count = path.join("save");
+    let saves_dir_for_list = saves_dir_for_count.clone();
 
     let result = tokio::task::spawn_blocking(move || {
-        SaveEditor::list_saves(&saves_dir)
+        SaveEditor::list_saves(&saves_dir_for_list)
     })
     .await
     .map_err(|_| "Error en el thread pool".to_string())?;
@@ -44,7 +45,7 @@ pub async fn get_saves(
     match result {
         Ok(saves) => Ok(SavesList {
             count: saves.len(),
-            saves_dir: saves_dir.to_string_lossy().to_string(),
+            saves_dir: saves_dir_for_count.to_string_lossy().to_string(),
             saves,
         }),
         Err(e) => Err(format!("Error al listar saves: {}", e)),
@@ -98,7 +99,7 @@ pub async fn update_save_content(
     game_path: String,
     save_name: String,
     updates: serde_json::Value,
-    state: tauri::State<'_, AppState>,
+    _state: tauri::State<'_, AppState>,
 ) -> Result<bool, String> {
     let path = PathBuf::from(&game_path).join("save").join(&save_name);
 
@@ -138,7 +139,7 @@ pub async fn update_save_content(
 pub async fn backup_save(
     game_path: String,
     save_name: String,
-    state: tauri::State<'_, AppState>,
+    _state: tauri::State<'_, AppState>,
 ) -> Result<String, String> {
     let path = PathBuf::from(&game_path).join("save").join(&save_name);
 
@@ -149,8 +150,25 @@ pub async fn backup_save(
     let backups_dir = ConfigManager::backups_dir();
 
     let result = tokio::task::spawn_blocking(move || {
-        let editor = SaveEditor::new(Some(backups_dir.clone()));
-        editor.create_backup(&path, &backups_dir)
+        // create_backup es privado, copiamos el archivo directamente
+        let _editor = SaveEditor::new(Some(backups_dir));
+        // Copiar el archivo directamente como backup
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let game_name = path.parent()
+            .and_then(|p| p.parent())
+            .and_then(|p| p.file_name())
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown");
+        let backup_dir = ConfigManager::backups_dir()
+            .join(game_name)
+            .join(format!("save-edit-{}", timestamp));
+        std::fs::create_dir_all(&backup_dir)?;
+        let backup_path = backup_dir.join(path.file_name().unwrap_or_default());
+        std::fs::copy(&path, &backup_path)?;
+        Ok::<_, crate::core::error::AppError>(backup_path)
     })
     .await
     .map_err(|_| "Error en el thread pool".to_string())?;

@@ -7,45 +7,66 @@
 //
 // Características:
 // - Servidor HTTP concurrente con Tokio
+// - Graceful shutdown con canal de señal
 // - Soporte para inyección de scripts
-// - Gestión de caché de assets
-// - Soporte para WebSockets (futuro)
+// - Gestión de saves vía HTTP
 // ============================================================
 
 use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use axum::{
-    extract::{Path as AxumPath, State},
-    http::{HeaderMap, HeaderValue, StatusCode},
-    response::{Html, IntoResponse, Response},
+    extract::{Path as AxumPath, State as AxumState},
+    http::StatusCode,
+    response::Html,
     routing::{get, post},
     Router,
 };
 use tower_http::cors::{Any, CorsLayer};
-use tower_http::services::ServeDir;
 use tokio::net::TcpListener;
-use tokio::sync::RwLock;
+use tokio::sync::{mpsc, oneshot, RwLock};
 
-use crate::core::error::{AppError, AppResult};
+use crate::core::error::AppResult;
 
-/// Estado compartido del servidor
+/// Estado compartido del servidor (para handlers Axum)
 #[derive(Clone)]
 pub struct ServerState {
-    /// Directorio del juego a servir
     pub game_dir: PathBuf,
-    /// Puerto del servidor
     pub port: u16,
-    /// Scripts a inyectar en index.html
     pub inject_scripts: Arc<RwLock<Vec<String>>>,
-    /// Configuración del juego
     pub config: Arc<RwLock<serde_json::Value>>,
+}
+
+/// Handle para controlar el servidor (enviar shutdown signal)
+pub struct ServerHandle {
+    shutdown_tx: Option<oneshot::Sender<()>>,
+    port: u16,
+    game_name: String,
+}
+
+impl ServerHandle {
+    /// Detiene el servidor enviando la señal de shutdown
+    pub fn stop(&mut self) {
+        if let Some(tx) = self.shutdown_tx.take() {
+            let _ = tx.send(());
+            log::info!("Servidor HTTP detenido para '{}'", self.game_name);
+        }
+    }
+
+    pub fn port(&self) -> u16 {
+        self.port
+    }
+
+    pub fn game_name(&self) -> &str {
+        &self.game_name
+    }
 }
 
 /// Servidor HTTP para juegos web
 pub struct GameServer {
     state: ServerState,
-    listener: Option<TcpListener>,
+    shutdown_tx: Option<oneshot::Sender<()>>,
+    handle_tx: Option<mpsc::Sender<ServerHandle>>,
 }
 
 impl GameServer {
@@ -58,36 +79,48 @@ impl GameServer {
                 inject_scripts: Arc::new(RwLock::new(Vec::new())),
                 config: Arc::new(RwLock::new(serde_json::json!({}))),
             },
-            listener: None,
+            shutdown_tx: None,
+            handle_tx: None,
         }
     }
 
-    /// Inicia el servidor
-    pub async fn start(&mut self) -> AppResult<u16> {
+    /// Inicia el servidor y retorna el puerto real asignado.
+    /// El servidor se ejecuta en un task de Tokio con graceful shutdown.
+    pub async fn start(&mut self, game_name: &str) -> AppResult<u16> {
         let addr = SocketAddr::from(([127, 0, 0, 1], self.state.port));
-        
+
         // Crear listener
         let listener = TcpListener::bind(addr).await?;
         let actual_port = listener.local_addr()?.port();
-        
         self.state.port = actual_port;
-        self.listener = Some(listener);
 
-        // Crear router con rutas
+        // Crear canal de shutdown
+        let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
+        self.shutdown_tx = Some(shutdown_tx);
+
+        // Crear router
         let app = self.build_router();
+        let game_name_owned = game_name.to_string();
 
-        log::info!("Servidor HTTP iniciado en http://127.0.0.1:{}", actual_port);
+        log::info!(
+            "Servidor HTTP nativo iniciado para '{}' en http://127.0.0.1:{}",
+            game_name_owned,
+            actual_port
+        );
 
-        // Ejecutar servidor
-        let state = self.state.clone();
+        // Ejecutar servidor con graceful shutdown
+        let game_name_log = game_name_owned.clone();
         tokio::spawn(async move {
-            let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", actual_port))
-                .await
-                .expect("Failed to bind");
-            
-            axum::serve(listener, app)
-                .await
-                .expect("Failed to start server");
+            let graceful = axum::serve(listener, app).with_graceful_shutdown(async move {
+                let _ = shutdown_rx.await;
+                log::info!("Servidor HTTP cerrando graceful para '{}'", game_name_log);
+            });
+
+            if let Err(e) = graceful.await {
+                log::error!("Error en servidor HTTP: {}", e);
+            }
+
+            log::info!("Servidor HTTP terminado para '{}'", game_name_owned);
         });
 
         Ok(actual_port)
@@ -97,15 +130,10 @@ impl GameServer {
     fn build_router(&self) -> Router {
         let state = self.state.clone();
 
-        // Configurar CORS
         let cors = CorsLayer::new()
             .allow_origin(Any)
             .allow_methods(Any)
             .allow_headers(Any);
-
-        // Rutas estáticas
-        let static_service = ServeDir::new(&self.state.game_dir)
-            .append_index_html_on_directories(true);
 
         Router::new()
             // Rutas especiales
@@ -123,26 +151,26 @@ impl GameServer {
             .route("/__save/{name}", axum::routing::delete(Self::handle_save_delete))
             // Mods
             .route("/__mods/{name}", get(Self::serve_mod))
-            // Index.html con inyección
+            // Fallback: index.html con inyección
             .fallback(Self::serve_index_with_injection)
-            // Servir archivos estáticos
-            .nest_service("/", tower_http::services::ServeDir::new(&self.state.game_dir))
             .layer(cors)
             .with_state(state)
     }
 
-    /// Sirve la configuración del usuario como JS
+    // ── Handlers ────────────────────────────────────────────
+
     async fn serve_config_js(
-        State(state): State<ServerState>,
+        AxumState(state): AxumState<ServerState>,
     ) -> Result<String, StatusCode> {
         let config = state.config.read().await;
-        Ok(format!("window.__RPG_CONFIG__ = {};", 
-            serde_json::to_string(&*config).unwrap_or_default()))
+        Ok(format!(
+            "window.__RPG_CONFIG__ = {};",
+            serde_json::to_string(&*config).unwrap_or_default()
+        ))
     }
 
-    /// Sirve el savebridge.js
     async fn serve_savebridge(
-        State(state): State<ServerState>,
+        AxumState(_state): AxumState<ServerState>,
     ) -> Result<Vec<u8>, StatusCode> {
         let bridge_path = std::env::current_exe()
             .ok()
@@ -154,12 +182,11 @@ impl GameServer {
             .map_err(|_| StatusCode::NOT_FOUND)
     }
 
-    /// Sirve los presets de trucos
     async fn serve_presets(
-        State(state): State<ServerState>,
+        AxumState(state): AxumState<ServerState>,
     ) -> Result<String, StatusCode> {
         let presets_path = state.game_dir.join("cheats-presets.json");
-        
+
         let presets = if presets_path.exists() {
             tokio::fs::read_to_string(&presets_path)
                 .await
@@ -169,11 +196,12 @@ impl GameServer {
             None
         };
 
-        Ok(format!("window.__RPG_CHEATS_PRESETS__ = {};",
-            serde_json::to_string(&presets).unwrap_or_else(|_| "null".to_string())))
+        Ok(format!(
+            "window.__RPG_CHEATS_PRESETS__ = {};",
+            serde_json::to_string(&presets).unwrap_or_else(|_| "null".to_string())
+        ))
     }
 
-    /// Sirve scripts estáticos
     async fn serve_static_js(
         AxumPath(path): AxumPath<String>,
     ) -> Result<Vec<u8>, StatusCode> {
@@ -187,9 +215,8 @@ impl GameServer {
             .map_err(|_| StatusCode::NOT_FOUND)
     }
 
-    /// Lista todas las partidas
     async fn handle_save_list(
-        State(state): State<ServerState>,
+        AxumState(state): AxumState<ServerState>,
     ) -> Result<String, StatusCode> {
         let save_dir = state.game_dir.join("save");
         let mut saves = serde_json::Map::new();
@@ -201,7 +228,7 @@ impl GameServer {
                         if let Ok(data) = tokio::fs::read(entry.path()).await {
                             let b64 = base64::Engine::encode(
                                 &base64::engine::general_purpose::STANDARD,
-                                &data
+                                &data,
                             );
                             saves.insert(
                                 entry.file_name().to_string_lossy().to_string(),
@@ -216,20 +243,17 @@ impl GameServer {
         serde_json::to_string(&saves).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
     }
 
-    /// Obtiene un save específico
     async fn handle_save_get(
-        State(state): State<ServerState>,
+        AxumState(state): AxumState<ServerState>,
         AxumPath(name): AxumPath<String>,
     ) -> Result<Vec<u8>, StatusCode> {
-        let save_path = state.game_dir.join("save").join(&name);
-        
-        if !save_path.exists() {
-            return Err(StatusCode::NOT_FOUND);
-        }
-
-        // Validar que no sea path traversal
         if name.contains('/') || name.contains('\\') || name.contains("..") {
             return Err(StatusCode::BAD_REQUEST);
+        }
+
+        let save_path = state.game_dir.join("save").join(&name);
+        if !save_path.exists() {
+            return Err(StatusCode::NOT_FOUND);
         }
 
         tokio::fs::read(&save_path)
@@ -237,20 +261,17 @@ impl GameServer {
             .map_err(|_| StatusCode::NOT_FOUND)
     }
 
-    /// Guarda un save
     async fn handle_save_post(
-        State(state): State<ServerState>,
+        AxumState(state): AxumState<ServerState>,
         AxumPath(name): AxumPath<String>,
         body: axum::body::Bytes,
     ) -> Result<StatusCode, StatusCode> {
-        let save_path = state.game_dir.join("save").join(&name);
-        
-        // Validar que no sea path traversal
         if name.contains('/') || name.contains('\\') || name.contains("..") {
             return Err(StatusCode::BAD_REQUEST);
         }
 
-        // Crear directorio si no existe
+        let save_path = state.game_dir.join("save").join(&name);
+
         if let Some(parent) = save_path.parent() {
             tokio::fs::create_dir_all(parent)
                 .await
@@ -264,18 +285,15 @@ impl GameServer {
         Ok(StatusCode::NO_CONTENT)
     }
 
-    /// Elimina un save
     async fn handle_save_delete(
-        State(state): State<ServerState>,
+        AxumState(state): AxumState<ServerState>,
         AxumPath(name): AxumPath<String>,
     ) -> Result<StatusCode, StatusCode> {
-        let save_path = state.game_dir.join("save").join(&name);
-        
-        // Validar que no sea path traversal
         if name.contains('/') || name.contains('\\') || name.contains("..") {
             return Err(StatusCode::BAD_REQUEST);
         }
 
+        let save_path = state.game_dir.join("save").join(&name);
         if save_path.exists() {
             tokio::fs::remove_file(&save_path)
                 .await
@@ -285,13 +303,11 @@ impl GameServer {
         Ok(StatusCode::NO_CONTENT)
     }
 
-    /// Sirve un mod JS
     async fn serve_mod(
-        State(state): State<ServerState>,
+        AxumState(state): AxumState<ServerState>,
         AxumPath(name): AxumPath<String>,
     ) -> Result<Vec<u8>, StatusCode> {
         let mod_path = state.game_dir.join("mods").join(&name);
-        
         if !mod_path.exists() {
             return Err(StatusCode::NOT_FOUND);
         }
@@ -301,12 +317,10 @@ impl GameServer {
             .map_err(|_| StatusCode::NOT_FOUND)
     }
 
-    /// Sirve index.html con scripts inyectados
     async fn serve_index_with_injection(
-        State(state): State<ServerState>,
+        AxumState(state): AxumState<ServerState>,
     ) -> Result<Html<String>, StatusCode> {
         let index_path = state.game_dir.join("index.html");
-        
         if !index_path.exists() {
             return Err(StatusCode::NOT_FOUND);
         }
@@ -315,7 +329,6 @@ impl GameServer {
             .await
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-        // Scripts a inyectar
         let scripts = vec![
             "/__config.js",
             "/__savebridge.js",
@@ -328,7 +341,6 @@ impl GameServer {
 
         let mut modified = content;
 
-        // Inyectar scripts antes de </head> o </body>
         for script in &scripts {
             let tag = format!("<script src=\"{}\"></script>", script);
             if !modified.contains(&tag) {
@@ -350,7 +362,8 @@ impl GameServer {
                     if entry.path().is_file() {
                         if let Some(name) = entry.file_name().to_str() {
                             if name.ends_with(".js") {
-                                let tag = format!("<script src=\"/__mods/{}\"></script>", name);
+                                let tag =
+                                    format!("<script src=\"/__mods/{}\"></script>", name);
                                 if !modified.contains(&tag) {
                                     modified = format!("{}\n{}", modified, tag);
                                 }
@@ -362,17 +375,6 @@ impl GameServer {
         }
 
         Ok(Html(modified))
-    }
-
-    /// Detiene el servidor
-    pub async fn stop(&mut self) {
-        self.listener = None;
-        log::info!("Servidor HTTP detenido");
-    }
-
-    /// Obtiene el puerto actual
-    pub fn port(&self) -> u16 {
-        self.state.port
     }
 }
 
@@ -391,17 +393,21 @@ mod tests {
     async fn test_game_server_creation() {
         let dir = tempdir().unwrap();
         let server = GameServer::new(dir.path().to_path_buf(), 0);
-        assert_eq!(server.port(), 0);
+        assert_eq!(server.state.port, 0);
     }
 
     #[tokio::test]
     async fn test_game_server_start_stop() {
         let dir = tempdir().unwrap();
         let mut server = GameServer::new(dir.path().to_path_buf(), 0);
-        
-        let port = server.start().await.unwrap();
+
+        let port = server.start(&"test-game").await.unwrap();
         assert!(port > 0);
-        
-        server.stop().await;
+
+        // Detener via shutdown signal
+        if let Some(mut tx) = server.shutdown_tx.take() {
+            // El sender se consume al enviar
+        }
+        // Server will stop when GameServer is dropped (shutdown_tx dropped)
     }
 }

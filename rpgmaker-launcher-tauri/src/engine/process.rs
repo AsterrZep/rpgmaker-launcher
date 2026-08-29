@@ -8,7 +8,7 @@
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::Instant;
 use tokio::sync::Mutex;
 
 use crate::core::error::{AppError, AppResult};
@@ -34,44 +34,27 @@ impl ProcessManager {
     pub async fn launch_web_game(
         &self,
         game_name: &str,
-        game_dir: &PathBuf,
+        _game_dir: &PathBuf,
         port: u16,
     ) -> AppResult<()> {
         // Detener proceso activo anterior
         self.stop_active_process().await?;
 
-        // Iniciar servidor HTTP para el juego
-        let server_script = std::env::current_exe()?
-            .parent()
-            .and_then(|p| p.parent())
-            .map(|p| p.join("rpgmaker-server.py"))
-            .unwrap_or_else(|| PathBuf::from("rpgmaker-server.py"));
-
-        let mut child = Command::new("python3")
-            .arg("-u")
-            .arg(&server_script)
-            .arg(port.to_string())
-            .arg("--dir")
-            .arg(game_dir)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .map_err(|e| AppError::ProcessError(format!("No se pudo iniciar servidor: {}", e)))?;
-
-        // Esperar un momento para que el servidor inicie
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        // NOTA: El servidor HTTP ahora se ejecuta via Axum en game_server.rs
+        // Esta función se mantiene por compatibilidad pero el servidor real
+        // se inicia desde game_cmd.rs usando GameServer::start()
+        log::warn!(
+            "launch_web_game() está obsoleto. Usa GameServer en game_server.rs"
+        );
 
         // Guardar información del proceso activo
-        let mut active = self.active_process.lock().await;
-        *active = Some(child);
-
         let mut start = self.start_time.lock().await;
         *start = Some(Instant::now());
 
         let mut name = self.game_name.lock().await;
         *name = Some(game_name.to_string());
 
-        log::info!("Juego web lanzado: {} en puerto {}", game_name, port);
+        log::info!("Juego web lanzado: {} en puerto {} (usando Axum nativo)", game_name, port);
         Ok(())
     }
 
@@ -157,11 +140,11 @@ impl ProcessManager {
 
     /// Obtiene el estado del proceso activo
     pub async fn get_status(&self) -> ProcessStatus {
-        let active = self.active_process.lock().await;
+        let mut active = self.active_process.lock().await;
         let start = self.start_time.lock().await;
         let name = self.game_name.lock().await;
 
-        if let Some(ref child) = *active {
+        if let Some(ref mut child) = *active {
             let running = child.try_wait().ok().flatten().is_none();
             let elapsed = start.map(|s| s.elapsed().as_secs());
 

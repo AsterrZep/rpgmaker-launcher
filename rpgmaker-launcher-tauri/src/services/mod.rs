@@ -15,8 +15,4 @@ pub mod http;
 pub mod events;
 pub mod game_server;
 
-pub use sync::SyncService;
-pub use update::UpdateService;
-pub use http::HttpClient;
-pub use events::EventsService;
-pub use game_server::GameServer;
+// Modules exposed via crate paths

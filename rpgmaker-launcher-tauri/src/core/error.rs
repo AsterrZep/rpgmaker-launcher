@@ -28,6 +28,9 @@ pub enum AppError {
     #[error("Error de desencriptación: {0}")]
     Decryption(String),
 
+    #[error("Error de desencriptación: {0}")]
+    DecryptionError(String),
+
     #[error("Clave de encriptación inválida: {0}")]
     InvalidEncryptionKey(String),
 
@@ -60,6 +63,9 @@ pub enum AppError {
 
     #[error("Error de parseo de Ruby Marshal: {0}")]
     RubyMarshalError(String),
+
+    #[error("Error de launcher: {0}")]
+    LauncherError(String),
 
     #[error("Error de Tauri: {0}")]
     TauriError(String),
@@ -102,6 +108,12 @@ impl From<flate2::CompressError> for AppError {
 impl From<base64::DecodeError> for AppError {
     fn from(err: base64::DecodeError) -> Self {
         AppError::SaveParseError(format!("Error de decodificación Base64: {}", err))
+    }
+}
+
+impl From<std::string::FromUtf8Error> for AppError {
+    fn from(err: std::string::FromUtf8Error) -> Self {
+        AppError::SaveParseError(format!("Error de UTF-8: {}", err))
     }
 }
 

@@ -43,6 +43,7 @@ walkdir = "2.5"
 # Compression (for save files)
 lz-str = "0.1"
 flate2 = "1.0"
+zip = "0.6"
 
 # Date/Time
 chrono = "0.4"
@@ -70,9 +71,29 @@ nix = { version = "0.29", features = ["signal"] }
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
+[dev-dependencies]
+tempfile = "3"
+
 [profile.release]
 codegen-units = 1
 lto = "fat"
 opt-level = "z"  # Optimize for minimal binary size
 panic = "abort"
 strip = true  # Remove debug symbols
+
+# cargo-deb configuration
+[package.metadata.deb]
+maintainer = "AsterrZep"
+copyright = "2024, AsterrZep"
+license-file = ["../LICENSE", "0"]
+extended-description = """RPG Maker Launcher: biblioteca de juegos RPG Maker MZ/MV/XP/VX/VX Ace/2000 y Ren'Py con extraccion automatica de .zip, servidor HTTP local con puertos estables, panel de trucos, rewind/save-states, mods JS, editor de partidas, sync y descifrado de assets."""
+section = "games"
+priority = "optional"
+assets = [
+    ["target/release/rpgmaker-launcher-tauri", "usr/bin/rpgmaker-launcher-tauri", "755"],
+    ["../rpgmaker-icon.png", "usr/share/icons/hicolor/128x128/apps/rpgmaker-launcher.png", "644"],
+]
+deb-depends = ["unzip", "xdg-utils"]
+assets-doc = [
+    ["../README.md", "usr/share/doc/rpgmaker-launcher/README.md", "644"],
+]

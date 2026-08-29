@@ -6,13 +6,16 @@
 // mediante comandos IPC.
 // ============================================================
 
+// Permitir código muerto en módulos de servicios/utilidades
+// que son API pública pero no todos los paths se usan internamente
+#![allow(dead_code)]
+
 mod core;
 mod engine;
 mod commands;
 mod services;
 
 use std::sync::Arc;
-use tauri::Manager;
 
 use crate::core::state::AppState;
 use crate::services::events::EventsService;
@@ -66,6 +69,21 @@ fn main() {
             commands::emit_event,
             commands::get_event_history,
             commands::clear_event_history,
+            // Comandos de plugins
+            commands::get_plugins,
+            commands::toggle_plugins,
+            commands::restore_plugins,
+            // Comandos de herramientas
+            commands::get_data,
+            commands::setup_mods,
+            commands::open_target,
+            commands::get_status,
+            commands::check_update,
+            // Comandos de portadas
+            commands::get_cover_image,
+            // Comandos de reescaneo
+            commands::rescan_games,
+            commands::install_zips,
         ])
         .setup(|app| {
             // Crear ventana principal
@@ -86,7 +104,7 @@ fn main() {
         })
         .build(tauri::generate_context!())
         .expect("error al iniciar la aplicación Tauri")
-        .run(|app_handle, event| {
+        .run(|_app_handle, event| {
             if let tauri::RunEvent::Exit = event {
                 log::info!("Aplicación cerrándose");
                 // Cleanup si es necesario

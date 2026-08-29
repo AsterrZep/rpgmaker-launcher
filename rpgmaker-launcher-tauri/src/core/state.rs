@@ -10,8 +10,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use super::config::{AppConfig, ConfigManager};
-use super::error::{AppError, AppResult};
+use super::config::ConfigManager;
+use super::error::AppResult;
 
 /// Información de un juego detectado
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -31,7 +31,7 @@ pub struct GameInfo {
 }
 
 /// Estado de una sesión activa de juego
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ActiveSession {
     pub game_name: Option<String>,
     pub port: Option<u16>,
@@ -39,15 +39,12 @@ pub struct ActiveSession {
     pub running: bool,
 }
 
-impl Default for ActiveSession {
-    fn default() -> Self {
-        Self {
-            game_name: None,
-            port: None,
-            start_time: None,
-            running: false,
-        }
-    }
+/// Estado del servidor HTTP activo (para juegos web)
+#[derive(Debug, Clone)]
+pub struct ActiveServer {
+    pub game_name: String,
+    pub port: u16,
+    pub start_time: u64,
 }
 
 /// Estado global de la aplicación
@@ -55,6 +52,7 @@ pub struct AppState {
     pub config: ConfigManager,
     pub games: Arc<RwLock<HashMap<String, GameInfo>>>,
     pub session: Arc<RwLock<ActiveSession>>,
+    pub server: Arc<RwLock<Option<ActiveServer>>>,
     pub data_dir: PathBuf,
     pub games_dir: PathBuf,
 }
@@ -77,71 +75,36 @@ impl AppState {
             config,
             games: Arc::new(RwLock::new(HashMap::new())),
             session: Arc::new(RwLock::new(ActiveSession::default())),
+            server: Arc::new(RwLock::new(None)),
             data_dir,
             games_dir,
         }
     }
 
     /// Escanea y actualiza la lista de juegos
+    /// Delega la detección a GameDetector y enriquece con estado
+    /// (favoritos, tiempo de juego, etc.)
     pub async fn scan_games(&self) -> AppResult<Vec<GameInfo>> {
         let games_dir = self.config.get_games_dir().await;
-        let mut games = Vec::new();
-
-        if !games_dir.exists() {
-            return Ok(games);
-        }
-
-        let entries = std::fs::read_dir(&games_dir)?;
         
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if !path.is_dir() {
-                continue;
-            }
+        // Usar GameDetector para la detección base (eliminando duplicación)
+        let detector = crate::engine::detector::GameDetector::new();
+        let mut games = detector.scan_games(&games_dir).await?;
 
-            let name = path.file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("Unknown")
-                .to_string();
-
-            // Detectar motor del juego
-            if let Some((root, engine)) = self.detect_engine(&path).await {
-                let engine_label = self.engine_label(&engine);
-                let is_web = matches!(engine.as_str(), "MZ" | "MV" | "web");
-                let is_incomplete = matches!(engine.as_str(), "incomplete" | "renpy-incomplete");
-                
-                // Buscar portada
-                let cover = self.find_cover(&path, &root).await;
-                let has_cover = cover.is_some();
-                
-                // Verificar saves
-                let saves_dir = root.join("save");
-                let has_saves = saves_dir.exists() && 
-                    std::fs::read_dir(&saves_dir)
-                        .map(|mut d| d.next().is_some())
-                        .unwrap_or(false);
-
-                // Cargar estado del juego
-                let state = self.load_game_state(&name).await;
-
-                games.push(GameInfo {
-                    name,
-                    path: root,
-                    engine,
-                    engine_label,
-                    is_web,
-                    is_incomplete,
-                    has_cover,
-                    cover_url: if has_cover { Some(format!("/api/covers/{}", name)) } else { None },
-                    favorite: state.get("favorite").and_then(|v| v.as_bool()).unwrap_or(false),
-                    seconds: state.get("seconds").and_then(|v| v.as_u64()).unwrap_or(0),
-                    last_played: state.get("last_played").and_then(|v| v.as_u64()),
-                    has_saves,
-                });
+        // Enriquecer con estado guardado (favoritos, tiempo, etc.)
+        for game in &mut games {
+            let state = self.load_game_state(&game.name).await;
+            game.favorite = state.get("favorite").and_then(|v| v.as_bool()).unwrap_or(false);
+            game.seconds = state.get("seconds").and_then(|v| v.as_u64()).unwrap_or(0);
+            game.last_played = state.get("last_played").and_then(|v| v.as_u64());
+            
+            // Generar URL de portada
+            if game.has_cover {
+                game.cover_url = Some(format!("/api/covers/{}", game.name));
             }
         }
 
-        // Ordenar: favoritos primero, luego por última vez jugado, luego alfabéticamente
+        // Re-ordenar con favoritos y tiempo de juego
         games.sort_by(|a, b| {
             if a.is_incomplete != b.is_incomplete {
                 return b.is_incomplete.cmp(&a.is_incomplete);
@@ -162,185 +125,6 @@ impl AppState {
         }
 
         Ok(games)
-    }
-
-    /// Detecta el motor de un juego
-    async fn detect_engine(&self, path: &PathBuf) -> Option<(PathBuf, String)> {
-        // Buscar index.html (MV/MZ/Web)
-        if let Some(root) = self.find_file(path, "index.html", 5).await {
-            if root.join("js").join("rmmz_core.js").exists() {
-                return Some((root, "MZ".to_string()));
-            }
-            if root.join("js").join("rpg_core.js").exists() {
-                return Some((root, "MV".to_string()));
-            }
-            return Some((root, "web".to_string()));
-        }
-
-        // VX Ace, VX, XP
-        for (file, engine) in &[
-            ("Game.rgss3a", "VXAce"),
-            ("Game.rgss2a", "VX"),
-            ("Game.rgssad", "XP"),
-        ] {
-            if let Some(root) = self.find_file(path, file, 5).await {
-                return Some((root, engine.to_string()));
-            }
-        }
-
-        // RPG Maker 2000/2003
-        for file in &["RPG_RT.exe", "RPG_RT.ini"] {
-            if let Some(root) = self.find_file(path, file, 5).await {
-                return Some((root, "2000-2003".to_string()));
-            }
-        }
-
-        // Ren'Py
-        if let Some(_py) = self.find_glob(path, "*.py", 5).await {
-            let renpy_dir = path.join("renpy");
-            let game_dir = path.join("game");
-            if renpy_dir.exists() && game_dir.exists() {
-                return Some((path.clone(), "renpy".to_string()));
-            }
-        }
-
-        // VX Ace/VX/XP (archivos de scripts)
-        for (file, engine) in &[
-            ("Scripts.rvdata2", "VXAce"),
-            ("Scripts.rvdata", "VX"),
-            ("Scripts.rxdata", "XP"),
-        ] {
-            if let Some(root) = self.find_file(path, file, 5).await {
-                return Some((root, engine.to_string()));
-            }
-        }
-
-        // Incompletos
-        if self.find_file(path, "System.json", 5).await.is_some() ||
-           self.find_file(path, "Map001.json", 5).await.is_some() {
-            return Some((path.clone(), "incomplete".to_string()));
-        }
-
-        None
-    }
-
-    /// Busca un archivo en el árbol de directorios
-    async fn find_file(&self, root: &PathBuf, name: &str, max_depth: usize) -> Option<PathBuf> {
-        let root = root.clone();
-        let name = name.to_string();
-        
-        tokio::task::spawn_blocking(move || {
-            use std::fs;
-            
-            fn walk(current: &PathBuf, target: &str, depth: usize, max: usize) -> Option<PathBuf> {
-                if depth > max {
-                    return None;
-                }
-                
-                let entries = fs::read_dir(current).ok()?;
-                for entry in entries.flatten() {
-                    let path = entry.path();
-                    if path.is_file() && path.file_name().and_then(|n| n.to_str()) == Some(target) {
-                        return Some(current.to_path_buf());
-                    }
-                    if path.is_dir() {
-                        if let Some(found) = walk(&path, target, depth + 1, max) {
-                            return Some(found);
-                        }
-                    }
-                }
-                None
-            }
-            
-            walk(&root, &name, 0, max_depth)
-        })
-        .await
-        .ok()
-        .flatten()
-    }
-
-    /// Busca archivos por patrón glob
-    async fn find_glob(&self, root: &PathBuf, pattern: &str, max_depth: usize) -> Option<PathBuf> {
-        let root = root.clone();
-        let pattern = pattern.to_string();
-        
-        tokio::task::spawn_blocking(move || {
-            use std::fs;
-            
-            fn walk(current: &PathBuf, pat: &str, depth: usize, max: usize) -> Option<PathBuf> {
-                if depth > max {
-                    return None;
-                }
-                
-                let entries = fs::read_dir(current).ok()?;
-                for entry in entries.flatten() {
-                    let path = entry.path();
-                    if path.is_file() {
-                        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                            // Simple glob matching (support *)
-                            let pattern_parts: Vec<&str> = pat.split('*').collect();
-                            if pattern_parts.len() == 2 {
-                                let prefix = pattern_parts[0];
-                                let suffix = pattern_parts[1];
-                                if name.starts_with(prefix) && name.ends_with(suffix) {
-                                    return Some(path);
-                                }
-                            }
-                        }
-                    }
-                    if path.is_dir() {
-                        if let Some(found) = walk(&path, pat, depth + 1, max) {
-                            return Some(found);
-                        }
-                    }
-                }
-                None
-            }
-            
-            walk(&root, &pattern, 0, max_depth)
-        })
-        .await
-        .ok()
-        .flatten()
-    }
-
-    /// Busca la portada de un juego
-    async fn find_cover(&self, game_top: &PathBuf, root: &PathBuf) -> Option<PathBuf> {
-        let candidates = vec![
-            game_top.join("cover.png"),
-            game_top.join("cover.jpg"),
-            game_top.join("cover.webp"),
-            root.join("icon").join("icon.png"),
-            root.join("pictures").join("title.png"),
-            root.join("system").join("Title.png"),
-            root.join("system").join("title.png"),
-            root.join("game").join("gui").join("main_menu.png"),
-            root.join("game").join("gui").join("game_menu.png"),
-        ];
-
-        for cand in candidates {
-            if cand.exists() {
-                return Some(cand);
-            }
-        }
-
-        None
-    }
-
-    /// Obtiene la etiqueta del motor
-    fn engine_label(&self, engine: &str) -> String {
-        match engine {
-            "MZ" => "RPG Maker MZ".to_string(),
-            "MV" => "RPG Maker MV".to_string(),
-            "web" => "Web (MV/MZ)".to_string(),
-            "2000-2003" => "RPG Maker 2000/2003".to_string(),
-            "renpy" => "Ren'Py".to_string(),
-            "VXAce" => "RPG Maker VX Ace".to_string(),
-            "VX" => "RPG Maker VX".to_string(),
-            "XP" => "RPG Maker XP".to_string(),
-            "incomplete" => "Descarga incompleta".to_string(),
-            _ => engine.to_string(),
-        }
     }
 
     /// Carga el estado de un juego
@@ -451,6 +235,17 @@ impl AppState {
         let mut current = self.session.write().await;
         *current = session;
     }
+
+    /// Obtiene el servidor HTTP activo
+    pub async fn get_server(&self) -> Option<ActiveServer> {
+        self.server.read().await.clone()
+    }
+
+    /// Establece el servidor HTTP activo
+    pub async fn set_server(&self, server: Option<ActiveServer>) {
+        let mut current = self.server.write().await;
+        *current = server;
+    }
 }
 
 impl Clone for AppState {
@@ -459,6 +254,7 @@ impl Clone for AppState {
             config: self.config.clone(),
             games: Arc::clone(&self.games),
             session: Arc::clone(&self.session),
+            server: Arc::clone(&self.server),
             data_dir: self.data_dir.clone(),
             games_dir: self.games_dir.clone(),
         }

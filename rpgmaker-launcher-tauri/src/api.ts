@@ -1,9 +1,9 @@
 // ============================================================
-//  RPG Maker Launcher - API Client (Tauri IPC + HTTP Fallback)
+//  RPG Maker Launcher - API Client (Tauri IPC Native)
 // ============================================================
 // Cliente API que utiliza Tauri's invoke() para comunicación
-// IPC nativa con el backend Rust. Incluye fallback a HTTP
-// para compatibilidad con modo desarrollo.
+// IPC nativa con el backend Rust. Solo usa HTTP fallback para
+// funcionalidad que aún no está migrada a Rust.
 // ============================================================
 
 // Detectar si estamos en Tauri
@@ -13,7 +13,6 @@ const isTauri = !!(window as any).__TAURI_INTERNALS__;
 let invoke: ((cmd: string, args?: Record<string, any>) => Promise<any>) | null = null;
 
 if (isTauri) {
-  // Dynamic import para Tauri
   import('@tauri-apps/api/core').then((module) => {
     invoke = module.invoke;
   });
@@ -119,16 +118,12 @@ class ApiClient {
   private useTauri: boolean = isTauri;
 
   constructor() {
-    // __API_BASE__ is injected by Tauri's initialization_script in main.rs
-    // before any page JS runs, so it's always available in production.
     const w = window as any;
     if (w.__API_BASE__) {
       this.baseUrl = w.__API_BASE__;
     } else if (window.location.port === "5173") {
-      // Vite dev mode: Python server must be running separately.
       this.baseUrl = "http://127.0.0.1:38915";
     } else {
-      // Fallback: try same origin (won't work with tauri:// but safe to attempt)
       this.baseUrl = "http://127.0.0.1:38915";
     }
   }
@@ -182,11 +177,15 @@ class ApiClient {
 
   public async launchGame(name: string, viewer: 'webkit' | 'browser' = 'webkit'): Promise<{ ok: boolean; port?: number; engine?: string }> {
     if (this.useTauri && invoke) {
-      // For now, use HTTP for game launching as it requires server management
-      // TODO: Implement native game launching in Rust
-      return this.request('/api/games/launch', {
-        method: 'POST',
-        body: JSON.stringify({ name, viewer }),
+      // Need game path and engine - detect first
+      const detectResult = await this.invokeTauri<{ ok: boolean; root: string; engine: string }>('detect_game_engine', { gamePath: name });
+      if (!detectResult.ok) {
+        throw new Error('No se pudo detectar el juego');
+      }
+      return this.invokeTauri<{ ok: boolean; port?: number; engine?: string }>('launch_game', {
+        gameName: name,
+        gamePath: detectResult.root,
+        engine: detectResult.engine,
       });
     }
     return this.request('/api/games/launch', {
@@ -215,11 +214,7 @@ class ApiClient {
   // Scanning & Installation
   public async rescan(autoDelete: boolean = false): Promise<{ extracted: string[]; errors: string[]; games: Game[] }> {
     if (this.useTauri && invoke) {
-      // For now, use HTTP for rescan
-      return this.request('/api/games/rescan', {
-        method: 'POST',
-        body: JSON.stringify({ auto_delete: autoDelete }),
-      });
+      return this.invokeTauri<{ extracted: string[]; errors: string[]; games: Game[] }>('rescan_games', { autoDelete });
     }
     return this.request('/api/games/rescan', {
       method: 'POST',
@@ -229,11 +224,7 @@ class ApiClient {
 
   public async installZips(paths: string[], autoDelete: boolean = false): Promise<{ copied: string[]; skipped: string[]; extracted: string[]; games: Game[] }> {
     if (this.useTauri && invoke) {
-      // For now, use HTTP for zip installation
-      return this.request('/api/games/install', {
-        method: 'POST',
-        body: JSON.stringify({ paths, auto_delete: autoDelete }),
-      });
+      return this.invokeTauri<{ copied: string[]; skipped: string[]; extracted: string[]; games: Game[] }>('install_zips', { paths, autoDelete });
     }
     return this.request('/api/games/install', {
       method: 'POST',
@@ -244,18 +235,21 @@ class ApiClient {
   // Plugins
   public async getPlugins(game: string): Promise<{ plugins: PluginItem[]; has_backup: boolean }> {
     if (this.useTauri && invoke) {
-      // For now, use HTTP for plugins
-      return this.request(`/api/plugins?game=${encodeURIComponent(game)}`);
+      return this.invokeTauri<{ plugins: PluginItem[]; has_backup: boolean }>('get_plugins', { gamePath: game });
     }
     return this.request(`/api/plugins?game=${encodeURIComponent(game)}`);
   }
 
   public async togglePlugins(game: string, params: { names?: string[]; status?: boolean; all?: boolean; action?: 'restore' }): Promise<any> {
     if (this.useTauri && invoke) {
-      // For now, use HTTP for plugins toggle
-      return this.request('/api/plugins/toggle', {
-        method: 'POST',
-        body: JSON.stringify({ game, ...params }),
+      if (params.action === 'restore') {
+        return this.invokeTauri<any>('restore_plugins', { gamePath: game });
+      }
+      return this.invokeTauri<any>('toggle_plugins', {
+        gamePath: game,
+        names: params.names || [],
+        status: params.status ?? true,
+        all: params.all ?? false,
       });
     }
     return this.request('/api/plugins/toggle', {
@@ -267,26 +261,24 @@ class ApiClient {
   // Saves
   public async getSaves(game: string): Promise<{ saves: SaveItem[]; count: number }> {
     if (this.useTauri && invoke) {
-      // For now, use HTTP for saves
-      return this.request(`/api/saves?game=${encodeURIComponent(game)}`);
+      return this.invokeTauri<{ saves: SaveItem[]; count: number }>('get_saves', { gamePath: game });
     }
     return this.request(`/api/saves?game=${encodeURIComponent(game)}`);
   }
 
   public async getSaveContent(game: string, file: string): Promise<SaveContent> {
     if (this.useTauri && invoke) {
-      // For now, use HTTP for save content
-      return this.request(`/api/saves/content?game=${encodeURIComponent(game)}&file=${encodeURIComponent(file)}`);
+      return this.invokeTauri<SaveContent>('get_save_content', { gamePath: game, saveName: file });
     }
     return this.request(`/api/saves/content?game=${encodeURIComponent(game)}&file=${encodeURIComponent(file)}`);
   }
 
   public async saveSaveContent(game: string, file: string, data: any): Promise<{ ok: boolean; message: string }> {
     if (this.useTauri && invoke) {
-      // For now, use HTTP for save content update
-      return this.request('/api/saves/content', {
-        method: 'POST',
-        body: JSON.stringify({ game, file, ...data }),
+      return this.invokeTauri<{ ok: boolean; message: string }>('update_save_content', {
+        gamePath: game,
+        saveName: file,
+        updates: data,
       });
     }
     return this.request('/api/saves/content', {
@@ -297,10 +289,9 @@ class ApiClient {
 
   public async backupSaves(game: string): Promise<{ ok: boolean; backup_path: string; timestamp: string }> {
     if (this.useTauri && invoke) {
-      // For now, use HTTP for backup
-      return this.request('/api/saves/backup', {
-        method: 'POST',
-        body: JSON.stringify({ game }),
+      return this.invokeTauri<{ ok: boolean; backup_path: string; timestamp: string }>('backup_save', {
+        gamePath: game,
+        saveName: 'all',
       });
     }
     return this.request('/api/saves/backup', {
@@ -312,8 +303,10 @@ class ApiClient {
   // Data Browser
   public async getData(game: string, cat: string): Promise<{ category: string; items: DataItem[]; count: number }> {
     if (this.useTauri && invoke) {
-      // For now, use HTTP for data
-      return this.request(`/api/data?game=${encodeURIComponent(game)}&cat=${encodeURIComponent(cat)}`);
+      return this.invokeTauri<{ category: string; items: DataItem[]; count: number }>('get_data', {
+        gamePath: game,
+        category: cat,
+      });
     }
     return this.request(`/api/data?game=${encodeURIComponent(game)}&cat=${encodeURIComponent(cat)}`);
   }
@@ -339,10 +332,14 @@ class ApiClient {
   // Decrypt
   public async decrypt(game: string, recreate: boolean = false): Promise<{ ok: boolean; output_dir: string; log?: string }> {
     if (this.useTauri && invoke) {
-      // For now, use HTTP for decrypt
-      return this.request('/api/decrypt', {
-        method: 'POST',
-        body: JSON.stringify({ game, recreate }),
+      // Need encryption key - read from project
+      const keyResult = await this.invokeTauri<string | null>('read_encryption_key', { gamePath: game });
+      if (!keyResult) {
+        throw new Error('No se encontró la clave de encriptación');
+      }
+      return this.invokeTauri<{ success_count: number; failed_count: number; output_dir: string; log: string }>('decrypt_game_assets', {
+        gamePath: game,
+        encryptionKey: keyResult,
       });
     }
     return this.request('/api/decrypt', {
@@ -354,11 +351,7 @@ class ApiClient {
   // Tools
   public async setupMods(game: string): Promise<{ ok: boolean; mods_dir: string; created: boolean }> {
     if (this.useTauri && invoke) {
-      // For now, use HTTP for mods setup
-      return this.request('/api/tools/mods', {
-        method: 'POST',
-        body: JSON.stringify({ game }),
-      });
+      return this.invokeTauri<{ ok: boolean; mods_dir: string; created: boolean }>('setup_mods', { gamePath: game });
     }
     return this.request('/api/tools/mods', {
       method: 'POST',
@@ -368,14 +361,14 @@ class ApiClient {
 
   public async openTarget(target: string): Promise<{ ok: boolean }> {
     if (this.useTauri && invoke) {
-      // Use Tauri shell plugin for opening URLs/folders
       try {
         await import('@tauri-apps/plugin-shell').then(({ open }) => {
           open(target);
         });
         return { ok: true };
       } catch (e) {
-        // Fallback to HTTP
+        // Fallback to Rust command
+        return this.invokeTauri<{ ok: boolean }>('open_target', { target });
       }
     }
     return this.request(`/api/open?target=${encodeURIComponent(target)}`);
@@ -384,8 +377,7 @@ class ApiClient {
   // Updates
   public async checkUpdate(): Promise<{ update_available: boolean; tag_name: string; current_version: string; url: string; error?: string }> {
     if (this.useTauri && invoke) {
-      // For now, use HTTP for update check
-      return this.request('/api/update/check');
+      return this.invokeTauri<{ update_available: boolean; tag_name: string; current_version: string; url: string }>('check_update');
     }
     return this.request('/api/update/check');
   }
@@ -411,8 +403,7 @@ class ApiClient {
   // Status
   public async getStatus(): Promise<any> {
     if (this.useTauri && invoke) {
-      // For now, use HTTP for status
-      return this.request('/api/status');
+      return this.invokeTauri<any>('get_status');
     }
     return this.request('/api/status');
   }
@@ -427,8 +418,15 @@ class ApiClient {
     if (this.useTauri && invoke) {
       return this.invokeTauri<{ ok: boolean; root: string; engine: string; engineLabel: string; isWeb: boolean; isIncomplete: boolean }>('detect_game_engine', { gamePath });
     }
-    // Fallback: no detection in HTTP mode
     return { ok: false, root: gamePath, engine: '', engineLabel: '', isWeb: false, isIncomplete: false };
+  }
+
+  // Cover Images
+  public async getCoverImage(gameName: string, gamePath: string): Promise<{ found: boolean; data?: number[]; mime_type: string }> {
+    if (this.useTauri && invoke) {
+      return this.invokeTauri<{ found: boolean; data?: number[]; mime_type: string }>('get_cover_image', { gameName, gamePath });
+    }
+    return { found: false, mime_type: '' };
   }
 
   // SSE Events (HTTP only - Tauri uses different mechanism)
@@ -439,10 +437,7 @@ class ApiClient {
     onSyncComplete?: (data: any) => void;
     onGameLaunched?: (data: any) => void;
   }): () => void {
-    // SSE only works with HTTP server
     if (!this.baseUrl || this.useTauri) {
-      // In Tauri mode, events are handled differently
-      // For now, return a no-op cleanup function
       return () => {};
     }
 

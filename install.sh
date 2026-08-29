@@ -50,8 +50,7 @@ c_log "Installing system dependencies (apt)..." \
       "Instalando dependencias del sistema (apt)..."
 $SUDO apt-get update -qq
 $SUDO apt-get install -y --no-install-recommends \
-  python3-tk python3-pil unzip ca-certificates wget curl git \
-  python3-gi gir1.2-webkit2-4.1 \
+  unzip ca-certificates wget curl git \
   build-essential cmake pkg-config ninja-build meson \
   ruby-dev \
   libsdl2-dev libsdl2-image-dev libsdl2-ttf-dev libsdl2-mixer-dev \

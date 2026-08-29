@@ -8,7 +8,6 @@
 use std::path::PathBuf;
 use tauri::command;
 
-use crate::core::error::AppError;
 use crate::core::state::AppState;
 use crate::engine::decrypter::Decrypter;
 
@@ -54,7 +53,7 @@ pub async fn decrypt_game_assets(
     .map_err(|_| "Error en el thread pool".to_string())?;
 
     match result {
-        Ok((success, failed, files)) => Ok(DecryptResult {
+        Ok((success, failed, _files)) => Ok(DecryptResult {
             success_count: success,
             failed_count: failed,
             total_files: success + failed,

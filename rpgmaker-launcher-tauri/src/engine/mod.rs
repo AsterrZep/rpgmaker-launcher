@@ -7,6 +7,7 @@
 // - injector: Inyección de código en juegos NW.js
 // - process: Gestión de procesos de juegos
 // - detector: Detección de motores de juegos
+// - plugins: Gestión de plugins RPG Maker MZ/MV
 // ============================================================
 
 pub mod decrypter;
@@ -14,9 +15,6 @@ pub mod save_editor;
 pub mod injector;
 pub mod process;
 pub mod detector;
+pub mod plugins;
 
-pub use decrypter::Decrypter;
-pub use save_editor::SaveEditor;
-pub use injector::InjectionEngine;
-pub use process::ProcessManager;
-pub use detector::GameDetector;
+// Modules exposed via crate paths
