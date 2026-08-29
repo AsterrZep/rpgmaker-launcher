@@ -1,75 +1,9 @@
 {
-  "backend/__init__.py": {
-    "mtime": 1788015358.1159923,
-    "seen": 1788018573.098149,
-    "ast_hash": "895a22147580ac9ebb6866de6c11f1d0",
-    "semantic_hash": "895a22147580ac9ebb6866de6c11f1d0"
-  },
-  "backend/__main__.py": {
-    "mtime": 1788015788.6675549,
-    "seen": 1788018573.0981627,
-    "ast_hash": "f9a15e5e8aed1e7336feb57ec8880b57",
-    "semantic_hash": "f9a15e5e8aed1e7336feb57ec8880b57"
-  },
-  "backend/api.py": {
-    "mtime": 1788015718.4122016,
-    "seen": 1788018573.0981672,
-    "ast_hash": "0bc92b7b03c1eeab260f2251ebe6e397",
-    "semantic_hash": "0bc92b7b03c1eeab260f2251ebe6e397"
-  },
-  "backend/config.py": {
-    "mtime": 1788015407.1542554,
-    "seen": 1788018573.0981705,
-    "ast_hash": "248071fe73f3690fa5032dbb53a404d7",
-    "semantic_hash": "248071fe73f3690fa5032dbb53a404d7"
-  },
-  "backend/decrypter.py": {
-    "mtime": 1788015440.6197696,
-    "seen": 1788018573.0981736,
-    "ast_hash": "5d9304527f85790b0a402726893055e2",
-    "semantic_hash": "5d9304527f85790b0a402726893055e2"
-  },
-  "backend/plugins.py": {
-    "mtime": 1788015474.2602913,
-    "seen": 1788018573.0981765,
-    "ast_hash": "fb908efca6ea0df296d88e9afb96267f",
-    "semantic_hash": "fb908efca6ea0df296d88e9afb96267f"
-  },
-  "backend/saveedit.py": {
-    "mtime": 1788015508.9688065,
-    "seen": 1788018573.0981798,
-    "ast_hash": "82d0d17810709171654cef5455cee216",
-    "semantic_hash": "82d0d17810709171654cef5455cee216"
-  },
-  "backend/server.py": {
-    "mtime": 1788015582.232802,
-    "seen": 1788018573.0981817,
-    "ast_hash": "47b15f2637aed98e006eec85db5204e5",
-    "semantic_hash": "47b15f2637aed98e006eec85db5204e5"
-  },
-  "backend/sync.py": {
-    "mtime": 1788015534.0744598,
-    "seen": 1788018573.098184,
-    "ast_hash": "c67c2914b2fd1221c945b81822c6c97d",
-    "semantic_hash": "c67c2914b2fd1221c945b81822c6c97d"
-  },
-  "backend/utils.py": {
-    "mtime": 1788015374.050749,
-    "seen": 1788018573.0981865,
-    "ast_hash": "0a8eac7f4baf4c401263fad9a5d6812a",
-    "semantic_hash": "0a8eac7f4baf4c401263fad9a5d6812a"
-  },
-  "backend/webview.py": {
-    "mtime": 1788015766.2584105,
-    "seen": 1788018573.0981886,
-    "ast_hash": "e306e36f8b7c7b336ebd410e65502ea5",
-    "semantic_hash": "e306e36f8b7c7b336ebd410e65502ea5"
-  },
   "install.sh": {
-    "mtime": 1787875675.0624187,
-    "seen": 1788018573.098191,
-    "ast_hash": "85c8d87b436422044338a4ca7ec9f8b8",
-    "semantic_hash": "85c8d87b436422044338a4ca7ec9f8b8"
+    "mtime": 1788024238.3826687,
+    "seen": 1788032440.3515832,
+    "ast_hash": "d1467d86f2ee96925b3738c015bf9bd6",
+    "semantic_hash": ""
   },
   "packaging/build_flatpak_tauri.sh": {
     "mtime": 1787878235.4915311,
@@ -95,35 +29,17 @@
     "ast_hash": "7c69986c6b8ed9b410a42e7be380f6f4",
     "semantic_hash": "7c69986c6b8ed9b410a42e7be380f6f4"
   },
-  "rpgmaker-config.py": {
-    "mtime": 1788015804.8870025,
-    "seen": 1788018573.0982008,
-    "ast_hash": "41af1f859b6bcc967a99b3542914d025",
-    "semantic_hash": "41af1f859b6bcc967a99b3542914d025"
-  },
-  "rpgmaker-decrypter.py": {
-    "mtime": 1788015819.3782263,
-    "seen": 1788018573.0982025,
-    "ast_hash": "cd5b50fce3982f061ee6875acbdba941",
-    "semantic_hash": "cd5b50fce3982f061ee6875acbdba941"
-  },
   "rpgmaker-gamepad.js": {
     "mtime": 1787693469.388948,
     "seen": 1788018573.0982041,
     "ast_hash": "d108dadccb19c870690d61e8cc355881",
     "semantic_hash": "d108dadccb19c870690d61e8cc355881"
   },
-  "rpgmaker-launcher-html.py": {
-    "mtime": 1788015888.9472995,
-    "seen": 1788018573.0982058,
-    "ast_hash": "7631763673b334a882c09e58c8752e8b",
-    "semantic_hash": "7631763673b334a882c09e58c8752e8b"
-  },
   "rpgmaker-launcher-tauri/Cargo.toml": {
-    "mtime": 1788018215.4904015,
-    "seen": 1788018573.0982075,
-    "ast_hash": "68314279d4ce3a336b61e655eda39302",
-    "semantic_hash": "68314279d4ce3a336b61e655eda39302"
+    "mtime": 1788024622.0506144,
+    "seen": 1788032440.3520865,
+    "ast_hash": "2a2dc17570ed63bad1ce5fff8574aacb",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/build.rs": {
     "mtime": 1787693469.3909478,
@@ -149,17 +65,11 @@
     "ast_hash": "c735540bb63936a123bc867d950c9f69",
     "semantic_hash": "c735540bb63936a123bc867d950c9f69"
   },
-  "rpgmaker-launcher-tauri/scripts/sync-backend.sh": {
-    "mtime": 1787719440.137436,
-    "seen": 1788018573.0982168,
-    "ast_hash": "8a58d161216a4a42e26cc5af1fad3a37",
-    "semantic_hash": "8a58d161216a4a42e26cc5af1fad3a37"
-  },
   "rpgmaker-launcher-tauri/src/api.ts": {
-    "mtime": 1788018107.8185594,
-    "seen": 1788018573.0982184,
-    "ast_hash": "290068d18ec74171ab5b4c1aa7e1ff35",
-    "semantic_hash": "290068d18ec74171ab5b4c1aa7e1ff35"
+    "mtime": 1788023751.132649,
+    "seen": 1788032440.3522947,
+    "ast_hash": "bf3387240ac0fd655ae8735aea9aa16b",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/src/app.ts": {
     "mtime": 1787877849.7883623,
@@ -174,10 +84,10 @@
     "semantic_hash": "31fa9272e870ef8d259709301178b84e"
   },
   "rpgmaker-launcher-tauri/src/commands/decrypter_cmd.rs": {
-    "mtime": 1788016387.7864192,
-    "seen": 1788018573.0982234,
-    "ast_hash": "368997e6e466624fd2450a04e104f765",
-    "semantic_hash": "368997e6e466624fd2450a04e104f765"
+    "mtime": 1788020785.3184652,
+    "seen": 1788032440.3524742,
+    "ast_hash": "b6a626d83e86155449c144547ceb7c5d",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/src/commands/event_cmd.rs": {
     "mtime": 1788017369.2784207,
@@ -186,28 +96,28 @@
     "semantic_hash": "da2f3c389710bc383236e8097e03478f"
   },
   "rpgmaker-launcher-tauri/src/commands/game_cmd.rs": {
-    "mtime": 1788018074.7536201,
-    "seen": 1788018573.0982275,
-    "ast_hash": "d6f95d9e1f15a7245dad861e91b9d46f",
-    "semantic_hash": "d6f95d9e1f15a7245dad861e91b9d46f"
+    "mtime": 1788023885.790182,
+    "seen": 1788032440.3525567,
+    "ast_hash": "2551eab8751d399695d679a052582abd",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/src/commands/mod.rs": {
-    "mtime": 1788017349.2066429,
-    "seen": 1788018573.0982292,
-    "ast_hash": "103b537f9ab3dd007e879b8be60e6ff9",
-    "semantic_hash": "103b537f9ab3dd007e879b8be60e6ff9"
+    "mtime": 1788023488.222384,
+    "seen": 1788032440.3525603,
+    "ast_hash": "ecb26523210fdf00b17a64b4fb3de94d",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/src/commands/save_cmd.rs": {
-    "mtime": 1788016409.8107486,
-    "seen": 1788018573.098231,
-    "ast_hash": "3a56c05dd67755c5d56d388347e8054d",
-    "semantic_hash": "3a56c05dd67755c5d56d388347e8054d"
+    "mtime": 1788020834.701918,
+    "seen": 1788032440.3525655,
+    "ast_hash": "3aeced9dfa27e62a4afd379b2253ad3d",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/src/commands/sync_cmd.rs": {
-    "mtime": 1788016495.1099005,
-    "seen": 1788018573.0982327,
-    "ast_hash": "6fb5ddbea3084547551876c030670867",
-    "semantic_hash": "6fb5ddbea3084547551876c030670867"
+    "mtime": 1788019889.691053,
+    "seen": 1788032440.3525684,
+    "ast_hash": "c96e20b460be1c1665dc8eac20caa4f6",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/src/components/ActionBar.ts": {
     "mtime": 1787693469.3919477,
@@ -294,28 +204,28 @@
     "semantic_hash": "d947463cade13b1ba452bd23d94a03bc"
   },
   "rpgmaker-launcher-tauri/src/core/config.rs": {
-    "mtime": 1788016035.2397206,
-    "seen": 1788018573.098271,
-    "ast_hash": "934f6cc8ad658e48593aac32e645a080",
-    "semantic_hash": "934f6cc8ad658e48593aac32e645a080"
+    "mtime": 1788023946.5502288,
+    "seen": 1788032440.3533745,
+    "ast_hash": "4e656128b464f16b48fa551cff3e980d",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/src/core/error.rs": {
-    "mtime": 1788016010.5167055,
-    "seen": 1788018573.0982728,
-    "ast_hash": "61204f07d20f30b92f4d69aecf5f9000",
-    "semantic_hash": "61204f07d20f30b92f4d69aecf5f9000"
+    "mtime": 1788019798.9429026,
+    "seen": 1788032440.353377,
+    "ast_hash": "789b2a91031575b2abc42d9b36ee1fdb",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/src/core/mod.rs": {
-    "mtime": 1788015993.9279773,
-    "seen": 1788018573.0982747,
-    "ast_hash": "88e417203cee944cc21440f35b94b9e6",
-    "semantic_hash": "88e417203cee944cc21440f35b94b9e6"
+    "mtime": 1788022465.911355,
+    "seen": 1788032440.353379,
+    "ast_hash": "74d3a4fb3b9e14d9e843eb0f08fa5320",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/src/core/state.rs": {
-    "mtime": 1788016087.8186312,
-    "seen": 1788018573.0982769,
-    "ast_hash": "f629aeb8e7643fa2d2769b9791c2dca4",
-    "semantic_hash": "f629aeb8e7643fa2d2769b9791c2dca4"
+    "mtime": 1788023894.4480407,
+    "seen": 1788032440.353381,
+    "ast_hash": "ac6f3332d4ae28e432980305e9c22341",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/src/engine/decrypter.rs": {
     "mtime": 1788016169.4740527,
@@ -324,10 +234,10 @@
     "semantic_hash": "0ae7337fc9de3a2b78a6fb8a7e481289"
   },
   "rpgmaker-launcher-tauri/src/engine/detector.rs": {
-    "mtime": 1788018015.996744,
-    "seen": 1788018573.0982807,
-    "ast_hash": "10b52a474adb0d4aac8d01870bc45ade",
-    "semantic_hash": "10b52a474adb0d4aac8d01870bc45ade"
+    "mtime": 1788022805.2794855,
+    "seen": 1788032440.3534276,
+    "ast_hash": "03b359c1a57d594c42db3e7f3f89c069",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/src/engine/injector.rs": {
     "mtime": 1788016260.6381695,
@@ -336,22 +246,22 @@
     "semantic_hash": "5460bf1ea29dbfb0a484ba7d2462ffde"
   },
   "rpgmaker-launcher-tauri/src/engine/mod.rs": {
-    "mtime": 1788018046.9216762,
-    "seen": 1788018573.098284,
-    "ast_hash": "b64ffe01b92456def8da642dc0fc16aa",
-    "semantic_hash": "b64ffe01b92456def8da642dc0fc16aa"
+    "mtime": 1788020744.139654,
+    "seen": 1788032440.3534677,
+    "ast_hash": "ce52e97d735db8acb23d6c5c43b14adc",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/src/engine/process.rs": {
-    "mtime": 1788016333.8995457,
-    "seen": 1788018573.0982862,
-    "ast_hash": "96d334187c8557bd4671edc9f436fb58",
-    "semantic_hash": "96d334187c8557bd4671edc9f436fb58"
+    "mtime": 1788024384.9073422,
+    "seen": 1788032440.3534715,
+    "ast_hash": "0c4efe02d7a51594b35ee0139d813aac",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/src/engine/save_editor.rs": {
-    "mtime": 1788016229.4645033,
-    "seen": 1788018573.0982878,
-    "ast_hash": "733d0f8547930d01fdd497eeac0a2fe4",
-    "semantic_hash": "733d0f8547930d01fdd497eeac0a2fe4"
+    "mtime": 1788022690.4050953,
+    "seen": 1788032440.3534727,
+    "ast_hash": "e1c6fa3e7bd7965c320af7a7f6bb7935",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/src/i18n.ts": {
     "mtime": 1787877805.4576843,
@@ -360,10 +270,10 @@
     "semantic_hash": "63e86036f6600b61d17e0867b642bd01"
   },
   "rpgmaker-launcher-tauri/src/main.rs": {
-    "mtime": 1788018097.289578,
-    "seen": 1788018573.0982916,
-    "ast_hash": "f9bdab326dc7ebe5d9414047de0b1278",
-    "semantic_hash": "f9bdab326dc7ebe5d9414047de0b1278"
+    "mtime": 1788023986.0366552,
+    "seen": 1788032440.353512,
+    "ast_hash": "fb131cb866110f1b3b3a6b765a4dbfa5",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/src/main.ts": {
     "mtime": 1787693469.392948,
@@ -378,22 +288,22 @@
     "semantic_hash": "6af538db03efb8d37e5c4fc51c4e2c59"
   },
   "rpgmaker-launcher-tauri/src/services/game_server.rs": {
-    "mtime": 1788018195.026427,
-    "seen": 1788018573.098297,
-    "ast_hash": "a25ec55a7ef1fb16b4709a05015c0946",
-    "semantic_hash": "a25ec55a7ef1fb16b4709a05015c0946"
+    "mtime": 1788023968.553905,
+    "seen": 1788032440.3535903,
+    "ast_hash": "f39c3adb7b7785be77be36939889b7ab",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/src/services/http.rs": {
-    "mtime": 1788016563.5517116,
-    "seen": 1788018573.0982988,
-    "ast_hash": "717c3d4e35208d8599eb9d2f452fd1ed",
-    "semantic_hash": "717c3d4e35208d8599eb9d2f452fd1ed"
+    "mtime": 1788022707.8884509,
+    "seen": 1788032440.3535926,
+    "ast_hash": "1ae478e2c240986e8fad100d70dc78d9",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/src/services/mod.rs": {
-    "mtime": 1788018205.7404134,
-    "seen": 1788018573.0983007,
-    "ast_hash": "526ef9b4d87123e63a975e98a0638298",
-    "semantic_hash": "526ef9b4d87123e63a975e98a0638298"
+    "mtime": 1788020761.9412165,
+    "seen": 1788032440.3535943,
+    "ast_hash": "6df2003ae9000645a7709ba8d9afac2c",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/src/services/sync.rs": {
     "mtime": 1788016535.9583948,
@@ -402,10 +312,10 @@
     "semantic_hash": "d9fc49ace74748c616209072b0fa5d85"
   },
   "rpgmaker-launcher-tauri/src/services/update.rs": {
-    "mtime": 1788016550.299561,
-    "seen": 1788018573.0983043,
-    "ast_hash": "9d30d0f9f41c0ca4ea6c4243b3814d31",
-    "semantic_hash": "9d30d0f9f41c0ca4ea6c4243b3814d31"
+    "mtime": 1788020715.4172995,
+    "seen": 1788032440.3536363,
+    "ast_hash": "34e09a3172b6b1c7b348ecd0c5f40ad5",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/tailwind.config.js": {
     "mtime": 1787693469.392948,
@@ -414,10 +324,10 @@
     "semantic_hash": "60cbd741ad307004d71274558c463ca6"
   },
   "rpgmaker-launcher-tauri/tauri.conf.json": {
-    "mtime": 1787878189.3841124,
-    "seen": 1788018573.0983074,
-    "ast_hash": "449f9a33ac12eac93b60cace5eb89336",
-    "semantic_hash": "449f9a33ac12eac93b60cace5eb89336"
+    "mtime": 1788024233.4117181,
+    "seen": 1788032440.3536718,
+    "ast_hash": "558930c3db1558553559a7506bd01901",
+    "semantic_hash": ""
   },
   "rpgmaker-launcher-tauri/tsconfig.json": {
     "mtime": 1787693469.392948,
@@ -431,12 +341,6 @@
     "ast_hash": "42e6520aa01cdde20d092ebaa7d4cd92",
     "semantic_hash": "42e6520aa01cdde20d092ebaa7d4cd92"
   },
-  "rpgmaker-plugins.py": {
-    "mtime": 1788015834.892468,
-    "seen": 1788018573.0983126,
-    "ast_hash": "f0da09913df6e70dded9a3f27a43ffad",
-    "semantic_hash": "f0da09913df6e70dded9a3f27a43ffad"
-  },
   "rpgmaker-rewind.js": {
     "mtime": 1787693469.392948,
     "seen": 1788018573.0983145,
@@ -449,41 +353,11 @@
     "ast_hash": "d40998ed1d2a329631bfb970149a82ff",
     "semantic_hash": "d40998ed1d2a329631bfb970149a82ff"
   },
-  "rpgmaker-saveedit.py": {
-    "mtime": 1788015846.5943604,
-    "seen": 1788018573.0983186,
-    "ast_hash": "30ffe3340d01466109bef080bdc7f17b",
-    "semantic_hash": "30ffe3340d01466109bef080bdc7f17b"
-  },
-  "rpgmaker-server.py": {
-    "mtime": 1788015868.6929483,
-    "seen": 1788018573.0983202,
-    "ast_hash": "60f954254848f06c612027cb9d381b1c",
-    "semantic_hash": "60f954254848f06c612027cb9d381b1c"
-  },
-  "rpgmaker-sync.py": {
-    "mtime": 1788015857.1781363,
-    "seen": 1788018573.098322,
-    "ast_hash": "0890249bfb214953d1677f666d628dd2",
-    "semantic_hash": "0890249bfb214953d1677f666d628dd2"
-  },
-  "rpgmaker-webview.py": {
-    "mtime": 1788015900.798047,
-    "seen": 1788018573.098324,
-    "ast_hash": "aa5253a14525ebb1a76c4b9180fd0013",
-    "semantic_hash": "aa5253a14525ebb1a76c4b9180fd0013"
-  },
-  "rpgmaker_api.py": {
-    "mtime": 1788015876.5904865,
-    "seen": 1788018573.098326,
-    "ast_hash": "a407de072087ab16d120cc21b09e11c0",
-    "semantic_hash": "a407de072087ab16d120cc21b09e11c0"
-  },
   "run-tauri.sh": {
-    "mtime": 1787693469.3939478,
-    "seen": 1788018573.0983276,
-    "ast_hash": "15fe6568d81e93741209cc12a2e5c431",
-    "semantic_hash": "15fe6568d81e93741209cc12a2e5c431"
+    "mtime": 1788024249.0745635,
+    "seen": 1788032440.3538024,
+    "ast_hash": "c48ddf94bfe35e33f2146878f5ff3fee",
+    "semantic_hash": ""
   },
   "tests/cheats-smoke.js": {
     "mtime": 1787693469.3939478,
@@ -508,5 +382,323 @@
     "seen": 1788018573.0983348,
     "ast_hash": "c574c0c7fd9208c5e9d3130d9345b5d7",
     "semantic_hash": "c574c0c7fd9208c5e9d3130d9345b5d7"
+  },
+  "rpgmaker-launcher-tauri/scripts/build-deb.sh": {
+    "mtime": 1788025297.5390015,
+    "seen": 1788032440.3522909,
+    "ast_hash": "a5d368ab4577b900ec746d1b4c4cf4c4",
+    "semantic_hash": ""
+  },
+  "rpgmaker-launcher-tauri/src/commands/cover_cmd.rs": {
+    "mtime": 1788023434.908163,
+    "seen": 1788032440.3524647,
+    "ast_hash": "35ca733ddd7b0f54e5e574125a447842",
+    "semantic_hash": ""
+  },
+  "rpgmaker-launcher-tauri/src/commands/plugins_cmd.rs": {
+    "mtime": 1788019975.5401917,
+    "seen": 1788032440.352563,
+    "ast_hash": "3d96f02caea0a38ef4c055a5f9567419",
+    "semantic_hash": ""
+  },
+  "rpgmaker-launcher-tauri/src/commands/tools_cmd.rs": {
+    "mtime": 1788023663.52257,
+    "seen": 1788032440.3525703,
+    "ast_hash": "88ddd4d55266d3700e995659e18bc6a7",
+    "semantic_hash": ""
+  },
+  "rpgmaker-launcher-tauri/src/core/utils.rs": {
+    "mtime": 1788023924.1905694,
+    "seen": 1788032440.3533828,
+    "ast_hash": "3a6ab226dda51205728493ae499e10f9",
+    "semantic_hash": ""
+  },
+  "rpgmaker-launcher-tauri/src/engine/plugins.rs": {
+    "mtime": 1788022044.542066,
+    "seen": 1788032440.3534694,
+    "ast_hash": "4c721deccbcdf834822956d2bd625483",
+    "semantic_hash": ""
+  },
+  "skills-lock.json": {
+    "mtime": 1788022309.8128092,
+    "seen": 1788032440.3538048,
+    "ast_hash": "b7cb069e724464e1081f373748cf4012",
+    "semantic_hash": ""
+  },
+  ".agents/skills/rust-best-practices/SKILL.md": {
+    "mtime": 1788022296.5894969,
+    "seen": 1788032440.3541355,
+    "ast_hash": "bb2f4eeb88bc12e4ffcc3ed80208450a",
+    "semantic_hash": ""
+  },
+  ".agents/skills/rust-best-practices/references/chapter_01.md": {
+    "mtime": 1788022296.5904968,
+    "seen": 1788032440.354138,
+    "ast_hash": "044c43188adb9baf772043f96952075b",
+    "semantic_hash": ""
+  },
+  ".agents/skills/rust-best-practices/references/chapter_02.md": {
+    "mtime": 1788022296.5904968,
+    "seen": 1788032440.3541396,
+    "ast_hash": "1da19efbf2536818cbdfd67fabefeaa2",
+    "semantic_hash": ""
+  },
+  ".agents/skills/rust-best-practices/references/chapter_03.md": {
+    "mtime": 1788022296.5904968,
+    "seen": 1788032440.3541412,
+    "ast_hash": "5ac286d83e87a66a02eae3fe6f35e030",
+    "semantic_hash": ""
+  },
+  ".agents/skills/rust-best-practices/references/chapter_04.md": {
+    "mtime": 1788022296.5904968,
+    "seen": 1788032440.354143,
+    "ast_hash": "c5ceba76e237799fe7610fc2c8c900b2",
+    "semantic_hash": ""
+  },
+  ".agents/skills/rust-best-practices/references/chapter_05.md": {
+    "mtime": 1788022296.5904968,
+    "seen": 1788032440.3541446,
+    "ast_hash": "b9d3d521f2c1a50148fe7682b413cb0d",
+    "semantic_hash": ""
+  },
+  ".agents/skills/rust-best-practices/references/chapter_06.md": {
+    "mtime": 1788022296.5904968,
+    "seen": 1788032440.354146,
+    "ast_hash": "7452c0eb98700d91eb114cd3e170358c",
+    "semantic_hash": ""
+  },
+  ".agents/skills/rust-best-practices/references/chapter_07.md": {
+    "mtime": 1788022296.591497,
+    "seen": 1788032440.3541481,
+    "ast_hash": "afcb80dd9d50641404e105d5f2e5be7e",
+    "semantic_hash": ""
+  },
+  ".agents/skills/rust-best-practices/references/chapter_08.md": {
+    "mtime": 1788022296.591497,
+    "seen": 1788032440.3541498,
+    "ast_hash": "8d1d6c8c551cf6be6abb121e85f68734",
+    "semantic_hash": ""
+  },
+  ".agents/skills/rust-best-practices/references/chapter_09.md": {
+    "mtime": 1788022296.591497,
+    "seen": 1788032440.3541512,
+    "ast_hash": "2e05502e43bcd5dce0a66ea29346e21a",
+    "semantic_hash": ""
+  },
+  ".agents/skills/tauri-v2/README.md": {
+    "mtime": 1788022309.7758083,
+    "seen": 1788032440.354153,
+    "ast_hash": "c8f824e23b546c7257d07cb8b2ab11a3",
+    "semantic_hash": ""
+  },
+  ".agents/skills/tauri-v2/SKILL.md": {
+    "mtime": 1788022309.7758083,
+    "seen": 1788032440.3541548,
+    "ast_hash": "3fdbaac05db501e37208294005de8e9f",
+    "semantic_hash": ""
+  },
+  ".agents/skills/tauri-v2/references/README.md": {
+    "mtime": 1788022309.7778084,
+    "seen": 1788032440.3541565,
+    "ast_hash": "3bc2bad319d924289efa5e10f8c7d5e8",
+    "semantic_hash": ""
+  },
+  ".agents/skills/tauri-v2/references/advanced-runtime-reference.md": {
+    "mtime": 1788022309.7778084,
+    "seen": 1788032440.3541584,
+    "ast_hash": "ece2a4cb835280c5d1a68f6fc5e1b24b",
+    "semantic_hash": ""
+  },
+  ".agents/skills/tauri-v2/references/capabilities-reference.md": {
+    "mtime": 1788022309.7778084,
+    "seen": 1788032440.3541596,
+    "ast_hash": "b3b892fedaeebb8f7de64b104cc52342",
+    "semantic_hash": ""
+  },
+  ".agents/skills/tauri-v2/references/ipc-patterns.md": {
+    "mtime": 1788022309.7778084,
+    "seen": 1788032440.3541737,
+    "ast_hash": "68251a507f30383bb54c869d7290a5ee",
+    "semantic_hash": ""
+  },
+  ".agents/skills/tauri-v2/references/plugin-reference.md": {
+    "mtime": 1788022309.7778084,
+    "seen": 1788032440.3541756,
+    "ast_hash": "26ce6ad5e037397abb4bbef19d700b93",
+    "semantic_hash": ""
+  },
+  ".agents/skills/tauri-v2/references/updater-distribution-reference.md": {
+    "mtime": 1788022309.7778084,
+    "seen": 1788032440.3541772,
+    "ast_hash": "58031823239faf9334b6b098277ecda4",
+    "semantic_hash": ""
+  },
+  ".github/workflows/ci.yml": {
+    "mtime": 1787693469.385948,
+    "seen": 1788032440.354179,
+    "ast_hash": "2d56eb0afa2d9cda48edf9dc601b8b2a",
+    "semantic_hash": ""
+  },
+  ".github/workflows/release.yml": {
+    "mtime": 1787693469.385948,
+    "seen": 1788032440.3541803,
+    "ast_hash": "daf67e1b85175feb321a09310c429f03",
+    "semantic_hash": ""
+  },
+  "MIGRATION.md": {
+    "mtime": 1788025390.3323357,
+    "seen": 1788032440.3541815,
+    "ast_hash": "974aeb416dd9daa533114a37fd1d8753",
+    "semantic_hash": ""
+  },
+  "README.es.md": {
+    "mtime": 1787880241.4762728,
+    "seen": 1788032440.354183,
+    "ast_hash": "a1288bd7ceb609a50bd4f85999a72540",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1787880216.6666362,
+    "seen": 1788032440.3541844,
+    "ast_hash": "675d4ec35dbdde5b9f7760ef2cfa6e54",
+    "semantic_hash": ""
+  },
+  "code-launcher.html": {
+    "mtime": 1787693469.3869479,
+    "seen": 1788032440.354186,
+    "ast_hash": "b2319130575e15bc164d582dbf1a79a6",
+    "semantic_hash": ""
+  },
+  "docs/UI-SPEC.md": {
+    "mtime": 1787693469.3869479,
+    "seen": 1788032440.3541877,
+    "ast_hash": "876be7af89c8e9f8a677b729aa443ba4",
+    "semantic_hash": ""
+  },
+  "docs/index.html": {
+    "mtime": 1787693469.3879478,
+    "seen": 1788032440.3541894,
+    "ast_hash": "417cd10e80c1a32431d8a21f6057a0ce",
+    "semantic_hash": ""
+  },
+  "docs/itchio-long-description.html": {
+    "mtime": 1787693469.3879478,
+    "seen": 1788032440.354191,
+    "ast_hash": "2c205426067a853ed01e1be3242e0544",
+    "semantic_hash": ""
+  },
+  "docs/itchio.md": {
+    "mtime": 1787693469.3879478,
+    "seen": 1788032440.3541925,
+    "ast_hash": "c7dcf5d6f28f3742962c87ea4728024a",
+    "semantic_hash": ""
+  },
+  "graphify/GRAPH_REPORT.md": {
+    "mtime": 1787876964.0,
+    "seen": 1788032440.3541937,
+    "ast_hash": "b632f36115c4c538b7d13a56bf4de16c",
+    "semantic_hash": ""
+  },
+  "graphify/graph.html": {
+    "mtime": 1787876964.0,
+    "seen": 1788032440.354195,
+    "ast_hash": "59901706571aed2f467472c23f3289f6",
+    "semantic_hash": ""
+  },
+  "packaging/org.rpgmaker.Launcher-slim.yaml": {
+    "mtime": 1787693469.3879478,
+    "seen": 1788032440.354197,
+    "ast_hash": "a16619932443d408e1918159acfa052f",
+    "semantic_hash": ""
+  },
+  "packaging/org.rpgmaker.Launcher.tauri.yaml": {
+    "mtime": 1787693469.3879478,
+    "seen": 1788032440.3541987,
+    "ast_hash": "e248f32ac1b4feee018f9e968872faa7",
+    "semantic_hash": ""
+  },
+  "packaging/org.rpgmaker.Launcher.yaml": {
+    "mtime": 1787693469.3879478,
+    "seen": 1788032440.3542001,
+    "ast_hash": "b588f76be8862edf8d4a59d8ebd1bda1",
+    "semantic_hash": ""
+  },
+  "rpgmaker-launcher-tauri/index.html": {
+    "mtime": 1787693469.3909478,
+    "seen": 1788032440.3542016,
+    "ast_hash": "2b8821d05115f77143c853eb4f56167d",
+    "semantic_hash": ""
+  },
+  "An\u00e1lisis t\u00e9cnico y migraci\u00f3n de launcher RPG Maker.pdf": {
+    "mtime": 1788014382.0,
+    "seen": 1788032440.354205,
+    "ast_hash": "c48b6f5428345ff6a853a88dbbd9a03b",
+    "semantic_hash": ""
+  },
+  "Fotos-Github/Data.png": {
+    "mtime": 1787879180.0,
+    "seen": 1788032440.3542068,
+    "ast_hash": "239122da9e03a8fc73395e3bf808d95a",
+    "semantic_hash": ""
+  },
+  "Fotos-Github/Home-Page.png": {
+    "mtime": 1787879130.0,
+    "seen": 1788032440.354208,
+    "ast_hash": "2452bca1efe2237991f4b2f142b3d2a6",
+    "semantic_hash": ""
+  },
+  "Fotos-Github/Plugins.png": {
+    "mtime": 1787879928.0,
+    "seen": 1788032440.3542092,
+    "ast_hash": "2e43336969432e0adaba347bf9ed5ee3",
+    "semantic_hash": ""
+  },
+  "Fotos-Github/Save-Editor.png": {
+    "mtime": 1787879525.0,
+    "seen": 1788032440.3542106,
+    "ast_hash": "3edc44d6060fe0fed88d3a91619d7b11",
+    "semantic_hash": ""
+  },
+  "Fotos-Github/Save-Manager.png": {
+    "mtime": 1787879497.0,
+    "seen": 1788032440.354212,
+    "ast_hash": "795816fb1b436000429af1e817c1574d",
+    "semantic_hash": ""
+  },
+  "Fotos-Github/Save-Sync.png": {
+    "mtime": 1787879599.0,
+    "seen": 1788032440.3542137,
+    "ast_hash": "474e3005dcfad4e5f5ca6ef75ae3b16f",
+    "semantic_hash": ""
+  },
+  "docs/itchio-assets/banner-960x300.png": {
+    "mtime": 1787696063.163273,
+    "seen": 1788032440.354215,
+    "ast_hash": "112fb5654c1015a950f7320e0d84e0fc",
+    "semantic_hash": ""
+  },
+  "docs/itchio-assets/cover-630x500.png": {
+    "mtime": 1787696062.2712805,
+    "seen": 1788032440.354217,
+    "ast_hash": "729fbb3600d17cfd28cc016cd23c29c3",
+    "semantic_hash": ""
+  },
+  "rpgmaker-icon.png": {
+    "mtime": 1787693469.388948,
+    "seen": 1788032440.3542182,
+    "ast_hash": "82c8b7cee54478f30924bf86f73aabda",
+    "semantic_hash": ""
+  },
+  "rpgmaker-launcher-tauri/icons/icon.png": {
+    "mtime": 1787693469.3909478,
+    "seen": 1788032440.3542197,
+    "ast_hash": "2e213c635c194163420fa13375c722cb",
+    "semantic_hash": ""
+  },
+  "runtimes/icon.png": {
+    "mtime": 1787693469.3939478,
+    "seen": 1788032440.354221,
+    "ast_hash": "c1e87d2d3ea474e7d48e41237a6df658",
+    "semantic_hash": ""
   }
 }
