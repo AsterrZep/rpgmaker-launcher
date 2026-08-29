@@ -1,65 +1,45 @@
 #!/usr/bin/env python3
 # ============================================================
-#  RPG Maker Launcher - utilidades de edición de partidas
-#
-#  Los saves de MV/MZ son JSON comprimidos con zlib (pako,
-#  nivel 1 en MZ). Este módulo los lee/escribe manteniendo el
-#  formato compatible con el juego y hace copia de seguridad
-#  antes de sobrescribir.
+#  Wrapper: delega en backend.saveedit
 # ============================================================
+import sys
 import os
-import json
-import zlib
-import shutil
-import time
 
+# Añadir directorio padre al path para importar backend
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-def load_save(path):
-    """Lee un .rmmzsave/.rvdata2-like MV/MZ y devuelve el objeto JSON."""
-    with open(path, "rb") as fh:
-        raw = fh.read()
-    try:
-        js = zlib.decompress(raw).decode("utf-8")
-    except zlib.error:
-        # por si algún juego lo guardó sin comprimir
-        js = raw.decode("utf-8")
-    return json.loads(js)
+from backend.saveedit import *
+from backend.saveedit import __all__
 
-
-def dump_save(path, obj, backups_dir=None, game_name=None):
-    """Escribe el objeto como save MV/MZ válido.
-
-    Si se indica backups_dir, copia el archivo original a
-    <backups_dir>/<game>/save-edit-<ts>/ antes de sobrescribir.
-    """
-    if backups_dir and os.path.isfile(path):
-        ts = time.strftime("%Y%m%d-%H%M%S")
-        dest = os.path.join(backups_dir, game_name or "juego",
-                            "save-edit-" + ts)
-        os.makedirs(dest, exist_ok=True)
-        shutil.copy2(path, os.path.join(dest, os.path.basename(path)))
-    js = json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
-    tmp = path + ".tmp"
-    with open(tmp, "wb") as fh:
-        fh.write(zlib.compress(js.encode("utf-8"), 1))
-    os.replace(tmp, path)
-
-
-def summary(obj):
-    """Resumen legible del contenido del save."""
-    party = obj.get("party") or {}
-    items = party.get("_items") or {}
-    variables = ((obj.get("variables") or {}).get("_data")) or []
-    switches = ((obj.get("switches") or {}).get("_data")) or []
-    actors = obj.get("actors") or {}
-    names = []
-    for a in (actors.get("_data") or []):
-        if isinstance(a, dict) and a.get("_name"):
-            names.append(a["_name"])
-    return {
-        "gold": party.get("_gold", 0),
-        "items_kinds": len([k for k, v in items.items() if v]),
-        "variables_used": len([v for v in variables if v not in (None, 0)]),
-        "switches_on": len([s for s in switches if s is True]),
-        "actors": ", ".join(names[:6]) or "-",
-    }
+if __name__ == "__main__":
+    import argparse
+    import json
+    
+    ap = argparse.ArgumentParser(description="Editor de partidas guardadas RPG Maker")
+    sub = ap.add_subparsers(dest="cmd")
+    sub.required = True
+    
+    p = sub.add_parser("show", help="mostrar contenido de un save")
+    p.add_argument("save_file")
+    
+    p = sub.add_parser("backup", help="crear backup de un save")
+    p.add_argument("save_file")
+    p.add_argument("--game", default="juego")
+    
+    args = ap.parse_args()
+    
+    if args.cmd == "show":
+        info = get_save_info(args.save_file)
+        if info:
+            print(json.dumps(info, ensure_ascii=False, indent=2))
+        else:
+            print("Error al leer el save", file=sys.stderr)
+            sys.exit(1)
+    
+    elif args.cmd == "backup":
+        path = create_backup(args.save_file, game_name=args.game)
+        if path:
+            print("Backup creado en: %s" % path)
+        else:
+            print("Error al crear backup", file=sys.stderr)
+            sys.exit(1)
