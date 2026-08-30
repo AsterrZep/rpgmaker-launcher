@@ -3153,7 +3153,7 @@ dependencies = [
 
 [[package]]
 name = "rpgmaker-launcher-tauri"
-version = "0.9.2"
+version = "0.9.3-beta"
 dependencies = [
  "aes",
  "anyhow",

@@ -1,6 +1,6 @@
 [package]
 name = "rpgmaker-launcher-tauri"
-version = "0.9.2"
+version = "0.9.3-beta"
 edition = "2021"
 build = "build.rs"
 description = "Lanzador de juegos RPG Maker y Ren'Py para Linux"
@@ -93,7 +93,4 @@ assets = [
     ["target/release/rpgmaker-launcher-tauri", "usr/bin/rpgmaker-launcher-tauri", "755"],
     ["../rpgmaker-icon.png", "usr/share/icons/hicolor/128x128/apps/rpgmaker-launcher.png", "644"],
 ]
-deb-depends = ["unzip", "xdg-utils"]
-assets-doc = [
-    ["../README.md", "usr/share/doc/rpgmaker-launcher/README.md", "644"],
-]
+depends = ["unzip", "xdg-utils"]
