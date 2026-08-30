@@ -10,8 +10,11 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::core::error::{AppError, AppResult};
+use crate::core::models::sync::SyncResult;
+use crate::core::ports::sync_port::SyncPort;
 
 /// Servicio de sincronización
+#[derive(Clone)]
 pub struct SyncService {
     dest_folder: PathBuf,
     auto_sync: bool,
@@ -171,10 +174,16 @@ impl SyncService {
     }
 }
 
-/// Resultado de sincronización
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct SyncResult {
-    pub game: String,
-    pub count: usize,
-    pub direction: String,
+impl SyncPort for SyncService {
+    fn sync_game(&self, game_name: &str, local_saves_dir: &Path, mode: &str) -> AppResult<SyncResult> {
+        SyncService::sync_game(self, game_name, local_saves_dir, mode)
+    }
+
+    fn sync_all(&self, games: &[(String, PathBuf)], mode: &str) -> AppResult<Vec<SyncResult>> {
+        SyncService::sync_all(self, games, mode)
+    }
+
+    fn is_configured(&self) -> bool {
+        SyncService::is_configured(self)
+    }
 }

@@ -19,6 +19,7 @@ use crate::engine::detector::GameDetector;
 use crate::engine::plugins::PluginEngine;
 use crate::engine::process::ProcessManager;
 use crate::engine::save_editor::SaveEditor;
+use crate::services::sync::SyncService;
 
 /// Estado global de la aplicación
 pub struct AppState {
@@ -32,6 +33,7 @@ pub struct AppState {
     pub save_editor: Arc<SaveEditor>,
     pub plugin_engine: Arc<PluginEngine>,
     pub process_manager: Arc<ProcessManager>,
+    pub sync_service: Arc<SyncService>,
 }
 
 impl AppState {
@@ -59,6 +61,7 @@ impl AppState {
             save_editor: Arc::new(SaveEditor::new(None)),
             plugin_engine: Arc::new(PluginEngine::new()),
             process_manager: Arc::new(ProcessManager::new()),
+            sync_service: Arc::new(SyncService::new(PathBuf::new(), false)),
         }
     }
 
@@ -241,6 +244,7 @@ impl Clone for AppState {
             save_editor: Arc::clone(&self.save_editor),
             plugin_engine: Arc::clone(&self.plugin_engine),
             process_manager: Arc::clone(&self.process_manager),
+            sync_service: Arc::clone(&self.sync_service),
         }
     }
 }

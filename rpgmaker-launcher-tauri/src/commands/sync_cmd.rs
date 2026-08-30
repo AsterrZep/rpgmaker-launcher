@@ -117,27 +117,21 @@ pub async fn execute_sync(
     }
 
     let games = state.scan_games().await.map_err(|e| e.to_string())?;
-    let mut results = Vec::new();
+    let game_dirs: Vec<(String, PathBuf)> = games
+        .iter()
+        .map(|g| (g.name.clone(), g.path.join("save")))
+        .collect();
 
-    for game in &games {
-        let local_save_dir = game.path.join("save");
-        let dest_save_dir = dest_path.join(&game.name).join("save");
+    let sync_results = state.sync_service.sync_all(&game_dirs, &mode)
+        .map_err(|e| e.to_string())?;
 
-        if !local_save_dir.exists() {
-            continue;
-        }
-
-        let count = if mode == "push" {
-            push_saves(&local_save_dir, &dest_save_dir)
-        } else {
-            pull_saves(&local_save_dir, &dest_save_dir)
-        };
-
-        results.push(GameSyncResult {
-            game: game.name.clone(),
-            count,
-        });
-    }
+    let results: Vec<GameSyncResult> = sync_results
+        .iter()
+        .map(|r| GameSyncResult {
+            game: r.game.clone(),
+            count: r.count,
+        })
+        .collect();
 
     log::info!("Sincronización completada: {} ({})", mode, results.len());
     
@@ -214,65 +208,4 @@ fn count_saves(dir: &PathBuf) -> i32 {
         }
     }
     count
-}
-
-/// Copia saves locales al destino (push)
-fn push_saves(src: &PathBuf, dst: &PathBuf) -> usize {
-    if !src.exists() {
-        return 0;
-    }
-
-    let _ = std::fs::create_dir_all(dst);
-    let mut count = 0;
-
-    if let Ok(entries) = std::fs::read_dir(src) {
-        for entry in entries.flatten() {
-            let src_path = entry.path();
-            if src_path.is_file() {
-                let dst_path = dst.join(src_path.file_name().unwrap_or_default());
-                if std::fs::copy(&src_path, &dst_path).is_ok() {
-                    count += 1;
-                }
-            }
-        }
-    }
-
-    count
-}
-
-/// Copia saves del destino al local (pull)
-fn pull_saves(src: &PathBuf, dst: &PathBuf) -> usize {
-    if !src.exists() {
-        return 0;
-    }
-
-    // Crear backup previo si hay saves locales
-    if dst.exists() && count_saves(dst) > 0 {
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-
-        let backup_dir = dst.with_file_name(format!(
-            "{}-pre-pull-{}",
-            dst.file_name().and_then(|n| n.to_str()).unwrap_or("save"),
-            timestamp
-        ));
-
-        if std::fs::create_dir_all(&backup_dir).is_ok() {
-            if let Ok(entries) = std::fs::read_dir(dst) {
-            for entry in entries.flatten() {
-                let src_path = entry.path();
-                if src_path.is_file() {
-                    let dst_path = backup_dir.join(src_path.file_name().unwrap_or_default());
-                    let _ = std::fs::copy(&src_path, &dst_path);
-                }
-            }
-            log::info!("Backup pre-pull creado: {:?}", backup_dir);
-            }
-        }
-    }
-
-    // Copiar desde destino a local
-    push_saves(src, dst)
 }
