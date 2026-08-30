@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=RPG Maker Launcher
 Comment=Lanzador de juegos RPG Maker y Ren'Py
-Exec=rpgmaker-launcher-tauri
+Exec=/usr/share/rpgmaker-launcher-tauri/launch.sh
 Icon=rpgmaker-launcher
 Terminal=false
 Type=Application

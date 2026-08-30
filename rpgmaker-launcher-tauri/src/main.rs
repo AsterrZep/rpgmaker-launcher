@@ -24,7 +24,7 @@ fn main() {
     // Inicializar logger
     env_logger::init();
 
-    log::info!("RPG Maker Launcher v0.9.2 iniciando...");
+    log::info!("RPG Maker Launcher v{} iniciando...", env!("CARGO_PKG_VERSION"));
 
     // Crear estado de la aplicación
     let app_state = AppState::new();

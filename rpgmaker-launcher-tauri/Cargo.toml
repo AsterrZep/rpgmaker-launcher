@@ -93,5 +93,7 @@ assets = [
     ["target/release/rpgmaker-launcher-tauri", "usr/bin/rpgmaker-launcher-tauri", "755"],
     ["../rpgmaker-icon.png", "usr/share/icons/hicolor/128x128/apps/rpgmaker-launcher.png", "644"],
     ["../rpgmaker-launcher.desktop", "usr/share/applications/rpgmaker-launcher.desktop", "644"],
+    ["launch.sh", "usr/share/rpgmaker-launcher-tauri/launch.sh", "755"],
+    ["dist", "usr/share/rpgmaker-launcher-tauri/dist", "755"],
 ]
 depends = ["unzip", "xdg-utils"]
