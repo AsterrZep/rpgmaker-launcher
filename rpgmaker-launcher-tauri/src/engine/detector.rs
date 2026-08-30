@@ -488,7 +488,7 @@ mod tests {
         let result = detector.detect_engine(&game_dir).await;
 
         assert!(result.is_some());
-        let (root, engine) = result.unwrap();
+        let (_, engine) = result.unwrap();
         assert_eq!(engine, "MZ");
     }
 
@@ -504,7 +504,7 @@ mod tests {
         let result = detector.detect_engine(&game_dir).await;
 
         assert!(result.is_some());
-        let (root, engine) = result.unwrap();
+        let (_, engine) = result.unwrap();
         assert_eq!(engine, "XP");
     }
 

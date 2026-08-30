@@ -1,15 +1,7 @@
-// ============================================================
-//  RPG Maker Launcher - Cover Image Commands
-// ============================================================
-// Comando IPC para servir imágenes de portada de juegos.
-// Devuelve los bytes de la imagen para que el frontend la muestre.
-// ============================================================
-
 use std::path::PathBuf;
 use tauri::command;
 
 use crate::core::state::AppState;
-use crate::engine::detector::GameDetector;
 
 /// Resultado de obtener imagen de portada
 #[derive(serde::Serialize)]
@@ -28,6 +20,7 @@ pub struct CoverResult {
 /// # Arguments
 /// * `game_name` - Nombre del juego
 /// * `game_path` - Ruta al directorio del juego
+/// * `state` - Estado de la aplicación
 ///
 /// # Returns
 /// Bytes de la imagen de portada
@@ -35,7 +28,7 @@ pub struct CoverResult {
 pub async fn get_cover_image(
     game_name: String,
     game_path: String,
-    _state: tauri::State<'_, AppState>,
+    state: tauri::State<'_, AppState>,
 ) -> Result<CoverResult, String> {
     let path = PathBuf::from(&game_path);
 
@@ -43,19 +36,17 @@ pub async fn get_cover_image(
         return Err("El directorio del juego no existe".to_string());
     }
 
+    let root = state.game_detector
+        .detect_engine(&path)
+        .await
+        .map(|(r, _)| r)
+        .unwrap_or_else(|| path.clone());
+
+    let cover_path = state.game_detector
+        .find_cover(&path, &root)
+        .await;
+
     let result = tokio::task::spawn_blocking(move || {
-        let detector = GameDetector::new();
-
-        // Detectar root del juego
-        let root = tokio::runtime::Handle::current()
-            .block_on(detector.detect_engine(&path))
-            .map(|(r, _)| r)
-            .unwrap_or_else(|| path.clone());
-
-        // Buscar portada
-        let cover_path = tokio::runtime::Handle::current()
-            .block_on(detector.find_cover(&path, &root));
-
         match cover_path {
             Some(cover) => {
                 let data = std::fs::read(&cover)

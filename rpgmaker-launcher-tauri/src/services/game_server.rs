@@ -405,7 +405,7 @@ mod tests {
         assert!(port > 0);
 
         // Detener via shutdown signal
-        if let Some(mut tx) = server.shutdown_tx.take() {
+        if let Some(_tx) = server.shutdown_tx.take() {
             // El sender se consume al enviar
         }
         // Server will stop when GameServer is dropped (shutdown_tx dropped)
