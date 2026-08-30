@@ -28,6 +28,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::core::error::{AppError, AppResult};
 use crate::core::models::save::{ActorInfo, SaveFileInfo, SaveFormat, SaveInfo};
+use crate::core::ports::save_port::SavePort;
 
 /// Editor de partidas guardadas
 pub struct SaveEditor {
@@ -467,6 +468,36 @@ impl SaveEditor {
         saves.sort_by_key(|s| std::cmp::Reverse(s.last_modified.unwrap_or(0)));
 
         Ok(saves)
+    }
+}
+
+impl SavePort for SaveEditor {
+    fn detect_format(&self, path: &Path) -> SaveFormat {
+        SaveEditor::detect_format(path)
+    }
+
+    fn list_saves(&self, saves_dir: &Path) -> AppResult<Vec<SaveFileInfo>> {
+        SaveEditor::list_saves(saves_dir)
+    }
+
+    fn get_save_info(&self, path: &Path) -> AppResult<SaveInfo> {
+        self.get_save_info(path)
+    }
+
+    fn update_save(&self, path: &Path, updates: &serde_json::Value) -> AppResult<bool> {
+        self.update_save(path, updates)
+    }
+
+    fn load_mv_mz_save(&self, path: &Path) -> AppResult<serde_json::Value> {
+        self.load_mv_mz_save(path)
+    }
+
+    fn save_mv_mz_save(&self, path: &Path, data: &serde_json::Value) -> AppResult<()> {
+        self.save_mv_mz_save(path, data)
+    }
+
+    fn load_ruby_marshal_save(&self, path: &Path) -> AppResult<Vec<u8>> {
+        self.load_ruby_marshal_save(path)
     }
 }
 

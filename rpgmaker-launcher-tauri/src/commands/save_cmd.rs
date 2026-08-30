@@ -10,8 +10,8 @@ use tauri::command;
 
 use crate::core::config::ConfigManager;
 use crate::core::models::save::{SaveFileInfo, SaveInfo};
+use crate::core::ports::save_port::SavePort;
 use crate::core::state::AppState;
-use crate::engine::save_editor::SaveEditor;
 
 /// Lista de saves de un juego
 #[derive(serde::Serialize)]
@@ -31,14 +31,15 @@ pub struct SavesList {
 #[command]
 pub async fn get_saves(
     game_path: String,
-    _state: tauri::State<'_, AppState>,
+    state: tauri::State<'_, AppState>,
 ) -> Result<SavesList, String> {
     let path = PathBuf::from(&game_path);
     let saves_dir_for_count = path.join("save");
     let saves_dir_for_list = saves_dir_for_count.clone();
 
+    let save_editor = state.save_editor.clone();
     let result = tokio::task::spawn_blocking(move || {
-        SaveEditor::list_saves(&saves_dir_for_list)
+        save_editor.list_saves(&saves_dir_for_list)
     })
     .await
     .map_err(|_| "Error en el thread pool".to_string())?;
@@ -65,7 +66,7 @@ pub async fn get_saves(
 pub async fn get_save_content(
     game_path: String,
     save_name: String,
-    _state: tauri::State<'_, AppState>,
+    state: tauri::State<'_, AppState>,
 ) -> Result<SaveInfo, String> {
     let path = PathBuf::from(&game_path).join("save").join(&save_name);
 
@@ -73,8 +74,8 @@ pub async fn get_save_content(
         return Err("El archivo de save no existe".to_string());
     }
 
+    let editor = state.save_editor.clone();
     let result = tokio::task::spawn_blocking(move || {
-        let editor = SaveEditor::new(None);
         editor.get_save_info(&path)
     })
     .await
@@ -100,7 +101,7 @@ pub async fn update_save_content(
     game_path: String,
     save_name: String,
     updates: serde_json::Value,
-    _state: tauri::State<'_, AppState>,
+    state: tauri::State<'_, AppState>,
 ) -> Result<bool, String> {
     let path = PathBuf::from(&game_path).join("save").join(&save_name);
 
@@ -108,11 +109,8 @@ pub async fn update_save_content(
         return Err("El archivo de save no existe".to_string());
     }
 
-    // Obtener directorio de backups
-    let backups_dir = ConfigManager::backups_dir();
-
+    let editor = state.save_editor.clone();
     let result = tokio::task::spawn_blocking(move || {
-        let editor = SaveEditor::new(Some(backups_dir));
         editor.update_save(&path, &updates)
     })
     .await
@@ -148,12 +146,7 @@ pub async fn backup_save(
         return Err("El archivo de save no existe".to_string());
     }
 
-    let backups_dir = ConfigManager::backups_dir();
-
     let result = tokio::task::spawn_blocking(move || {
-        // create_backup es privado, copiamos el archivo directamente
-        let _editor = SaveEditor::new(Some(backups_dir));
-        // Copiar el archivo directamente como backup
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()

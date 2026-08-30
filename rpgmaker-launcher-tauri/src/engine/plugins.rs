@@ -14,6 +14,47 @@ use std::path::{Path, PathBuf};
 
 use crate::core::error::{AppError, AppResult};
 use crate::core::models::plugin::{PluginCategory, PluginInfo, PluginsStatus};
+use crate::core::ports::plugin_port::PluginPort;
+
+/// Motor de plugins (envoltorio para funciones libres del módulo)
+pub struct PluginEngine;
+
+impl PluginEngine {
+    /// Crea un nuevo motor de plugins
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl PluginPort for PluginEngine {
+    fn find_plugins_js(&self, root: &Path) -> Option<PathBuf> {
+        find_plugins_js(root)
+    }
+
+    fn load_plugins(&self, root: &Path) -> AppResult<(PathBuf, String, Vec<serde_json::Value>)> {
+        load_plugins(root)
+    }
+
+    fn save_plugins(&self, path: &Path, raw: &str, plugins: &[serde_json::Value]) -> AppResult<()> {
+        save_plugins(path, raw, plugins)
+    }
+
+    fn analyze_plugin(&self, name: &str, root: &Path) -> PluginInfo {
+        analyze_plugin(name, root)
+    }
+
+    fn get_plugins_status(&self, root: &Path) -> AppResult<PluginsStatus> {
+        get_plugins_status(root)
+    }
+
+    fn toggle_plugins(&self, path: &Path, names: &[String], status: bool, all: bool) -> AppResult<Vec<String>> {
+        toggle_plugins(path, names, status, all)
+    }
+
+    fn restore_plugins(&self, root: &Path) -> AppResult<()> {
+        restore_plugins(root)
+    }
+}
 
 // ── Patrones de API nw.js ──────────────────────────────────
 // Si un plugin usa alguno de estos, puede fallar en WebKit.

@@ -13,6 +13,7 @@ use tokio::sync::Mutex;
 
 use crate::core::error::{AppError, AppResult};
 use crate::core::models::session::ProcessStatus;
+use crate::core::ports::process_port::ProcessPort;
 
 /// Gestor de procesos de juegos
 pub struct ProcessManager {
@@ -232,6 +233,28 @@ impl ProcessManager {
         }
 
         total
+    }
+}
+
+impl ProcessPort for ProcessManager {
+    async fn launch_web_game(&self, game_name: &str, game_dir: &PathBuf, port: u16) -> AppResult<()> {
+        ProcessManager::launch_web_game(self, game_name, game_dir, port).await
+    }
+
+    async fn launch_native_game(&self, game_name: &str, game_dir: &PathBuf, engine: &str) -> AppResult<()> {
+        ProcessManager::launch_native_game(self, game_name, game_dir, engine).await
+    }
+
+    async fn stop_active_process(&self) -> AppResult<(Option<String>, Option<u64>)> {
+        ProcessManager::stop_active_process(self).await
+    }
+
+    async fn get_status(&self) -> ProcessStatus {
+        ProcessManager::get_status(self).await
+    }
+
+    async fn calculate_play_time(&self, game_name: &str, state_file: &PathBuf) -> u64 {
+        ProcessManager::calculate_play_time(self, game_name, state_file).await
     }
 }
 

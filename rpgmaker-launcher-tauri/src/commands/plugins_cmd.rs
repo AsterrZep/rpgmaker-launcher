@@ -10,8 +10,8 @@ use std::path::PathBuf;
 use tauri::command;
 
 use crate::core::models::plugin::PluginInfo;
+use crate::core::ports::plugin_port::PluginPort;
 use crate::core::state::AppState;
-use crate::engine::plugins;
 
 /// Resultado de obtener plugins
 #[derive(serde::Serialize)]
@@ -47,7 +47,7 @@ pub struct RestoreResult {
 #[command]
 pub async fn get_plugins(
     game_path: String,
-    _state: tauri::State<'_, AppState>,
+    state: tauri::State<'_, AppState>,
 ) -> Result<PluginsResult, String> {
     let path = PathBuf::from(&game_path);
 
@@ -55,7 +55,8 @@ pub async fn get_plugins(
         return Err("El directorio del juego no existe".to_string());
     }
 
-    let result = tokio::task::spawn_blocking(move || plugins::get_plugins_status(&path))
+    let plugin_engine = state.plugin_engine.clone();
+    let result = tokio::task::spawn_blocking(move || plugin_engine.get_plugins_status(&path))
         .await
         .map_err(|_| "Error en el thread pool".to_string())?;
 
@@ -86,7 +87,7 @@ pub async fn toggle_plugins(
     names: Vec<String>,
     status: bool,
     all: bool,
-    _state: tauri::State<'_, AppState>,
+    state: tauri::State<'_, AppState>,
 ) -> Result<ToggleResult, String> {
     let path = PathBuf::from(&game_path);
 
@@ -94,8 +95,9 @@ pub async fn toggle_plugins(
         return Err("El directorio del juego no existe".to_string());
     }
 
+    let plugin_engine = state.plugin_engine.clone();
     let result = tokio::task::spawn_blocking(move || {
-        plugins::toggle_plugins(&path, &names, status, all)
+        plugin_engine.toggle_plugins(&path, &names, status, all)
     })
     .await
     .map_err(|_| "Error en el thread pool".to_string())?;
@@ -125,7 +127,7 @@ pub async fn toggle_plugins(
 #[command]
 pub async fn restore_plugins(
     game_path: String,
-    _state: tauri::State<'_, AppState>,
+    state: tauri::State<'_, AppState>,
 ) -> Result<RestoreResult, String> {
     let path = PathBuf::from(&game_path);
 
@@ -133,7 +135,8 @@ pub async fn restore_plugins(
         return Err("El directorio del juego no existe".to_string());
     }
 
-    let result = tokio::task::spawn_blocking(move || plugins::restore_plugins(&path))
+    let plugin_engine = state.plugin_engine.clone();
+    let result = tokio::task::spawn_blocking(move || plugin_engine.restore_plugins(&path))
         .await
         .map_err(|_| "Error en el thread pool".to_string())?;
 

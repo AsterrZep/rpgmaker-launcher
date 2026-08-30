@@ -9,8 +9,8 @@ use std::path::{Path, PathBuf};
 use tauri::command;
 
 use crate::core::models::game::{DetectResult, GameInfo, ScanResult};
+use crate::core::ports::game_port::GamePort;
 use crate::core::state::AppState;
-use crate::engine::detector::GameDetector;
 
 /// Escanea y retorna la lista de juegos instalados
 ///
@@ -24,9 +24,7 @@ pub async fn get_games(
     state: tauri::State<'_, AppState>,
 ) -> Result<ScanResult, String> {
     let games_dir = state.config.get_games_dir().await;
-    let detector = GameDetector::new();
-    
-    let result = detector.scan_games(&games_dir).await;
+    let result = state.game_detector.scan_games(&games_dir).await;
 
     match result {
         Ok(games) => {
@@ -61,7 +59,7 @@ pub async fn launch_game(
     }
 
     // Verificar si es un juego web
-    let is_web = crate::engine::detector::GameDetector::is_web_engine(&engine);
+    let is_web = state.game_detector.is_web_engine(&engine);
 
     if is_web {
         // Detener servidor anterior si existe
@@ -72,7 +70,7 @@ pub async fn launch_game(
         }
 
         // Lanzar juego web con servidor HTTP Axum nativo
-        let port = crate::engine::detector::GameDetector::stable_port(&game_name);
+        let port = state.game_detector.stable_port(&game_name);
         
         let mut server = crate::services::game_server::GameServer::new(path.clone(), port);
         match server.start(&game_name).await {
@@ -118,11 +116,7 @@ pub async fn launch_game(
         }
     } else {
         // Lanzar juego nativo
-        let process_manager = crate::engine::process::ProcessManager::new();
-        
-        match process_manager
-            .launch_native_game(&game_name, &path, &engine)
-            .await
+        match state.process_manager.launch_native_game(&game_name, &path, &engine).await
         {
             Ok(()) => {
                 // Actualizar sesión activa
@@ -306,6 +300,7 @@ pub async fn extract_zips(
 #[command]
 pub async fn detect_game_engine(
     game_path: String,
+    state: tauri::State<'_, AppState>,
 ) -> Result<DetectResult, String> {
     let path = PathBuf::from(&game_path);
 
@@ -313,13 +308,13 @@ pub async fn detect_game_engine(
         return Err("El directorio del juego no existe".to_string());
     }
 
-    let detector = GameDetector::new();
+    let detector = &state.game_detector;
     
     match detector.detect_engine(&path).await {
         Some((root, engine)) => {
-            let engine_label = GameDetector::engine_label(&engine);
-            let is_web = GameDetector::is_web_engine(&engine);
-            let is_incomplete = GameDetector::is_incomplete(&engine);
+            let engine_label = detector.engine_label(&engine);
+            let is_web = detector.is_web_engine(&engine);
+            let is_incomplete = detector.is_incomplete(&engine);
             
             Ok(DetectResult {
                 ok: true,

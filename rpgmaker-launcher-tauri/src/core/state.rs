@@ -15,6 +15,11 @@ use super::error::AppResult;
 use super::models::game::GameInfo;
 use super::models::session::{ActiveSession, ActiveServer};
 
+use crate::engine::detector::GameDetector;
+use crate::engine::plugins::PluginEngine;
+use crate::engine::process::ProcessManager;
+use crate::engine::save_editor::SaveEditor;
+
 /// Estado global de la aplicación
 pub struct AppState {
     pub config: ConfigManager,
@@ -23,6 +28,10 @@ pub struct AppState {
     pub server: Arc<RwLock<Option<ActiveServer>>>,
     pub data_dir: PathBuf,
     pub games_dir: PathBuf,
+    pub game_detector: Arc<GameDetector>,
+    pub save_editor: Arc<SaveEditor>,
+    pub plugin_engine: Arc<PluginEngine>,
+    pub process_manager: Arc<ProcessManager>,
 }
 
 impl AppState {
@@ -46,6 +55,10 @@ impl AppState {
             server: Arc::new(RwLock::new(None)),
             data_dir,
             games_dir,
+            game_detector: Arc::new(GameDetector::new()),
+            save_editor: Arc::new(SaveEditor::new(None)),
+            plugin_engine: Arc::new(PluginEngine::new()),
+            process_manager: Arc::new(ProcessManager::new()),
         }
     }
 
@@ -56,8 +69,7 @@ impl AppState {
         let games_dir = self.config.get_games_dir().await;
         
         // Usar GameDetector para la detección base (eliminando duplicación)
-        let detector = crate::engine::detector::GameDetector::new();
-        let mut games = detector.scan_games(&games_dir).await?;
+        let mut games = self.game_detector.scan_games(&games_dir).await?;
 
         // Enriquecer con estado guardado (favoritos, tiempo, etc.)
         for game in &mut games {
@@ -225,6 +237,10 @@ impl Clone for AppState {
             server: Arc::clone(&self.server),
             data_dir: self.data_dir.clone(),
             games_dir: self.games_dir.clone(),
+            game_detector: Arc::clone(&self.game_detector),
+            save_editor: Arc::clone(&self.save_editor),
+            plugin_engine: Arc::clone(&self.plugin_engine),
+            process_manager: Arc::clone(&self.process_manager),
         }
     }
 }

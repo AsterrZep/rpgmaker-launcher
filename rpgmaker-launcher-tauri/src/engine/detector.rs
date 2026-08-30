@@ -22,6 +22,7 @@ use walkdir::WalkDir;
 
 use crate::core::error::AppResult;
 use crate::core::models::game::GameInfo;
+use crate::core::ports::game_port::GamePort;
 
 /// Profundidad máxima de búsqueda en directorios
 const MAX_DEPTH: usize = 5;
@@ -406,6 +407,40 @@ impl GameDetector {
 impl Default for GameDetector {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl GamePort for GameDetector {
+    async fn scan_games(&self, games_dir: &Path) -> AppResult<Vec<GameInfo>> {
+        GameDetector::scan_games(self, games_dir).await
+    }
+
+    async fn detect_engine(&self, path: &Path) -> Option<(PathBuf, String)> {
+        GameDetector::detect_engine(self, path).await
+    }
+
+    async fn find_cover(&self, game_top: &Path, root: &Path) -> Option<PathBuf> {
+        GameDetector::find_cover(self, game_top, root).await
+    }
+
+    fn engine_label(&self, engine: &str) -> String {
+        Self::engine_label(engine)
+    }
+
+    fn is_web_engine(&self, engine: &str) -> bool {
+        Self::is_web_engine(engine)
+    }
+
+    fn is_incomplete(&self, engine: &str) -> bool {
+        Self::is_incomplete(engine)
+    }
+
+    async fn clear_cache(&self) {
+        GameDetector::clear_cache(self).await
+    }
+
+    fn stable_port(&self, game_name: &str) -> u16 {
+        Self::stable_port(game_name)
     }
 }
 
