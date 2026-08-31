@@ -9,14 +9,15 @@
 // Detectar si estamos en Tauri
 const isTauri = !!(window as any).__TAURI_INTERNALS__;
 
-// Importar invoke de Tauri (solo en entorno Tauri)
+// Importar invoke de Tauri (solo en entorno Tauri) — awaitable para
+// evitar race condition: la app no puede llamar a invoke antes de
+// que el dynamic import haya resuelto.
 let invoke: ((cmd: string, args?: Record<string, any>) => Promise<any>) | null = null;
-
-if (isTauri) {
-  import('@tauri-apps/api/core').then((module) => {
-    invoke = module.invoke;
-  });
-}
+const invokeReady: Promise<void> | null = isTauri
+  ? import('@tauri-apps/api/core').then((module) => {
+      invoke = module.invoke;
+    })
+  : null;
 
 // ---------- Interfaces ----------
 
@@ -138,7 +139,17 @@ class ApiClient {
 
   // ---------- Tauri IPC Methods ----------
 
+  /**
+   * Espera a que el dynamic import de @tauri-apps/api/core haya resuelto.
+   * Sin esto, la primera llamada a invoke puede caer al fallback HTTP
+   * y producir "Connection refused" en modo producción.
+   */
+  public async ensureReady(): Promise<void> {
+    if (invokeReady) await invokeReady;
+  }
+
   private async invokeTauri<T>(cmd: string, args?: Record<string, any>): Promise<T> {
+    if (invokeReady) await invokeReady;
     if (!invoke) {
       throw new Error("Tauri invoke not available");
     }
@@ -330,7 +341,7 @@ class ApiClient {
   }
 
   // Decrypt
-  public async decrypt(game: string, recreate: boolean = false): Promise<{ ok: boolean; output_dir: string; log?: string }> {
+  public async decrypt(game: string, recreate: boolean = false): Promise<{ success_count: number; failed_count: number; output_dir: string; log: string }> {
     if (this.useTauri && invoke) {
       // Need encryption key - read from project
       const keyResult = await this.invokeTauri<string | null>('read_encryption_key', { gamePath: game });

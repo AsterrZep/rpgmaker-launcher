@@ -36,6 +36,9 @@ export class App {
   public async init(): Promise<void> {
     this.appRoot.className = 'flex h-screen overflow-hidden bg-background text-on-background select-none';
 
+    // 0. Esperar a que el invoke de Tauri esté listo (dynamic import)
+    await api.ensureReady();
+
     // 1. Initialize Components
     this.sidebar = new Sidebar({
       onNav: (tab) => this.handleNav(tab),

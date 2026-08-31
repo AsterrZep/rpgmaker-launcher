@@ -208,6 +208,7 @@ chmod +x install.sh
 | `general.webkit` | `false` | Use WebKit viewer by default |
 | `general.auto_delete_zip` | `false` | Delete .zip after extraction |
 | `sync.folder` | — | Sync saves to Dropbox/Syncthing/Nextcloud/USB |
+| `WEBKIT_DISABLE_COMPOSITING_MODE` | — | Set to `1` on Chrome OS / Wayland to fix `Connection refused` |
 
 ---
 
@@ -247,6 +248,28 @@ Linux is case-sensitive. If a game fails, check script paths match exactly:
 <summary><b>❌ Flatpak: "No space left on device"</b></summary>
 
 Flatpak installs the GNOME runtime (~2-3 GB). On Chrome OS or small disks, use the **`.deb`** or **`.AppImage`** instead.
+</details>
+
+<details>
+<summary><b>❌ "Could not connect to localhost: Connection refused" (Chrome OS / Wayland)</b></summary>
+
+WebKitGTK on Chrome OS (Crostini) with Wayland has a known bug where the webview compositing mode prevents loading the embedded frontend, showing `Connection refused`.
+
+**Fix:** The app automatically sets `WEBKIT_DISABLE_COMPOSITING_MODE=1` via the `.desktop` file and `launch.sh`. If you're running manually from terminal:
+
+```bash
+WEBKIT_DISABLE_COMPOSITING_MODE=1 rpgmaker-launcher
+```
+
+This environment variable is already included in:
+- The `.desktop` shortcut (app menu)
+- The `launch.sh` wrapper script
+- The `install.sh` installer
+
+**If you still see the error**, check that your WebKitGTK version is ≥ 2.44:
+```bash
+dpkg -l | grep libwebkit2gtk-4.1
+```
 </details>
 
 ---

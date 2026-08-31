@@ -6,8 +6,6 @@
 // mediante comandos IPC.
 // ============================================================
 
-// Permitir código muerto en módulos de servicios/utilidades
-// que son API pública pero no todos los paths se usan internamente
 #![allow(dead_code)]
 
 mod core;
@@ -15,22 +13,110 @@ mod engine;
 mod commands;
 mod services;
 
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::sync::Arc;
+use std::path::PathBuf;
 
 use crate::core::state::AppState;
 use crate::services::events::EventsService;
+use tauri::Manager;
+
+/// Escribe una línea al archivo de diagnóstico
+fn diag(msg: &str) {
+    let log_path = log_file_path();
+    if let Ok(mut f) = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+    {
+        let _ = writeln!(f, "[{}] {}", chrono::Local::now().format("%H:%M:%S%.3f"), msg);
+    }
+}
+
+fn log_file_path() -> PathBuf {
+    dirs()
+        .map(|d| d.join("rpgmaker-launcher.log"))
+        .unwrap_or_else(|| PathBuf::from("/tmp/rpgmaker-launcher.log"))
+}
+
+fn dirs() -> Option<PathBuf> {
+    // Intentar XDG_STATE_HOME primero, luego fallback a /tmp
+    if let Ok(state) = std::env::var("XDG_STATE_HOME") {
+        let p = PathBuf::from(state).join("rpgmaker-launcher");
+        let _ = std::fs::create_dir_all(&p);
+        return Some(p);
+    }
+    if let Ok(home) = std::env::var("HOME") {
+        let p = PathBuf::from(home).join(".local/state/rpgmaker-launcher");
+        let _ = std::fs::create_dir_all(&p);
+        return Some(p);
+    }
+    None
+}
 
 fn main() {
-    // Inicializar logger
-    env_logger::init();
+    // =====================================================
+    // DIAGNÓSTICO: Información del sistema
+    // =====================================================
+    let _ = std::fs::remove_file(log_file_path()); // Limpiar log anterior
+    diag("═══════════════════════════════════════════════");
+    diag("RPG Maker Launcher - Diagnóstico de inicio");
+    diag("═══════════════════════════════════════════════");
+
+    // Info del sistema
+    diag(&format!("Versión: {}", env!("CARGO_PKG_VERSION")));
+    diag(&format!("Binary path: {:?}", std::env::current_exe().ok()));
+    diag(&format!("CWD: {:?}", std::env::current_dir().ok()));
+    diag(&format!("OS: {}", std::env::consts::OS));
+    diag(&format!("Arch: {}", std::env::consts::ARCH));
+    diag(&format!("RUST_LOG env: {:?}", std::env::var("RUST_LOG").ok()));
+
+    // Verificar si WEBKIT_DISABLE_COMPOSITING_MODE está set (importante para Chrome OS)
+    diag(&format!("WEBKIT_DISABLE_COMPOSITING_MODE: {:?}", std::env::var("WEBKIT_DISABLE_COMPOSITING_MODE").ok()));
+    diag(&format!("WAYLAND_DISPLAY: {:?}", std::env::var("WAYLAND_DISPLAY").ok()));
+    diag(&format!("DISPLAY: {:?}", std::env::var("DISPLAY").ok()));
+    diag(&format!("XDG_SESSION_TYPE: {:?}", std::env::var("XDG_SESSION_TYPE").ok()));
+
+    // Verificar librerías del sistema
+    if let Ok(output) = std::process::Command::new("ldd")
+        .arg(std::env::current_exe().unwrap_or_default())
+        .output()
+    {
+        let libs = String::from_utf8_lossy(&output.stdout);
+        let missing: Vec<&str> = libs.lines()
+            .filter(|l| l.contains("not found"))
+            .collect();
+        if !missing.is_empty() {
+            diag(&format!("⚠️  LIBRERÍAS FALTANTES: {:?}", missing));
+        } else {
+            diag("✅ Todas las librerías del sistema OK");
+        }
+    }
+
+    // Verificar que el directorio de datos se pueda crear
+    let data_dir = dirs().unwrap_or_else(|| PathBuf::from("/tmp"));
+    diag(&format!("Data dir: {:?}", data_dir));
+
+    // =====================================================
+    // Logger normal (env_logger para stderr)
+    // =====================================================
+    env_logger::Builder::from_env(
+        env_logger::Env::default().default_filter_or("info")
+    ).init();
 
     log::info!("RPG Maker Launcher v{} iniciando...", env!("CARGO_PKG_VERSION"));
 
     // Crear estado de la aplicación
+    diag("Creando AppState...");
     let app_state = AppState::new();
-    
+    diag("✅ AppState creado");
+
     // Crear servicio de eventos
     let events_service = Arc::new(EventsService::new());
+    diag("✅ EventsService creado");
+
+    diag("Construyendo Tauri Builder...");
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -85,9 +171,15 @@ fn main() {
             commands::rescan_games,
             commands::install_zips,
         ])
-        .setup(|app| {
+        .setup(move |app| {
+            diag("Tauri setup iniciado");
+
+            // Verificar ventanas existentes
+            diag(&format!("Ventanas existentes: {}", app.webview_windows().len()));
+
             // Crear ventana principal
-            let _window = tauri::WebviewWindowBuilder::new(
+            diag("Creando ventana principal con WebviewUrl::App(\"index.html\")...");
+            let window = tauri::WebviewWindowBuilder::new(
                 app,
                 "main",
                 tauri::WebviewUrl::App("index.html".into()),
@@ -97,17 +189,45 @@ fn main() {
             .min_inner_size(760.0, 520.0)
             .resizable(true)
             .center()
-            .build()?;
+            .build();
 
-            log::info!("Ventana principal creada");
+            match window {
+                Ok(w) => {
+                    diag(&format!("✅ Ventana creada: label={}", w.label()));
+                    // Log del user-agent del webview
+                    diag(&format!("  Inner size: {:?}", w.inner_size()));
+                }
+                Err(e) => {
+                    diag(&format!("❌ Error creando ventana: {}", e));
+                }
+            }
+
+            diag("Tauri setup completado");
             Ok(())
         })
         .build(tauri::generate_context!())
         .expect("error al iniciar la aplicación Tauri")
-        .run(|_app_handle, event| {
-            if let tauri::RunEvent::Exit = event {
-                log::info!("Aplicación cerrándose");
-                // Cleanup si es necesario
+        .run(move |_app_handle, event| {
+            match &event {
+                tauri::RunEvent::Ready => {
+                    diag("🚀 Tauri RunEvent::Ready");
+                }
+                tauri::RunEvent::WindowEvent { label, event, .. } => {
+                    diag(&format!("🪟 WindowEvent [{}]: {:?}", label, event));
+                }
+                tauri::RunEvent::Exit => {
+                    diag("🚪 Aplicación cerrándose (RunEvent::Exit)");
+                }
+                tauri::RunEvent::ExitRequested { .. } => {
+                    diag("🚪 ExitRequested");
+                }
+                _ => {
+                    // Log otros eventos importantes
+                    let ev_name = format!("{:?}", event);
+                    if ev_name.contains("Error") || ev_name.contains("error") {
+                        diag(&format!("⚠️  Evento: {}", ev_name));
+                    }
+                }
             }
         });
 }
