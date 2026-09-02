@@ -73,7 +73,7 @@ func (d *Detector) DetectEngine(path string) (root, engine string, ok bool) {
 }
 
 func (d *Detector) detectEngineUncached(path string) (string, string) {
-	// 1. Web games: index.html
+	// 1. Web games: index.html (MZ/MV)
 	if root := findFile(path, "index.html", maxDepth); root != "" {
 		if fileExists(filepath.Join(root, "js", "rmmz_core.js")) {
 			return root, "MZ"
@@ -82,6 +82,13 @@ func (d *Detector) detectEngineUncached(path string) (string, string) {
 			return root, "MV"
 		}
 		return root, "web"
+	}
+
+	// 1b. MZ desktop (NW.js): Game.rpgproject + package.json
+	if root := findFile(path, "Game.rpgproject", maxDepth); root != "" {
+		if fileExists(filepath.Join(root, "package.json")) {
+			return root, "MZ"
+		}
 	}
 
 	// 2. VX Ace, VX, XP (archive files)
@@ -126,7 +133,15 @@ func (d *Detector) detectEngineUncached(path string) (string, string) {
 		}
 	}
 
-	// 6. Incomplete games
+	// 6. MZ/MV via plugins.js (fallback for unusual structures)
+	if pluginsJS := findPluginsJSInDir(path, maxDepth); pluginsJS != "" {
+		// plugins.js is at <root>/js/plugins.js, so root is the parent of the js dir
+		jsDir := filepath.Dir(pluginsJS) // js/
+		root := filepath.Dir(jsDir)      // parent of js/
+		return root, "MZ"
+	}
+
+	// 7. Incomplete games
 	if findFile(path, "System.json", maxDepth) != "" || findFile(path, "Map001.json", maxDepth) != "" {
 		return path, "incomplete"
 	}
@@ -285,7 +300,12 @@ func findFile(root, name string, maxD int) string {
 }
 
 func findGlob(root, pattern string, maxD int) string {
-	ext := strings.TrimPrefix(pattern, "*")
+	// Separate glob prefix from suffix (e.g. "*.lmt" -> prefix="", suffix=".lmt")
+	prefix, suffix := "", pattern
+	if idx := strings.IndexByte(pattern, '*'); idx >= 0 {
+		prefix = pattern[:idx]
+		suffix = pattern[idx+1:]
+	}
 	var result string
 	filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -296,7 +316,8 @@ func findGlob(root, pattern string, maxD int) string {
 		if depth > maxD {
 			return filepath.SkipDir
 		}
-		if strings.HasSuffix(d.Name(), ext) {
+		name := d.Name()
+		if strings.HasPrefix(name, prefix) && strings.HasSuffix(name, suffix) {
 			result = path
 			return filepath.SkipAll
 		}
@@ -306,13 +327,19 @@ func findGlob(root, pattern string, maxD int) string {
 }
 
 func findGlobAll(root, pattern string) []string {
-	ext := strings.TrimPrefix(pattern, "*")
 	var results []string
+	// Separate glob prefix from suffix (e.g. "screenshot*.png" -> prefix="screenshot", suffix=".png")
+	prefix, suffix := "", pattern
+	if idx := strings.IndexByte(pattern, '*'); idx >= 0 {
+		prefix = pattern[:idx]
+		suffix = pattern[idx+1:]
+	}
 	filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return nil
 		}
-		if strings.HasSuffix(d.Name(), ext) {
+		name := d.Name()
+		if strings.HasPrefix(name, prefix) && strings.HasSuffix(name, suffix) {
 			results = append(results, path)
 		}
 		return nil
@@ -333,6 +360,30 @@ func findDir(root, name string, maxD int) string {
 				return filepath.SkipDir
 			}
 			if d.Name() == name {
+				result = path
+				return filepath.SkipAll
+			}
+		}
+		return nil
+	})
+	return result
+}
+
+// findPluginsJSInDir searches for js/plugins.js as a fallback engine detection.
+func findPluginsJSInDir(root string, maxD int) string {
+	var result string
+	filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		rel, _ := filepath.Rel(root, path)
+		depth := len(strings.Split(rel, string(filepath.Separator)))
+		if depth > maxD {
+			return filepath.SkipDir
+		}
+		if d.Name() == "plugins.js" {
+			parent := filepath.Base(filepath.Dir(path))
+			if parent == "js" {
 				result = path
 				return filepath.SkipAll
 			}
