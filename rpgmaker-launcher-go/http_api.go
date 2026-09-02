@@ -247,13 +247,25 @@ func (a *App) handleLaunch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logger.Info("Launching game", "game", name, "engine", engineName, "viewer", viewer)
-	_ = viewer
 	result, err := a.LaunchGame(name, root, engineName)
 	if err != nil {
 		logger.Error("Launch failed", err, "game", name)
 		jsonErr(w, err.Error(), 500)
 		return
 	}
+
+	// Open game URL in browser after server starts
+	if result.Port != nil {
+		gameURL := fmt.Sprintf("http://127.0.0.1:%d", *result.Port)
+		logger.Info("Opening game URL", "url", gameURL, "viewer", viewer)
+		if viewer == "browser" {
+			go openWithxdg(gameURL)
+		} else {
+			// Default: open in system browser (webkit mode)
+			go openWithxdg(gameURL)
+		}
+	}
+
 	jsonResp(w, result)
 }
 

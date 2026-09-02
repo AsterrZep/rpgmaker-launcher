@@ -75,8 +75,8 @@ export class PluginsModal {
   private async loadData(): Promise<void> {
     try {
       const res = await api.getPlugins(this.game.name);
-      this.plugins = res.plugins;
-      this.hasBackup = res.has_backup;
+      this.plugins = res?.plugins || [];
+      this.hasBackup = res?.has_backup || false;
       this.renderTable();
     } catch (err: any) {
       const container = this.modalEl?.querySelector('#plugins-table-container');
@@ -91,6 +91,11 @@ export class PluginsModal {
     if (!container) return;
 
     if (this.plugins.length === 0) {
+      container.innerHTML = `<div class="p-6 text-center text-text-muted">No se encontraron plugins en este juego.</div>`;
+      return;
+    }
+
+    if (!this.plugins || this.plugins.length === 0) {
       container.innerHTML = `<div class="p-6 text-center text-text-muted">No se encontraron plugins en este juego.</div>`;
       return;
     }

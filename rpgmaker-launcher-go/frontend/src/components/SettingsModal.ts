@@ -3,8 +3,31 @@ import { t } from '../i18n';
 import { toasts } from './Toasts';
 
 async function pickFolder(): Promise<string | null> {
-  const path = prompt('Introduce la ruta de la carpeta de juegos:');
-  return path?.trim() || null;
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'fixed inset-0 z-[60] flex items-center justify-center bg-background/80';
+    overlay.innerHTML = `
+      <div class="bg-surface-container border border-border rounded-xl shadow-2xl p-6 w-[420px]">
+        <h3 class="text-headline-sm font-bold text-on-surface mb-3">Seleccionar carpeta</h3>
+        <p class="text-body-sm text-text-muted mb-4">Introduce la ruta completa de la carpeta de juegos:</p>
+        <input id="folder-path-input" type="text" class="w-full px-3 py-2 bg-surface border border-border rounded-lg text-on-surface font-mono text-sm focus:outline-none focus:border-primary" placeholder="/home/usuario/Games" autofocus />
+        <div class="flex justify-end gap-2 mt-4">
+          <button id="folder-cancel" class="px-4 py-1.5 rounded-lg bg-surface hover:bg-surface-container-high text-primary border border-border text-label-md font-semibold transition-colors">Cancelar</button>
+          <button id="folder-ok" class="px-4 py-1.5 rounded-lg bg-primary hover:bg-accent-hover text-on-primary text-label-md font-bold transition shadow-md">Aceptar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const input = overlay.querySelector('#folder-path-input') as HTMLInputElement;
+    input.focus();
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { resolve(input.value.trim() || null); overlay.remove(); }
+      if (e.key === 'Escape') { resolve(null); overlay.remove(); }
+    });
+    overlay.querySelector('#folder-ok')?.addEventListener('click', () => { resolve(input.value.trim() || null); overlay.remove(); });
+    overlay.querySelector('#folder-cancel')?.addEventListener('click', () => { resolve(null); overlay.remove(); });
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) { resolve(null); overlay.remove(); } });
+  });
 }
 
 export class SettingsModal {

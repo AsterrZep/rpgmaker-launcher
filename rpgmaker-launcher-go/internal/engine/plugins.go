@@ -212,7 +212,7 @@ func AnalyzePlugin(name, root string) core.PluginInfo {
 	if !fileExists(pluginFile) {
 		return core.PluginInfo{
 			Name:     name,
-			Category: "sin_fichero",
+			Category: "sin-fichero",
 			Motivos:  []string{fmt.Sprintf("no existe plugins/%s.js", name)},
 		}
 	}
@@ -239,7 +239,7 @@ func AnalyzePlugin(name, root string) core.PluginInfo {
 	// Check guards
 	for _, g := range guards {
 		if strings.Contains(src, g) {
-			return core.PluginInfo{Name: name, Category: "nw_protegido", Motivos: tokens}
+			return core.PluginInfo{Name: name, Category: "nw-protegido", Motivos: tokens}
 		}
 	}
 
