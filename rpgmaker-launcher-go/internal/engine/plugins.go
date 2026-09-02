@@ -304,7 +304,7 @@ func AnalyzePlugin(name, root string) core.PluginInfo {
 
 	data, err := os.ReadFile(pluginFile)
 	if err != nil {
-		return core.PluginInfo{Name: name, Category: "ok"}
+		return core.PluginInfo{Name: name, Category: "ok", Motivos: []string{}}
 	}
 	src := stripComments(string(data))
 
@@ -317,7 +317,7 @@ func AnalyzePlugin(name, root string) core.PluginInfo {
 	}
 
 	if len(tokens) == 0 {
-		return core.PluginInfo{Name: name, Category: "ok"}
+		return core.PluginInfo{Name: name, Category: "ok", Motivos: []string{}}
 	}
 
 	for _, g := range guards {

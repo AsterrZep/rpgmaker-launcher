@@ -124,7 +124,7 @@ export class PluginsModal {
                 ${p.name}.js
               </span>
             </div>
-            ${p.motivos.length > 0 ? `<div class="text-[10px] text-text-faint pl-6">${p.motivos.join(', ')}</div>` : ''}
+            ${(p.motivos && p.motivos.length > 0) ? `<div class="text-[10px] text-text-faint pl-6">${p.motivos.join(', ')}</div>` : ''}
           </td>
           <td class="py-2.5 text-center w-20">
             <label class="relative inline-flex items-center cursor-pointer">
