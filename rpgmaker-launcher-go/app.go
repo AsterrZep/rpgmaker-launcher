@@ -6,6 +6,7 @@ import (
 	"github.com/AsterrZep/rpgmaker-launcher-go/internal/core"
 	"github.com/AsterrZep/rpgmaker-launcher-go/internal/engine"
 	"github.com/AsterrZep/rpgmaker-launcher-go/internal/services"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App is the Wails application struct. Methods on App become IPC bindings.
@@ -20,6 +21,7 @@ import (
 //   sync_cmd.go    — GetSyncStatus, ExecuteSync
 //   extract_cmd.go — RescanGames, ExtractZips, ExtractZipsInDir, InstallZips
 type App struct {
+	ctx           context.Context
 	configManager *core.ConfigManager
 	detector      *engine.Detector
 	saveEditor    *engine.SaveEditor
@@ -54,5 +56,27 @@ func NewApp() *App {
 
 // startup is called by Wails when the application starts.
 func (a *App) startup(ctx context.Context) {
-	// Application initialization if needed
+	a.ctx = ctx
+}
+
+// OpenGameInWebView opens the game URL in the system browser.
+func (a *App) OpenGameInWebView(url string) {
+	if a.ctx != nil {
+		runtime.BrowserOpenURL(a.ctx, url)
+	}
+}
+
+// OpenDirectoryPicker opens a native directory picker dialog.
+func (a *App) OpenDirectoryPicker(title string) string {
+	if a.ctx == nil {
+		return ""
+	}
+	path, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title:           title,
+		ShowHiddenFiles: false,
+	})
+	if err != nil {
+		return ""
+	}
+	return path
 }

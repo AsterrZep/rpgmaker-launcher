@@ -254,16 +254,14 @@ func (a *App) handleLaunch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Open game URL in browser after server starts
+	// Open game URL in Wails WebView after server starts
 	if result.Port != nil {
 		gameURL := fmt.Sprintf("http://127.0.0.1:%d", *result.Port)
-		logger.Info("Opening game URL", "url", gameURL, "viewer", viewer)
-		if viewer == "browser" {
-			go openWithxdg(gameURL)
-		} else {
-			// Default: open in system browser (webkit mode)
-			go openWithxdg(gameURL)
-		}
+		logger.Info("Opening game URL in WebView", "url", gameURL, "viewer", viewer)
+		// Navigate the Wails WebView to the game URL
+		go func() {
+			a.OpenGameInWebView(gameURL)
+		}()
 	}
 
 	jsonResp(w, result)
