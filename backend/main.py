@@ -1366,6 +1366,9 @@ class ApiHandler(SimpleHTTPRequestHandler):
 
 
 def run_api_server(port=0, host="127.0.0.1"):
+    # Use fixed default port for Tauri compatibility
+    if port == 0:
+        port = 18321
     server = ThreadingHTTPServer((host, port), ApiHandler)
     actual_port = server.server_port
     print(f"RPG_MAKER_API_PORT={actual_port}", flush=True)

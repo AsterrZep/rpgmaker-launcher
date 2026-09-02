@@ -100,11 +100,10 @@ class ApiClient {
       this.baseUrl = w.__API_BASE__;
     } else if (window.location.port === "5173") {
       // Vite dev mode: Python server must be running separately.
-      // Use a fixed dev port or env var.
-      this.baseUrl = "http://127.0.0.1:38915";
+      this.baseUrl = "http://127.0.0.1:18321";
     } else {
-      // Fallback: try same origin (won't work with tauri:// but safe to attempt)
-      this.baseUrl = "http://127.0.0.1:38915";
+      // Fixed port for Tauri production mode
+      this.baseUrl = "http://127.0.0.1:18321";
     }
   }
 
