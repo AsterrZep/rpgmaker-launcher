@@ -111,6 +111,13 @@ func (rc *responseCapture) Write(b []byte) (int, error) {
 	return n, err
 }
 
+// Flush implements http.Flusher — required for SSE to work through middleware.
+func (rc *responseCapture) Flush() {
+	if f, ok := rc.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
 // ── Logging Middleware ────────────────────────────────────────
 
 func LoggingMiddleware(next http.Handler, logger *Logger) http.Handler {
