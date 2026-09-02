@@ -80,7 +80,7 @@ export class ShortcutsModal {
 
     const keyRows = keys
       .map((k) => {
-        const val = (this.config!.teclas as Record<string, string>)[k.key] || '';
+        const val = this.config!.teclas[k.key] || '';
         return `
         <div class="flex items-center justify-between py-1.5 border-b border-border/30">
           <span class="text-body-md text-on-surface">${k.label}</span>
@@ -123,7 +123,7 @@ export class ShortcutsModal {
       inp.addEventListener('change', (e) => {
         const target = e.target as HTMLInputElement;
         const key = target.dataset.key!;
-        (this.config!.teclas as Record<string, string>)[key] = target.value.trim();
+        this.config!.teclas[key] = target.value.trim();
       });
     });
   }

@@ -118,6 +118,10 @@ export function SetupMods(arg1) {
   return window['go']['main']['App']['SetupMods'](arg1);
 }
 
+export function StartHTTPAPI() {
+  return window['go']['main']['App']['StartHTTPAPI']();
+}
+
 export function StopGame() {
   return window['go']['main']['App']['StopGame']();
 }

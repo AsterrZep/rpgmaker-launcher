@@ -26,6 +26,7 @@ func main() {
 		},
 		OnStartup: func(ctx context.Context) {
 			app.startup(ctx)
+			app.StartHTTPAPI()
 		},
 		Bind: []interface{}{
 			app,

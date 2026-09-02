@@ -61,6 +61,8 @@ export function RestorePlugins(arg1:string):Promise<Record<string, any>>;
 
 export function SetupMods(arg1:string):Promise<core.ModsResult>;
 
+export function StartHTTPAPI():Promise<void>;
+
 export function StopGame():Promise<Record<string, any>>;
 
 export function ToggleFavorite(arg1:string):Promise<Record<string, any>>;

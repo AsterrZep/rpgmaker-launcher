@@ -18,7 +18,7 @@ export class GameCard {
     this.callbacks = callbacks;
   }
 
-  private formatLastPlayed(ts: number | null | undefined): string {
+  private formatLastPlayed(ts: number | null): string {
     if (!ts) return t('neverPlayed');
     const d = (Date.now() / 1000) - ts;
     if (d < 60) return t('playedNow');
@@ -63,8 +63,7 @@ export class GameCard {
 
     // Cover image or initial placeholder (URL absoluta: el origen en Tauri
     // es tauri://localhost, las rutas relativas no llegan al backend API)
-    // In Wails, cover images are served via file path, not HTTP URL
-    const coverSrc = null; // TODO: implement cover image loading via Wails
+    const coverSrc = this.game.cover_url ? `${api.getBaseUrl()}${this.game.cover_url}` : null;
     const coverHtml = coverSrc
       ? `<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" src="${coverSrc}" alt="${this.game.name}" loading="lazy" decoding="async" draggable="false" />`
       : `<div class="w-full h-full flex items-center justify-center bg-surface-container-high text-primary font-black text-3xl select-none">${this.game.name.charAt(0).toUpperCase()}</div>`;

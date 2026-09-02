@@ -2,17 +2,9 @@ import { api, SyncStatus } from '../api';
 import { t } from '../i18n';
 import { toasts } from './Toasts';
 
-// Folder picker — uses Wails dialog if available, else prompt
 async function pickFolder(): Promise<string | null> {
-  const w = window as any;
-  if (w.runtime && w.runtime.EventsOn) {
-    // Wails: use Go-side dialog via OpenTarget or prompt
-    const path = prompt('Ruta de la carpeta de sync:');
-    return path || null;
-  }
-  // Browser fallback
-  const path = prompt('Ruta de la carpeta de sync:');
-  return path || null;
+  const path = prompt('Introduce la ruta de la carpeta de destino de partidas:');
+  return path?.trim() || null;
 }
 
 export class SyncModal {
@@ -167,7 +159,7 @@ export class SyncModal {
   private async persistFolder(): Promise<void> {
     try {
       const cfg = await api.getConfig();
-      cfg.sync = { ...(cfg.sync || { auto: false }), folder: this.folder, auto: cfg.sync?.auto ?? false };
+      cfg.sync = { ...(cfg.sync || {}), folder: this.folder };
       await api.updateConfig(cfg);
       toasts.show('Carpeta de sincronización guardada', 'info', 2000);
       await this.loadData();

@@ -3,8 +3,8 @@ import { t } from '../i18n';
 import { toasts } from './Toasts';
 
 async function pickFolder(): Promise<string | null> {
-  const path = prompt('Ruta de la carpeta de juegos:');
-  return path || null;
+  const path = prompt('Introduce la ruta de la carpeta de juegos:');
+  return path?.trim() || null;
 }
 
 export class SettingsModal {
@@ -143,8 +143,8 @@ export class SettingsModal {
     const folderInput = this.modalEl.querySelector('#input-games-folder') as HTMLInputElement;
     if (!folderInput) return;
     const { api } = await import('../api');
-    const dataDir = await api.getConfig().then(c => c.general.games_dir || '~/.local/share/rpgmaker-launcher/games');
-    folderInput.placeholder = t('settingsDefaultFolder', dataDir);
+    const defaultGamesDir = api.getBaseUrl().replace('/api', '') + '/games'; // fallback visual
+    folderInput.placeholder = t('settingsDefaultFolder', defaultGamesDir);
   }
 
   public close(): void {

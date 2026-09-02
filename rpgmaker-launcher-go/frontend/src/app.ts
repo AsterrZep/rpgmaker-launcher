@@ -172,29 +172,10 @@ export class App {
         }
       })
       .catch(() => {});
-  }
-
-  private setupDragAndDrop(): void {
+  }  private setupDragAndDrop(): void {
     const overlay = this.appRoot.querySelector('#drag-drop-overlay') as HTMLElement;
     const showOverlay = (v: boolean) => overlay?.classList.toggle('hidden', !v);
 
-    // Wails: use runtime drag-drop events if available.
-    const w = window as any;
-    if (w.runtime && w.runtime.EventsOn) {
-      w.runtime.EventsOn('drag-drop', (payload: any) => {
-        if (payload.type === 'enter' || payload.type === 'over') {
-          showOverlay(true);
-        } else if (payload.type === 'leave') {
-          showOverlay(false);
-        } else if (payload.type === 'drop') {
-          showOverlay(false);
-          void this.handleDroppedPaths(payload.paths ?? []);
-        }
-      });
-      return;
-    }
-
-    // Fallback navegador (sin rutas locales): solo refresca.
     let dragCounter = 0;
 
     window.addEventListener('dragenter', (e) => {

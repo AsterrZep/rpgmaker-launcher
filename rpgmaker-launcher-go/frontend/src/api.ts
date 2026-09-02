@@ -1,13 +1,6 @@
-// ============================================================
-//  RPG Maker Launcher - API Client (Wails IPC)
-// ============================================================
-// Wraps auto-generated Wails bindings with the same interface
-// as the old HTTP/Tauri API client so app.ts needs minimal changes.
-// ============================================================
-
-import * as App from '../wailsjs/go/main/App';
-
-// ── Types (matching Go structs) ─────────────────────────────
+// This is the EXACT original api.ts from the Tauri project on main.
+// It uses HTTP fetch to communicate with a backend server.
+// The Go backend will serve these HTTP endpoints.
 
 export interface Game {
   name: string;
@@ -17,10 +10,10 @@ export interface Game {
   is_web: boolean;
   is_incomplete: boolean;
   has_cover: boolean;
-  cover_url?: string;
+  cover_url: string | null;
   favorite: boolean;
   seconds: number;
-  last_played?: number;
+  last_played: number | null;
   has_saves: boolean;
 }
 
@@ -28,7 +21,7 @@ export interface PluginItem {
   name: string;
   status: boolean;
   description?: string;
-  category: string;
+  category: 'ok' | 'nw-protegido' | 'roto' | 'sin-fichero';
   motivos: string[];
 }
 
@@ -41,7 +34,13 @@ export interface SaveItem {
 }
 
 export interface SaveContent {
-  summary: Record<string, any>;
+  summary: {
+    gold: number;
+    items_kinds: number;
+    variables_used: number;
+    switches_on: number;
+    actors: string;
+  };
   gold: number;
   items: Record<string, number>;
   weapons: Record<string, number>;
@@ -81,17 +80,7 @@ export interface SyncStatus {
 }
 
 export interface AppConfig {
-  teclas: {
-    trucos: string;
-    recargar: string;
-    fps: string;
-    captura: string;
-    pantalla_completa: string;
-    salir_pantalla_completa: string;
-    zoom_in: string;
-    zoom_out: string;
-    zoom_0: string;
-  };
+  teclas: Record<string, string>;
   general: {
     webkit: boolean;
     auto_delete_zip: boolean;
@@ -100,129 +89,174 @@ export interface AppConfig {
   };
   sync?: {
     folder?: string;
-    auto: boolean;
+    auto?: boolean;
   };
 }
 
-// ── API Client ──────────────────────────────────────────────
-
 class ApiClient {
-  // No baseUrl needed — Wails IPC is direct function calls.
+  private baseUrl: string = "";
+
+  constructor() {
+    const w = window as any;
+    if (w.__API_BASE__) {
+      this.baseUrl = w.__API_BASE__;
+    } else {
+      this.baseUrl = "http://127.0.0.1:18900";
+    }
+  }
+
+  public setBaseUrl(url: string) {
+    this.baseUrl = url.replace(/\/$/, "");
+  }
+
+  public getBaseUrl(): string {
+    return this.baseUrl;
+  }
+
+  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
+    const url = `${this.baseUrl}${path}`;
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    };
+    const response = await fetch(url, { ...options, headers });
+    if (!response.ok) {
+      let err = "API Error";
+      try {
+        const body = await response.json();
+        err = body.error || err;
+      } catch (_) {}
+      throw new Error(err);
+    }
+    return response.json();
+  }
 
   public async getStatus(): Promise<any> {
-    return App.GetStatus();
+    return this.request('/api/status');
   }
 
   public async getVersion(): Promise<string> {
-    const st = await App.GetStatus();
-    return (st as any).version || '1.0.0-go';
+    const status = await this.getStatus();
+    return status.version || '0.0.0';
   }
 
   public async getGames(): Promise<{ games: Game[]; total: number }> {
-    const result = await App.GetGames() as any;
-    return { games: result.games || [], total: result.total || 0 };
+    return this.request('/api/games');
   }
 
   public async rescan(autoDelete: boolean = false): Promise<{ extracted: string[]; errors: string[]; games: Game[] }> {
-    return App.RescanGames() as any;
+    return this.request('/api/games/rescan', {
+      method: 'POST',
+      body: JSON.stringify({ auto_delete: autoDelete }),
+    });
   }
 
   public async installZips(paths: string[], autoDelete: boolean = false): Promise<{ copied: string[]; skipped: string[]; extracted: string[]; games: Game[] }> {
-    return App.InstallZips(paths, autoDelete) as any;
+    return this.request('/api/games/install', {
+      method: 'POST',
+      body: JSON.stringify({ paths, auto_delete: autoDelete }),
+    });
   }
 
   public async toggleFavorite(name: string, favorite?: boolean): Promise<{ ok: boolean; name: string; favorite: boolean }> {
-    return App.ToggleFavorite(name) as any;
+    return this.request('/api/games/favorite', {
+      method: 'POST',
+      body: JSON.stringify({ name, favorite }),
+    });
   }
 
   public async launchGame(name: string, viewer: 'webkit' | 'browser' = 'webkit'): Promise<{ ok: boolean; port?: number; engine?: string }> {
-    // In Wails, we detect engine from path. The frontend sends name,
-    // and the backend resolves path + engine internally.
-    // For now, use empty path/engine — backend will look up from games cache.
-    return App.LaunchGame(name, '', '') as any;
+    return this.request('/api/games/launch', {
+      method: 'POST',
+      body: JSON.stringify({ name, viewer }),
+    });
   }
 
   public async stopServer(): Promise<{ ok: boolean; game: string | null; seconds_added: number; total_seconds: number }> {
-    return App.StopGame() as any;
+    return this.request('/api/games/stop', { method: 'POST' });
   }
 
   public async getPlugins(game: string): Promise<{ plugins: PluginItem[]; has_backup: boolean }> {
-    return App.GetPlugins(game) as any;
+    return this.request(`/api/plugins?game=${encodeURIComponent(game)}`);
   }
 
   public async togglePlugins(game: string, params: { names?: string[]; status?: boolean; all?: boolean; action?: 'restore' }): Promise<any> {
-    if (params.action === 'restore') {
-      return App.RestorePlugins(game);
-    }
-    return App.TogglePlugins(game, params.names || [], params.status ?? true, params.all ?? false);
+    return this.request('/api/plugins/toggle', {
+      method: 'POST',
+      body: JSON.stringify({ game, ...params }),
+    });
   }
 
   public async getSaves(game: string): Promise<{ saves: SaveItem[]; count: number }> {
-    return App.GetSaves(game) as any;
+    return this.request(`/api/saves?game=${encodeURIComponent(game)}`);
   }
 
   public async getSaveContent(game: string, file: string): Promise<SaveContent> {
-    return App.GetSaveContent(game, file) as any;
+    return this.request(`/api/saves/content?game=${encodeURIComponent(game)}&file=${encodeURIComponent(file)}`);
   }
 
   public async saveSaveContent(game: string, file: string, data: any): Promise<{ ok: boolean; message: string }> {
-    const ok = await App.UpdateSaveContent(game, file, data);
-    return { ok, message: ok ? 'Partida guardada' : 'Error al guardar' };
+    return this.request('/api/saves/content', {
+      method: 'POST',
+      body: JSON.stringify({ game, file, ...data }),
+    });
   }
 
   public async backupSaves(game: string): Promise<{ ok: boolean; backup_path: string; timestamp: string }> {
-    const path = await App.BackupSave(game, '');
-    return { ok: true, backup_path: path, timestamp: new Date().toISOString() };
+    return this.request('/api/saves/backup', {
+      method: 'POST',
+      body: JSON.stringify({ game }),
+    });
   }
 
   public async getData(game: string, cat: string): Promise<{ category: string; items: DataItem[]; count: number }> {
-    return App.GetData(game, cat);
+    return this.request(`/api/data?game=${encodeURIComponent(game)}&cat=${encodeURIComponent(cat)}`);
   }
 
   public async getSyncStatus(): Promise<SyncStatus> {
-    return App.GetSyncStatus() as any;
+    return this.request('/api/sync/status');
   }
 
   public async executeSync(mode: 'push' | 'pull', folder?: string): Promise<{ ok: boolean; mode: string; results: any[] }> {
-    return App.ExecuteSync(mode, folder || '') as any;
+    return this.request('/api/sync/execute', {
+      method: 'POST',
+      body: JSON.stringify({ mode, folder }),
+    });
   }
 
   public async decrypt(game: string, recreate: boolean = false): Promise<{ ok: boolean; output_dir: string; log?: string }> {
-    // Read encryption key first, then decrypt
-    const key = await App.ReadEncryptionKey(game);
-    if (!key) {
-      throw new Error('No se encontró clave de encriptación');
-    }
-    const result = await App.DecryptGameAssets(game, key);
-    return { ok: true, output_dir: game, log: JSON.stringify(result) };
+    return this.request('/api/decrypt', {
+      method: 'POST',
+      body: JSON.stringify({ game, recreate }),
+    });
   }
 
   public async setupMods(game: string): Promise<{ ok: boolean; mods_dir: string; created: boolean }> {
-    return App.SetupMods(game) as any;
+    return this.request('/api/tools/mods', {
+      method: 'POST',
+      body: JSON.stringify({ game }),
+    });
   }
 
   public async openTarget(target: string): Promise<{ ok: boolean }> {
-    const ok = await App.OpenTarget(target);
-    return { ok };
+    return this.request(`/api/open?target=${encodeURIComponent(target)}`);
   }
 
   public async checkUpdate(): Promise<{ update_available: boolean; tag_name: string; current_version: string; url: string; error?: string }> {
-    return App.CheckUpdate();
+    return this.request('/api/update/check');
   }
 
   public async getConfig(): Promise<AppConfig> {
-    return App.GetConfig();
+    return this.request('/api/config');
   }
 
   public async updateConfig(cfg: Partial<AppConfig>): Promise<{ ok: boolean; config: AppConfig }> {
-    const result = await App.UpdateConfig(cfg as any) as any;
-    return { ok: result?.ok ?? true, config: result?.config ?? cfg as AppConfig };
+    return this.request('/api/config', {
+      method: 'POST',
+      body: JSON.stringify(cfg),
+    });
   }
 
-  /**
-   * Event listening via Wails runtime events.
-   * Wails uses a different event system than SSE — we poll the Go event bus.
-   */
   public listenEvents(callbacks: {
     onProgress?: (data: any) => void;
     onServerStarted?: (data: any) => void;
@@ -230,51 +264,25 @@ class ApiClient {
     onSyncComplete?: (data: any) => void;
     onGameLaunched?: (data: any) => void;
   }): () => void {
-    // Use Wails runtime events if available, otherwise poll
-    const w = window as any;
-    if (w.runtime) {
-      // Wails v2 runtime events
-      w.runtime.EventsOn('extraction_progress', (data: any) => callbacks.onProgress?.(data));
-      w.runtime.EventsOn('server_started', (data: any) => callbacks.onServerStarted?.(data));
-      w.runtime.EventsOn('server_stopped', (data: any) => callbacks.onServerStopped?.(data));
-      w.runtime.EventsOn('sync_complete', (data: any) => callbacks.onSyncComplete?.(data));
-      w.runtime.EventsOn('game_launched', (data: any) => callbacks.onGameLaunched?.(data));
-      return () => {
-        w.runtime.EventsOff('extraction_progress');
-        w.runtime.EventsOff('server_started');
-        w.runtime.EventsOff('server_stopped');
-        w.runtime.EventsOff('sync_complete');
-        w.runtime.EventsOff('game_launched');
-      };
-    }
+    const sse = new EventSource(`${this.baseUrl}/api/events`);
+    
+    sse.addEventListener('extraction_progress', (e) => {
+      callbacks.onProgress?.(JSON.parse(e.data));
+    });
+    sse.addEventListener('server_started', (e) => {
+      callbacks.onServerStarted?.(JSON.parse(e.data));
+    });
+    sse.addEventListener('server_stopped', (e) => {
+      callbacks.onServerStopped?.(JSON.parse(e.data));
+    });
+    sse.addEventListener('sync_complete', (e) => {
+      callbacks.onSyncComplete?.(JSON.parse(e.data));
+    });
+    sse.addEventListener('game_launched', (e) => {
+      callbacks.onGameLaunched?.(JSON.parse(e.data));
+    });
 
-    // Fallback: poll GetEventHistory every 2 seconds
-    let active = true;
-    let lastCount = 0;
-    const poll = async () => {
-      while (active) {
-        try {
-          const history = await App.GetEventHistory(10);
-          if (history && history.length > lastCount) {
-            for (const evt of history.slice(lastCount)) {
-              const type = (evt as any).event || (evt as any).event_type;
-              const data = (evt as any).data || {};
-              switch (type) {
-                case 'extraction_progress': callbacks.onProgress?.(data); break;
-                case 'server_started': callbacks.onServerStarted?.(data); break;
-                case 'server_stopped': callbacks.onServerStopped?.(data); break;
-                case 'sync_complete': callbacks.onSyncComplete?.(data); break;
-                case 'game_launched': callbacks.onGameLaunched?.(data); break;
-              }
-            }
-            lastCount = history.length;
-          }
-        } catch (_) {}
-        await new Promise(r => setTimeout(r, 2000));
-      }
-    };
-    poll();
-    return () => { active = false; };
+    return () => sse.close();
   }
 }
 
