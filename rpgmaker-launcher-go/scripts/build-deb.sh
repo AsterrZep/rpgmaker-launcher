@@ -47,9 +47,9 @@ cd "$PROJECT_DIR"
 echo ""
 echo "→ Building Wails application for linux/$ARCH..."
 if [ "$ARCH" = "amd64" ]; then
-    wails build -platform linux/amd64 -ldflags "-s -w" -tags webkit2_41
+    wails build -platform linux/amd64 -ldflags "-s -w" -tags webkit2_41 -s
 else
-    wails build -platform "linux/$ARCH" -ldflags "-s -w" -tags webkit2_41
+    wails build -platform "linux/$ARCH" -ldflags "-s -w" -tags webkit2_41 -s
 fi
 
 if [ ! -f build/bin/rpgmaker-launcher ]; then
