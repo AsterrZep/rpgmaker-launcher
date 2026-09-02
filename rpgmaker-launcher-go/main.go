@@ -28,6 +28,9 @@ func main() {
 			app.startup(ctx)
 			app.StartHTTPAPI()
 		},
+		OnShutdown: func(ctx context.Context) {
+			app.shutdown(ctx)
+		},
 		Bind: []interface{}{
 			app,
 		},

@@ -58,7 +58,20 @@ if [ ! -f build/bin/rpgmaker-launcher ]; then
 fi
 
 SIZE=$(du -h build/bin/rpgmaker-launcher | cut -f1)
-echo "  ✓ Binary built: $SIZE"
+echo "  ✓ GUI binary built: $SIZE"
+
+# 3b. Build CLI/TUI binary
+echo ""
+echo "→ Building CLI/TUI binary for linux/$ARCH..."
+go build -ldflags "-s -w" -o build/bin/rpgmaker-cli ./cmd/tui/
+
+if [ ! -f build/bin/rpgmaker-cli ]; then
+    echo "  ✗ CLI build failed: build/bin/rpgmaker-cli not found"
+    exit 1
+fi
+
+CLI_SIZE=$(du -h build/bin/rpgmaker-cli | cut -f1)
+echo "  ✓ CLI binary built: $CLI_SIZE"
 
 # 4. Package as .deb
 echo ""
@@ -79,7 +92,8 @@ echo ""
 echo "════════════════════════════════════════════════════"
 echo "  ✅ Build complete!"
 echo ""
-echo "  Binary:  build/bin/rpgmaker-launcher"
+echo "  GUI:     build/bin/rpgmaker-launcher"
+echo "  CLI:     build/bin/rpgmaker-cli"
 echo "  Package: $DEB_FILE"
 echo ""
 echo "  Install with:"

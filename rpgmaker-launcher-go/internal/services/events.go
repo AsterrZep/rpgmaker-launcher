@@ -26,25 +26,58 @@ type EventData struct {
 
 // EventsService manages event broadcasting and history.
 type EventsService struct {
-	mu      sync.RWMutex
-	history []EventData
+	mu       sync.RWMutex
+	history  []EventData
+	clients  map[chan EventData]struct{}
+	clientsMu sync.Mutex
 }
 
-// NewEventsService creates a new events service.
+// NewEventsService creates a new event service.
 func NewEventsService() *EventsService {
-	return &EventsService{}
+	return &EventsService{clients: make(map[chan EventData]struct{})}
 }
 
-// Emit records an event in the history.
+// Emit records an event and broadcasts to all connected SSE clients.
 func (es *EventsService) Emit(eventType EventType, data map[string]interface{}) {
+	event := EventData{Type: eventType, Data: data}
+
+	// Record in history
 	es.mu.Lock()
-	defer es.mu.Unlock()
-	es.history = append(es.history, EventData{Type: eventType, Data: data})
-	// Keep last 100 events
+	es.history = append(es.history, event)
 	if len(es.history) > 100 {
 		es.history = es.history[len(es.history)-100:]
 	}
+	es.mu.Unlock()
+
 	log.Printf("[Event] %s: %v", eventType, data)
+
+	// Broadcast to connected SSE clients
+	es.clientsMu.Lock()
+	defer es.clientsMu.Unlock()
+	for ch := range es.clients {
+		select {
+		case ch <- event:
+		default:
+			// Client too slow, skip
+		}
+	}
+}
+
+// Subscribe returns a channel that receives events. Caller must Unsubscribe when done.
+func (es *EventsService) Subscribe() chan EventData {
+	ch := make(chan EventData, 32)
+	es.clientsMu.Lock()
+	es.clients[ch] = struct{}{}
+	es.clientsMu.Unlock()
+	return ch
+}
+
+// Unsubscribe removes a client channel.
+func (es *EventsService) Unsubscribe(ch chan EventData) {
+	es.clientsMu.Lock()
+	delete(es.clients, ch)
+	es.clientsMu.Unlock()
+	close(ch)
 }
 
 // GetHistory returns the most recent events.

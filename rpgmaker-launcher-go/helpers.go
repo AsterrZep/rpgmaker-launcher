@@ -111,7 +111,9 @@ func saveGameState(gameName string, updates map[string]interface{}) {
 	}
 	games[gameName] = gameState
 	data, _ = json.MarshalIndent(state, "", "  ")
-	os.WriteFile(stateFile, data, 0644)
+	if err := os.WriteFile(stateFile, data, 0644); err != nil {
+		core.GetLogger().Warn("Failed to save game state", "game", gameName, "error", err)
+	}
 }
 
 func updatePlayTime(gameName string, seconds uint64) {

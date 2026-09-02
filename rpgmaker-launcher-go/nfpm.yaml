@@ -13,9 +13,15 @@ homepage: "https://github.com/AsterrZep/rpgmaker-launcher"
 license: MIT
 
 contents:
-  # Binary
+  # GUI Binary (Wails)
   - src: build/bin/rpgmaker-launcher
     dst: /usr/bin/rpgmaker-launcher
+    file_info:
+      mode: 0755
+
+  # CLI/TUI Binary
+  - src: build/bin/rpgmaker-cli
+    dst: /usr/bin/rpgmaker-cli
     file_info:
       mode: 0755
 

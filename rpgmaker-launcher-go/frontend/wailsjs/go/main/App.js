@@ -90,6 +90,14 @@ export function LaunchGame(arg1, arg2, arg3) {
   return window['go']['main']['App']['LaunchGame'](arg1, arg2, arg3);
 }
 
+export function OpenDirectoryPicker(arg1) {
+  return window['go']['main']['App']['OpenDirectoryPicker'](arg1);
+}
+
+export function OpenGameInWebView(arg1) {
+  return window['go']['main']['App']['OpenGameInWebView'](arg1);
+}
+
 export function OpenTarget(arg1) {
   return window['go']['main']['App']['OpenTarget'](arg1);
 }

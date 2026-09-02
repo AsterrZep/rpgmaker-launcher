@@ -84,8 +84,9 @@ func (a *App) StartHTTPAPI() {
 
 	addr := "127.0.0.1:18900"
 	logger.Info("HTTP API listening", "addr", addr)
+	a.httpServer = &http.Server{Addr: addr, Handler: handler}
 	go func() {
-		if err := http.ListenAndServe(addr, handler); err != nil {
+		if err := a.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Error("HTTP API server failed", err, "addr", addr)
 		}
 	}()
@@ -126,6 +127,10 @@ func (a *App) handleEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Subscribe to event broadcasts
+	ech := a.eventsService.Subscribe()
+	defer a.eventsService.Unsubscribe(ech)
+
 	ticker := time.NewTicker(15 * time.Second)
 	defer ticker.Stop()
 
@@ -134,6 +139,11 @@ func (a *App) handleEvents(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done():
 			logger.Debug("SSE client disconnected", "remote", r.RemoteAddr)
 			return
+		case event := <-ech:
+			// Send event to client
+			data, _ := json.Marshal(event.Data)
+			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Type, string(data))
+			flusher.Flush()
 		case <-ticker.C:
 			fmt.Fprintf(w, ": ping\n\n")
 			flusher.Flush()
@@ -258,8 +268,17 @@ func (a *App) handleLaunch(w http.ResponseWriter, r *http.Request) {
 	if result.Port != nil {
 		gameURL := fmt.Sprintf("http://127.0.0.1:%d", *result.Port)
 		logger.Info("Opening game URL in WebView", "url", gameURL, "viewer", viewer)
-		// Navigate the Wails WebView to the game URL
+		// Wait briefly for the HTTP server to be ready, then open browser
 		go func() {
+			// Poll until server is accepting connections (max 2s)
+			for i := 0; i < 20; i++ {
+				resp, err := http.Get(gameURL)
+				if err == nil {
+					resp.Body.Close()
+					break
+				}
+				time.Sleep(100 * time.Millisecond)
+			}
 			a.OpenGameInWebView(gameURL)
 		}()
 	}
@@ -603,8 +622,24 @@ func (a *App) handleDecrypt(w http.ResponseWriter, r *http.Request) {
 func (a *App) handleCover(w http.ResponseWriter, r *http.Request) {
 	gameName := strings.TrimPrefix(r.URL.Path, "/api/covers/")
 	gameName, _ = strconv.Unquote(`"` + gameName + `"`)
+
+	// Validate game name: no path traversal allowed
+	if strings.Contains(gameName, "..") || strings.Contains(gameName, "/") || strings.Contains(gameName, "\\") {
+		jsonErr(w, "Invalid game name", 400)
+		return
+	}
+
 	gamesDir := a.configManager.GetGamesDir()
 	gamePath := filepath.Join(gamesDir, gameName)
+
+	// Ensure the resolved path is still within gamesDir
+	absGamesDir, _ := filepath.Abs(gamesDir)
+	absGamePath, _ := filepath.Abs(gamePath)
+	if !strings.HasPrefix(absGamePath, absGamesDir) {
+		jsonErr(w, "Invalid game name", 400)
+		return
+	}
+
 	root, _, _ := a.detector.DetectEngine(gamePath)
 	cover := engine.FindCover(gamePath, root)
 	if cover == "" {

@@ -56,8 +56,8 @@ func (gs *GameServer) Start(gameName string) (int, error) {
 	// Mods
 	mux.HandleFunc("/__mods/", gs.handleMod)
 
-	// Fallback: serve index.html with injection
-	mux.HandleFunc("/", gs.serveIndexWithInjection)
+	// Fallback: serve static files from game dir, or index.html with injection
+	mux.HandleFunc("/", gs.serveStaticOrIndex)
 
 	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", gs.Port))
 	if err != nil {
@@ -165,6 +165,10 @@ func (gs *GameServer) handleSave(w http.ResponseWriter, r *http.Request) {
 
 func (gs *GameServer) handleMod(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimPrefix(r.URL.Path, "/__mods/")
+	if strings.Contains(name, "/") || strings.Contains(name, "..") {
+		http.Error(w, "bad path", http.StatusBadRequest)
+		return
+	}
 	modPath := filepath.Join(gs.GameDir, "mods", name)
 	data, err := os.ReadFile(modPath)
 	if err != nil {
@@ -175,7 +179,26 @@ func (gs *GameServer) handleMod(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
-func (gs *GameServer) serveIndexWithInjection(w http.ResponseWriter, r *http.Request) {
+// serveStaticOrIndex serves a file from the game directory, or falls back to
+// index.html with script injection for the root path.
+func (gs *GameServer) serveStaticOrIndex(w http.ResponseWriter, r *http.Request) {
+	// Clean the path to prevent directory traversal
+	path := filepath.Clean(r.URL.Path)
+	if path == "/" {
+		path = "/index.html"
+	}
+
+	// Try to serve the actual file from the game directory
+	filePath := filepath.Join(gs.GameDir, filepath.FromSlash(path))
+	info, err := os.Stat(filePath)
+	if err == nil && !info.IsDir() {
+		// File exists - serve it directly with correct MIME type
+		setMIMEType(w, filePath)
+		http.ServeFile(w, r, filePath)
+		return
+	}
+
+	// For root path or missing files, serve index.html with injection
 	indexPath := filepath.Join(gs.GameDir, "index.html")
 	content, err := os.ReadFile(indexPath)
 	if err != nil {
@@ -216,6 +239,65 @@ func (gs *GameServer) serveIndexWithInjection(w http.ResponseWriter, r *http.Req
 
 	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(html))
+}
+
+// setMIMEType sets the Content-Type header based on file extension.
+func setMIMEType(w http.ResponseWriter, filePath string) {
+	ext := strings.ToLower(filepath.Ext(filePath))
+	switch ext {
+	case ".js":
+		w.Header().Set("Content-Type", "application/javascript")
+	case ".css":
+		w.Header().Set("Content-Type", "text/css")
+	case ".html":
+		w.Header().Set("Content-Type", "text/html")
+	case ".json":
+		w.Header().Set("Content-Type", "application/json")
+	case ".png":
+		w.Header().Set("Content-Type", "image/png")
+	case ".jpg", ".jpeg":
+		w.Header().Set("Content-Type", "image/jpeg")
+	case ".webp":
+		w.Header().Set("Content-Type", "image/webp")
+	case ".svg":
+		w.Header().Set("Content-Type", "image/svg+xml")
+	case ".gif":
+		w.Header().Set("Content-Type", "image/gif")
+	case ".ico":
+		w.Header().Set("Content-Type", "image/x-icon")
+	case ".woff":
+		w.Header().Set("Content-Type", "font/woff")
+	case ".woff2":
+		w.Header().Set("Content-Type", "font/woff2")
+	case ".ttf":
+		w.Header().Set("Content-Type", "font/ttf")
+	case ".mp3":
+		w.Header().Set("Content-Type", "audio/mpeg")
+	case ".ogg":
+		w.Header().Set("Content-Type", "audio/ogg")
+	case ".m4a":
+		w.Header().Set("Content-Type", "audio/mp4")
+	case ".wav":
+		w.Header().Set("Content-Type", "audio/wav")
+	case ".mp4":
+		w.Header().Set("Content-Type", "video/mp4")
+	case ".webm":
+		w.Header().Set("Content-Type", "video/webm")
+	case ".xml":
+		w.Header().Set("Content-Type", "application/xml")
+	case ".rpgmdata":
+		w.Header().Set("Content-Type", "application/octet-stream")
+	case ".rvdata", ".rvdata2":
+		w.Header().Set("Content-Type", "application/octet-stream")
+	case ".rxdata":
+		w.Header().Set("Content-Type", "application/octet-stream")
+	case ".rpgproject":
+		w.Header().Set("Content-Type", "application/json")
+	case ".rpgmz":
+		w.Header().Set("Content-Type", "application/json")
+	case ".rgss3a", ".rgss2a", ".rgssad":
+		w.Header().Set("Content-Type", "application/octet-stream")
+	}
 }
 
 func withCORS(h http.Handler) http.Handler {

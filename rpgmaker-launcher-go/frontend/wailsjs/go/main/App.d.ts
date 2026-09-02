@@ -47,6 +47,10 @@ export function InstallZips(arg1:Array<string>,arg2:boolean):Promise<Record<stri
 
 export function LaunchGame(arg1:string,arg2:string,arg3:string):Promise<core.LaunchResult>;
 
+export function OpenDirectoryPicker(arg1:string):Promise<string>;
+
+export function OpenGameInWebView(arg1:string):Promise<void>;
+
 export function OpenTarget(arg1:string):Promise<boolean>;
 
 export function Ping():Promise<string>;

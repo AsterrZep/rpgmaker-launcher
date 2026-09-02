@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/AsterrZep/rpgmaker-launcher-go/internal/core"
 	"github.com/AsterrZep/rpgmaker-launcher-go/internal/engine"
@@ -29,6 +30,7 @@ type App struct {
 	syncService   *services.SyncService
 	activeServer  *services.GameServer
 	activeGame    *core.ActiveSession
+	httpServer    *http.Server
 }
 
 // NewApp creates and initializes the application.
@@ -57,6 +59,20 @@ func NewApp() *App {
 // startup is called by Wails when the application starts.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+}
+
+// shutdown is called by Wails when the application is closing.
+func (a *App) shutdown(ctx context.Context) {
+	// Stop active game server
+	if a.activeServer != nil {
+		a.activeServer.Stop()
+		a.activeServer = nil
+	}
+	// Shutdown HTTP API server
+	if a.httpServer != nil {
+		a.httpServer.Close()
+		a.httpServer = nil
+	}
 }
 
 // OpenGameInWebView opens the game URL in the system browser.
