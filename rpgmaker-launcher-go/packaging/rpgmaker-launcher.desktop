@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=RPG Maker Launcher
+GenericName=Game Launcher
+Comment=Game library for RPG Maker and Ren'Py games
+Exec=/usr/bin/rpgmaker-launcher
+Icon=rpgmaker-launcher
+Terminal=false
+Categories=Game;
+Keywords=rpg;maker;game;launcher;
+StartupNotify=true

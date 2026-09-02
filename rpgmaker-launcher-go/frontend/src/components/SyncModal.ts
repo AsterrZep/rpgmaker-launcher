@@ -50,7 +50,7 @@ export class SyncModal {
               placeholder="Ruta no configurada (p. ej. /home/usuario/Dropbox/Saves)"
               type="text"
             />
-            <button id="btn-pick-folder" class="${isTauri ? 'flex' : 'hidden'} items-center gap-1 px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-label-md font-semibold border border-border text-on-surface transition-colors shrink-0">
+            <button id="btn-pick-folder" class="flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-label-md font-semibold border border-border text-on-surface transition-colors shrink-0">
               <span class="material-symbols-outlined text-[16px] text-primary">drive_folder_upload</span>
               <span>Elegir...</span>
             </button>
@@ -167,7 +167,7 @@ export class SyncModal {
   private async persistFolder(): Promise<void> {
     try {
       const cfg = await api.getConfig();
-      cfg.sync = { ...(cfg.sync || {}), folder: this.folder };
+      cfg.sync = { ...(cfg.sync || { auto: false }), folder: this.folder, auto: cfg.sync?.auto ?? false };
       await api.updateConfig(cfg);
       toasts.show('Carpeta de sincronización guardada', 'info', 2000);
       await this.loadData();

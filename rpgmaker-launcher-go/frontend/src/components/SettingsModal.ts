@@ -41,7 +41,7 @@ export class SettingsModal {
               placeholder="${t('settingsDefaultFolder', '')}"
               type="text"
             />
-            <button id="btn-pick-folder" class="${isTauri ? 'flex' : 'hidden'} items-center gap-1 px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-label-md font-semibold border border-border text-on-surface transition-colors shrink-0">
+            <button id="btn-pick-folder" class="flex items-center gap-1 px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-label-md font-semibold border border-border text-on-surface transition-colors shrink-0">
               <span class="material-symbols-outlined text-[16px] text-primary">drive_folder_upload</span>
               <span>${t('btnChangeFolder')}</span>
             </button>
@@ -143,8 +143,8 @@ export class SettingsModal {
     const folderInput = this.modalEl.querySelector('#input-games-folder') as HTMLInputElement;
     if (!folderInput) return;
     const { api } = await import('../api');
-    const defaultGamesDir = api.getBaseUrl().replace('/api', '') + '/games'; // fallback visual
-    folderInput.placeholder = t('settingsDefaultFolder', defaultGamesDir);
+    const dataDir = await api.getConfig().then(c => c.general.games_dir || '~/.local/share/rpgmaker-launcher/games');
+    folderInput.placeholder = t('settingsDefaultFolder', dataDir);
   }
 
   public close(): void {

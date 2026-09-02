@@ -1,0 +1,59 @@
+name: rpgmaker-launcher
+arch: amd64
+platform: linux
+version: "1.0.0"
+section: games
+priority: optional
+maintainer: "AsterrZep <asterrzep@users.noreply.github.com>"
+description: |
+  RPG Maker Launcher: game library for RPG Maker MZ/MV/XP/VX/VX Ace/2000
+  and Ren'Py with automatic ZIP extraction, local HTTP server, cheat panel,
+  rewind/save-states, JS mods, save editor, sync and asset decryption.
+homepage: "https://github.com/AsterrZep/rpgmaker-launcher"
+license: MIT
+
+contents:
+  # Binary
+  - src: build/bin/rpgmaker-launcher
+    dst: /usr/bin/rpgmaker-launcher
+    file_info:
+      mode: 0755
+
+  # Desktop entry
+  - src: packaging/rpgmaker-launcher.desktop
+    dst: /usr/share/applications/rpgmaker-launcher.desktop
+
+  # Icon
+  - src: ../rpgmaker-icon.png
+    dst: /usr/share/icons/hicolor/128x128/apps/rpgmaker-launcher.png
+
+  # Documentation
+  - src: ../README.md
+    dst: /usr/share/doc/rpgmaker-launcher/README.md
+  - src: ../LICENSE
+    dst: /usr/share/doc/rpgmaker-launcher/LICENSE
+
+  # Injected scripts for web games
+  - src: ../rpgmaker-savebridge.js
+    dst: /usr/share/rpgmaker-launcher/rpgmaker-savebridge.js
+  - src: ../rpgmaker-cheats.js
+    dst: /usr/share/rpgmaker-launcher/rpgmaker-cheats.js
+  - src: ../rpgmaker-rewind.js
+    dst: /usr/share/rpgmaker-launcher/rpgmaker-rewind.js
+  - src: ../rpgmaker-gamepad.js
+    dst: /usr/share/rpgmaker-launcher/rpgmaker-gamepad.js
+  - src: ../rpgmaker-browser-keys.js
+    dst: /usr/share/rpgmaker-launcher/rpgmaker-browser-keys.js
+
+deb:
+  compression: zstd
+
+overrides:
+  rpm:
+    depends:
+      - gtk3
+      - webkit2gtk4.1
+  deb:
+    depends:
+      - libgtk-3-0
+      - libwebkit2gtk-4.1-0

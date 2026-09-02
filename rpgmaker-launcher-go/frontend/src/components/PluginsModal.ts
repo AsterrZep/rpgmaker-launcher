@@ -99,13 +99,13 @@ export class PluginsModal {
       let badgeClass = 'bg-status-success/15 text-status-success';
       let badgeText = 'OK';
 
-      if (p.category === 'nw-protegido') {
+      if (p.category === 'nw_protegido' || p.category === 'nw-protegido') {
         badgeClass = 'bg-status-warning/15 text-status-warning';
         badgeText = 'NW PROTECTED';
       } else if (p.category === 'roto') {
         badgeClass = 'bg-status-error/15 text-status-error';
         badgeText = 'BROKEN';
-      } else if (p.category === 'sin-fichero') {
+      } else if (p.category === 'sin_fichero' || p.category === 'sin-fichero') {
         badgeClass = 'bg-surface-variant text-text-faint';
         badgeText = 'MISSING';
       }

@@ -17,10 +17,10 @@ export interface Game {
   is_web: boolean;
   is_incomplete: boolean;
   has_cover: boolean;
-  cover_url: string | null;
+  cover_url?: string;
   favorite: boolean;
   seconds: number;
-  last_played: number | null;
+  last_played?: number;
   has_saves: boolean;
 }
 
@@ -28,7 +28,7 @@ export interface PluginItem {
   name: string;
   status: boolean;
   description?: string;
-  category: 'ok' | 'nw_protegido' | 'roto' | 'sin_fichero';
+  category: string;
   motivos: string[];
 }
 
@@ -81,7 +81,17 @@ export interface SyncStatus {
 }
 
 export interface AppConfig {
-  teclas: Record<string, string>;
+  teclas: {
+    trucos: string;
+    recargar: string;
+    fps: string;
+    captura: string;
+    pantalla_completa: string;
+    salir_pantalla_completa: string;
+    zoom_in: string;
+    zoom_out: string;
+    zoom_0: string;
+  };
   general: {
     webkit: boolean;
     auto_delete_zip: boolean;
@@ -90,7 +100,7 @@ export interface AppConfig {
   };
   sync?: {
     folder?: string;
-    auto?: boolean;
+    auto: boolean;
   };
 }
 
@@ -109,7 +119,8 @@ class ApiClient {
   }
 
   public async getGames(): Promise<{ games: Game[]; total: number }> {
-    return App.GetGames();
+    const result = await App.GetGames() as any;
+    return { games: result.games || [], total: result.total || 0 };
   }
 
   public async rescan(autoDelete: boolean = false): Promise<{ extracted: string[]; errors: string[]; games: Game[] }> {
@@ -121,7 +132,7 @@ class ApiClient {
   }
 
   public async toggleFavorite(name: string, favorite?: boolean): Promise<{ ok: boolean; name: string; favorite: boolean }> {
-    return App.ToggleFavorite(name);
+    return App.ToggleFavorite(name) as any;
   }
 
   public async launchGame(name: string, viewer: 'webkit' | 'browser' = 'webkit'): Promise<{ ok: boolean; port?: number; engine?: string }> {
@@ -132,7 +143,7 @@ class ApiClient {
   }
 
   public async stopServer(): Promise<{ ok: boolean; game: string | null; seconds_added: number; total_seconds: number }> {
-    return App.StopGame();
+    return App.StopGame() as any;
   }
 
   public async getPlugins(game: string): Promise<{ plugins: PluginItem[]; has_backup: boolean }> {
@@ -204,7 +215,8 @@ class ApiClient {
   }
 
   public async updateConfig(cfg: Partial<AppConfig>): Promise<{ ok: boolean; config: AppConfig }> {
-    return App.UpdateConfig(cfg as AppConfig);
+    const result = await App.UpdateConfig(cfg as any) as any;
+    return { ok: result?.ok ?? true, config: result?.config ?? cfg as AppConfig };
   }
 
   /**
