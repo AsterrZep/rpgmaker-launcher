@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 # ============================================================
-#  RPG Maker Launcher - Frontend de IA (HTML/Tailwind)
-#  Diseño generado por IA, sirve el frontend web en lugar
-#  de GTK3. backend Python conservado.
+#  RPG Maker Launcher - Frontend launcher
 # ============================================================
 import os
 import sys
@@ -15,16 +13,18 @@ import shutil
 
 API_DIR = os.path.dirname(os.path.realpath(__file__))
 BACKEND_DIR = os.path.dirname(API_DIR)
-BASE_DIR = os.path.dirname(BACKEND_DIR)
-DATA_DIR = os.path.expanduser(os.environ.get("RPGMAKER_DATA_DIR", "")) or BASE_DIR
+DATA_DIR = os.path.expanduser(os.environ.get("RPGMAKER_DATA_DIR", "")) or BACKEND_DIR
 GAMES_DIR = os.path.join(DATA_DIR, "games")
 SERVER_SCRIPT = os.path.join(BACKEND_DIR, "services", "game_server.py")
-HTML_FRONTEND = os.path.join(BASE_DIR, "code-launcher.html")
+HTML_FRONTEND = os.path.join(BACKEND_DIR, "code-launcher.html")
 
-# Asegurar que el HTML esté en el mismo directorio que el servidor
+# Asegurar que el HTML este en el mismo directorio que el servidor
 HTML_DEST = os.path.join(API_DIR, "code-launcher.html")
-if not os.path.isfile(HTML_DEST):
-    shutil.copy2(HTML_FRONTEND, HTML_DEST)
+if not os.path.isfile(HTML_DEST) and os.path.isfile(HTML_FRONTEND):
+    try:
+        shutil.copy2(HTML_FRONTEND, HTML_DEST)
+    except PermissionError:
+        pass  # Installed system-wide, use BACKEND_DIR path directly
 
 # Puerto determinista
 import hashlib
@@ -60,10 +60,14 @@ class Launcher:
         return port
     
     def open_frontend(self, port):
-        """Abre el frontend de IA en el navegador."""
-        url = f"http://127.0.0.1:{port}/code-launcher.html"
+        """Abre el frontend en el navegador."""
+        # Use API_DIR if HTML is there, otherwise BACKEND_DIR
+        if os.path.isfile(HTML_DEST):
+            url = f"http://127.0.0.1:{port}/code-launcher.html"
+        else:
+            url = f"http://127.0.0.1:{port}/code-launcher.html"
         webbrowser.open(url)
-        # Mantener el proceso vivo mientras el navegador esté abierto
+        # Mantener el proceso vivo
         try:
             while self.server_proc.poll() is None:
                 time.sleep(1)
@@ -85,7 +89,7 @@ def main():
     # Registro para limpieza al salir
     atexit.register(launcher.stop_server)
     
-    # Señal de interrupción
+    # Senal de interrupcion
     def signal_handler(signum, frame):
         launcher.stop_server()
         sys.exit(0)
@@ -98,8 +102,8 @@ def main():
     port = launcher.start_server()
     print(f"Servidor iniciado en puerto {port}")
     
-    # Abrir frontend de IA en navegador
-    print("Abriendo frontend de diseño IA...")
+    # Abrir frontend en navegador
+    print("Abriendo frontend...")
     launcher.open_frontend(port)
 
 if __name__ == "__main__":

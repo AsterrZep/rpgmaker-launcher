@@ -79,14 +79,25 @@ Categories=Game;
 StartupNotify=true
 EOF
 
+# ---------- Tauri binary ----------
+echo "  🦀 Copying Tauri binary..."
+cp "$PROJECT_ROOT/rpgmaker-launcher-tauri/target/release/rpgmaker-launcher-tauri" "$BUILD_DIR${INSTALL_DIR}/rpgmaker-launcher-tauri"
+chmod +x "$BUILD_DIR${INSTALL_DIR}/rpgmaker-launcher-tauri"
+
+# ---------- Frontend dist ----------
+echo "  🎨 Copying frontend dist..."
+mkdir -p "$BUILD_DIR${INSTALL_DIR}/dist"
+cp -r "$PROJECT_ROOT/rpgmaker-launcher-tauri/dist/"* "$BUILD_DIR${INSTALL_DIR}/dist/"
+
 # ---------- Launcher script ----------
 echo "  🚀 Creating launcher script..."
 cat > "$BUILD_DIR/usr/bin/rpgmaker-launcher" <<'LAUNCHER'
 #!/usr/bin/env bash
-# RPG Maker Launcher - entry point
+# RPG Maker Launcher - Tauri entry point
 APP_DIR="/usr/lib/rpgmaker-launcher"
-export PYTHONPATH="${APP_DIR}:${PYTHONPATH:-}"
-exec python3 "${APP_DIR}/main.py" "$@"
+export RPGMAKER_DATA_DIR="${RPGMAKER_DATA_DIR:-$HOME/.local/share/rpgmaker-launcher}"
+mkdir -p "$RPGMAKER_DATA_DIR/games"
+exec "$APP_DIR/rpgmaker-launcher-tauri" "$@"
 LAUNCHER
 chmod +x "$BUILD_DIR/usr/bin/rpgmaker-launcher"
 
