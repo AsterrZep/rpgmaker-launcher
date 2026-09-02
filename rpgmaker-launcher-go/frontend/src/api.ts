@@ -287,3 +287,56 @@ class ApiClient {
 }
 
 export const api = new ApiClient();
+
+// ── Frontend Error Capture ──────────────────────────────────
+// Send console errors/warnings to backend for centralized logging
+(function setupFrontendLogging() {
+  const originalError = console.error;
+  const originalWarn = console.warn;
+
+  console.error = function (...args: any[]) {
+    originalError.apply(console, args);
+    try {
+      const msg = args.map(a => (a instanceof Error ? a.message : String(a))).join(' ');
+      fetch(`${api.getBaseUrl()}/api/frontend/log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ level: 'ERROR', message: msg, source: 'frontend' }),
+      }).catch(() => {});
+    } catch (_) {}
+  };
+
+  console.warn = function (...args: any[]) {
+    originalWarn.apply(console, args);
+    try {
+      const msg = args.map(a => String(a)).join(' ');
+      fetch(`${api.getBaseUrl()}/api/frontend/log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ level: 'WARN', message: msg, source: 'frontend' }),
+      }).catch(() => {});
+    } catch (_) {}
+  };
+
+  window.addEventListener('unhandledrejection', (e) => {
+    try {
+      const msg = e.reason?.message || String(e.reason) || 'Unhandled rejection';
+      fetch(`${api.getBaseUrl()}/api/frontend/log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ level: 'ERROR', message: `unhandledrejection: ${msg}`, source: 'frontend' }),
+      }).catch(() => {});
+    } catch (_) {}
+  });
+
+  window.addEventListener('error', (e) => {
+    try {
+      const msg = e.message || 'Unknown error';
+      fetch(`${api.getBaseUrl()}/api/frontend/log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ level: 'ERROR', message: `window.error: ${msg} @ ${e.filename}:${e.lineno}`, source: 'frontend' }),
+      }).catch(() => {});
+    } catch (_) {}
+  });
+})();
