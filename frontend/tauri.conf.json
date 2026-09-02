@@ -1,0 +1,31 @@
+{
+  "productName": "RPG Maker Launcher",
+  "version": "0.9.2",
+  "identifier": "com.rpgmaker.launcher",
+  "build": {
+    "frontendDist": "dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "bash scripts/sync-backend.sh && npm run build"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb"],
+    "category": "Game",
+    "shortDescription": "Lanzador de juegos RPG Maker y Ren'Py para Linux",
+    "longDescription": "RPG Maker Launcher: biblioteca de juegos RPG Maker MZ/MV/XP/VX/VX Ace/2000 y Ren'Py con extraccion automatica de .zip, servidor HTTP local con puertos estables, panel de trucos, rewind/save-states, mods JS, editor de partidas, sync y descifrado de assets.",
+    "icon": ["icons/icon.png"],
+    "resources": ["backend"],
+    "linux": {
+      "deb": {
+        "depends": ["python3", "unzip", "xdg-utils"]
+      }
+    }
+  }
+}
