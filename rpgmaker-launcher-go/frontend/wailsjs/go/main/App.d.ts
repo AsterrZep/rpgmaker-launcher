@@ -15,6 +15,10 @@ export function DetectGameEngine(arg1:string):Promise<Record<string, any>>;
 
 export function ExecuteSync(arg1:string,arg2:string):Promise<Record<string, any>>;
 
+export function ExtractZips(arg1:Array<string>,arg2:boolean):Promise<Record<string, any>>;
+
+export function ExtractZipsInDir(arg1:boolean):Promise<Record<string, any>>;
+
 export function GetConfig():Promise<core.AppConfig>;
 
 export function GetData(arg1:string,arg2:string):Promise<core.DataResult>;
@@ -38,6 +42,8 @@ export function GetStatus():Promise<Record<string, any>>;
 export function GetSyncStatus():Promise<Record<string, any>>;
 
 export function HasEncryptedAssets(arg1:string):Promise<boolean>;
+
+export function InstallZips(arg1:Array<string>,arg2:boolean):Promise<Record<string, any>>;
 
 export function LaunchGame(arg1:string,arg2:string,arg3:string):Promise<core.LaunchResult>;
 

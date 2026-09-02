@@ -26,6 +26,14 @@ export function ExecuteSync(arg1, arg2) {
   return window['go']['main']['App']['ExecuteSync'](arg1, arg2);
 }
 
+export function ExtractZips(arg1, arg2) {
+  return window['go']['main']['App']['ExtractZips'](arg1, arg2);
+}
+
+export function ExtractZipsInDir(arg1) {
+  return window['go']['main']['App']['ExtractZipsInDir'](arg1);
+}
+
 export function GetConfig() {
   return window['go']['main']['App']['GetConfig']();
 }
@@ -72,6 +80,10 @@ export function GetSyncStatus() {
 
 export function HasEncryptedAssets(arg1) {
   return window['go']['main']['App']['HasEncryptedAssets'](arg1);
+}
+
+export function InstallZips(arg1, arg2) {
+  return window['go']['main']['App']['InstallZips'](arg1, arg2);
 }
 
 export function LaunchGame(arg1, arg2, arg3) {
