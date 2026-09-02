@@ -1,0 +1,2 @@
+# Ignore old .deb packages (only latest should be tracked)
+build/bin/*.deb
