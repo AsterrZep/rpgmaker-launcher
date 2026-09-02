@@ -9,10 +9,11 @@
 import json
 import os
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CORE_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKEND_DIR = os.path.dirname(CORE_DIR)
 # La config de usuario vive en RPGMAKER_DATA_DIR (si está definido)
 # para que la versión instalada no escriba en directorios de sistema.
-DATA_DIR = os.path.expanduser(os.environ.get("RPGMAKER_DATA_DIR", "")) or BASE_DIR
+DATA_DIR = os.path.expanduser(os.environ.get("RPGMAKER_DATA_DIR", "")) or BACKEND_DIR
 CONFIG_FILE = os.path.join(DATA_DIR, "launcher-config.json")
 
 DEFAULT_CONFIG = {

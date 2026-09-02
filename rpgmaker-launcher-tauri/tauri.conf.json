@@ -21,7 +21,7 @@
     "shortDescription": "Lanzador de juegos RPG Maker y Ren'Py para Linux",
     "longDescription": "RPG Maker Launcher: biblioteca de juegos RPG Maker MZ/MV/XP/VX/VX Ace/2000 y Ren'Py con extraccion automatica de .zip, servidor HTTP local con puertos estables, panel de trucos, rewind/save-states, mods JS, editor de partidas, sync y descifrado de assets.",
     "icon": ["icons/icon.png"],
-    "resources": ["backend"],
+    "resources": [],
     "linux": {
       "deb": {
         "depends": ["python3", "unzip", "xdg-utils"]

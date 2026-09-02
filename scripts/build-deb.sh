@@ -36,7 +36,7 @@ Version: ${VERSION}
 Section: games
 Priority: optional
 Architecture: ${ARCH}
-Depends: python3 (>= 3.9), python3-tk, python3-gi, gir1.2-webkit2-4.1, gir1.2-gtk-3.0, xdg-utils, unzip
+Depends: python3 (>= 3.9), python3-tk, python3-gi, gir1.2-webkit2-4.1, gir1.2-gtk-3.0, libgtk-3-0, xdg-utils, unzip
 Maintainer: AsterrZep <asterrzep@users.noreply.github.com>
 Homepage: https://github.com/AsterrZep/rpgmaker-launcher
 Description: Launcher para juegos de RPG Maker y Ren'Py (MV, MZ, XP, VX, VX Ace, 2000/2003, Ren'Py)
@@ -52,6 +52,8 @@ EOF
 # ---------- Backend files ----------
 echo "  📦 Copying backend..."
 cp -r "$PROJECT_ROOT/backend/"* "$BUILD_DIR${INSTALL_DIR}/"
+# Tauri binary expects rpgmaker_api.py, not main.py
+cp "$BUILD_DIR${INSTALL_DIR}/main.py" "$BUILD_DIR${INSTALL_DIR}/rpgmaker_api.py"
 # Clean up __pycache__ and .pyc files
 find "$BUILD_DIR${INSTALL_DIR}" -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 find "$BUILD_DIR${INSTALL_DIR}" -name "*.pyc" -delete 2>/dev/null || true

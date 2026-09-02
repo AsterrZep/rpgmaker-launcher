@@ -23,8 +23,12 @@ from datetime import datetime
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
-BASE_DIR = os.path.dirname(BACKEND_DIR)  # Project root
-DATA_DIR = os.path.expanduser(os.environ.get("RPGMAKER_DATA_DIR", "")) or BASE_DIR
+# DATA_DIR: user data location (games, saves, config)
+# Falls back to ~/.local/share/rpgmaker-launcher when installed via .deb
+DATA_DIR = os.path.expanduser(os.environ.get("RPGMAKER_DATA_DIR", ""))
+if not DATA_DIR:
+    _home = os.path.expanduser("~")
+    DATA_DIR = os.path.join(_home, ".local", "share", "rpgmaker-launcher")
 DEFAULT_GAMES_DIR = os.path.join(DATA_DIR, "games")
 RUN_DIR = os.path.join(BACKEND_DIR, "runtimes")
 BACKUPS_DIR = os.path.join(DATA_DIR, "backups")
@@ -174,7 +178,7 @@ def open_target(target):
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True
     real = os.path.realpath(target)
-    allowed_roots = [os.path.realpath(DATA_DIR), os.path.realpath(BASE_DIR)]
+    allowed_roots = [os.path.realpath(DATA_DIR)]
     if not any(real == r or real.startswith(r + os.sep) for r in allowed_roots):
         raise PermissionError("Ruta fuera del directorio de datos")
     if not os.path.isdir(real):
